@@ -1,0 +1,266 @@
+extends Node3D
+## Siedler (Etappe 3): Bauarbeiter, Holzfäller, Steinmetz, Förster, Sägewerker und Träger
+## laufen sichtbar durch die Welt. Figuren stammen aus der Browser-Version (Berufskleidung).
+
+const SPEED := 3.2
+const WORKER_SCALE := 1.5
+
+var terrain: Node3D
+var economy: Node
+var workers: Array = []
+var reserved := {}            # Bäume/Felsen, die schon jemand bearbeitet
+
+func lager_door() -> Vector3:
+	var p := Vector3(0, 0, 6.0)
+	p.y = terrain.height(p.x, p.z)
+	return p
+
+func door_of(b: Dictionary) -> Vector3:
+	var p: Vector3 = b.pos + Vector3(0, 0, 3.4).rotated(Vector3.UP, b.node.rotation.y)
+	p.y = terrain.height(p.x, p.z)
+	return p
+
+func _ready() -> void:
+	for i in 3:
+		var w := spawn("traeger", lager_door() + Vector3(i - 1.0, 0, 0.8))
+		w.role = "traeger"
+
+func spawn(job: String, at: Vector3) -> Dictionary:
+	var n: Node3D = load("res://models/w_%s.glb" % job).instantiate()
+	n.scale = Vector3.ONE * WORKER_SCALE
+	n.position = at
+	add_child(n)
+	var w := {
+		"node": n, "job": job, "role": job, "q": [], "t": 0.0, "anim": "idle",
+		"leg_l": n.find_child("leg_l", true, false), "leg_r": n.find_child("leg_r", true, false),
+		"arm_l": n.find_child("arm_l", true, false), "arm_r": n.find_child("arm_r", true, false),
+		"carry": null, "home": null,
+	}
+	workers.append(w)
+	return w
+
+# ---------- Aufträge ----------
+func on_building_placed(b: Dictionary) -> void:
+	var w := spawn("bauarbeiter", lager_door())
+	w.q = [
+		{"go": door_of(b)},
+		{"fn": func(): b.builder_on_site = true},
+		{"anim": "build", "until": func(): return b.build >= 1.0},
+		{"fn": func(): b.builder_on_site = false; _on_built(b)},
+		{"go": lager_door()},
+		{"fn": func(): _remove(w)},
+	]
+
+func _on_built(b: Dictionary) -> void:
+	if b.type in ["holzfaeller", "steinmetz", "foerster", "saegewerk"]:
+		var w := spawn(b.type, lager_door())
+		w.home = b
+		w.q = [{"go": door_of(b)}, {"fn": func(): _next_job(w)}]
+
+func _next_job(w: Dictionary) -> void:
+	var b: Dictionary = w.home
+	match w.job:
+		"holzfaeller":
+			var tr_ = _free(terrain.nearest_tree(b.pos, 22.0), terrain.trees, true)
+			if tr_ == null:
+				b.status = "ST_NO_TREES"
+				w.q = [{"wait": 5.0}, {"fn": func(): _next_job(w)}]
+				return
+			b.status = "ST_WORKING"
+			reserved[tr_.pos] = true
+			w.q = [
+				{"go": _beside(tr_.pos, b.pos)},
+				{"face": tr_.pos},
+				{"anim": "chop", "wait": 3.0},
+				{"fn": func(): terrain.fell_tree(tr_); reserved.erase(tr_.pos); _carry(w, "stamm")},
+				{"go": door_of(b)},
+				{"fn": func(): _carry(w, null); economy.pending.append({"b": b, "item": "stamm"})},
+				{"wait": 1.5},
+				{"fn": func(): _next_job(w)},
+			]
+		"steinmetz":
+			var rk = _free(terrain.nearest_rock(b.pos, 22.0), terrain.rocks, false)
+			if rk == null:
+				b.status = "ST_NO_ROCKS"
+				w.q = [{"wait": 5.0}, {"fn": func(): _next_job(w)}]
+				return
+			b.status = "ST_WORKING"
+			reserved[rk.pos] = true
+			w.q = [
+				{"go": _beside(rk.pos, b.pos)},
+				{"face": rk.pos},
+				{"anim": "chop", "wait": 3.5},
+				{"fn": func(): terrain.mine_rock(rk); reserved.erase(rk.pos); _carry(w, "stein")},
+				{"go": door_of(b)},
+				{"fn": func(): _carry(w, null); economy.pending.append({"b": b, "item": "stein"})},
+				{"wait": 1.5},
+				{"fn": func(): _next_job(w)},
+			]
+		"foerster":
+			var tr_ = _free(terrain.nearest_tree(b.pos, 14.0, false), terrain.trees, true)
+			if tr_ == null:
+				b.status = "ST_IDLE"
+				w.q = [{"wait": 6.0}, {"fn": func(): _next_job(w)}]
+				return
+			b.status = "ST_WORKING"
+			reserved[tr_.pos] = true
+			w.q = [
+				{"go": _beside(tr_.pos, b.pos)},
+				{"anim": "plant", "wait": 2.5},
+				{"fn": func(): terrain.plant_tree(tr_); reserved.erase(tr_.pos)},
+				{"go": door_of(b)},
+				{"wait": 3.0},
+				{"fn": func(): _next_job(w)},
+			]
+		"saegewerk":
+			w.node.visible = false      # arbeitet drinnen an der Säge
+			b.worker_inside = true
+
+# Nur nicht reservierte Ziele nehmen (sonst laufen zwei Holzfäller zum selben Baum)
+func _free(first, list: Array, _is_tree: bool):
+	if first == null or not reserved.has(first.pos):
+		return first
+	for x in list:
+		if reserved.has(x.pos):
+			continue
+		if _is_tree and not x.alive:
+			continue
+		if not _is_tree and x.left <= 0:
+			continue
+		if Vector2(x.pos.x - first.pos.x, x.pos.z - first.pos.z).length() < 22.0:
+			return x
+	return null
+
+func _beside(target: Vector3, from: Vector3) -> Vector3:
+	var d := (from - target)
+	d.y = 0
+	var p := target + d.normalized() * 1.1
+	p.y = terrain.height(p.x, p.z)
+	return p
+
+func _carry(w: Dictionary, item) -> void:
+	if w.carry:
+		w.carry.queue_free()
+		w.carry = null
+	if item == null:
+		return
+	var m := MeshInstance3D.new()
+	var mat := StandardMaterial3D.new()
+	if item == "stamm":
+		var c := CylinderMesh.new()
+		c.top_radius = 0.09
+		c.bottom_radius = 0.09
+		c.height = 0.9
+		m.mesh = c
+		m.rotation.z = PI / 2
+		mat.albedo_color = Color(0.45, 0.3, 0.17)
+	elif item == "bretter":
+		var bx := BoxMesh.new()
+		bx.size = Vector3(0.8, 0.1, 0.3)
+		m.mesh = bx
+		mat.albedo_color = Color(0.75, 0.55, 0.32)
+	else:
+		var s := SphereMesh.new()
+		s.radius = 0.17
+		s.height = 0.26
+		m.mesh = s
+		mat.albedo_color = Color(0.6, 0.58, 0.55)
+	m.material_override = mat
+	m.position = Vector3(0, 1.25, 0)
+	w.node.add_child(m)
+	w.carry = m
+
+func _remove(w: Dictionary) -> void:
+	w.dead = true
+	w.node.queue_free()
+
+# ---------- Träger ----------
+func _carrier_jobs() -> void:
+	for w in workers:
+		if w.role != "traeger" or not w.q.is_empty() or economy.pending.is_empty():
+			continue
+		var job: Dictionary = economy.pending.pop_front()
+		var b: Dictionary = job.b
+		w.q = [
+			{"go": door_of(b)},
+			{"wait": 0.5},
+			{"fn": func(): _carry(w, job.item)},
+			{"go": lager_door()},
+			{"fn": func(): _carry(w, null); economy.add(job.item, 1)},
+		]
+
+# ---------- Ablauf & Animation ----------
+func _process(dt: float) -> void:
+	_carrier_jobs()
+	for w in workers.duplicate():
+		if w.get("dead", false):
+			workers.erase(w)
+			continue
+		_step(w, dt)
+		_animate(w, dt)
+
+func _step(w: Dictionary, dt: float) -> void:
+	w.anim = "idle"
+	if w.q.is_empty():
+		return
+	var s: Dictionary = w.q[0]
+	if s.has("go"):
+		var n: Node3D = w.node
+		var to: Vector3 = s.go
+		var d := Vector3(to.x - n.position.x, 0, to.z - n.position.z)
+		if d.length() < 0.15:
+			w.q.pop_front()
+			return
+		var mv := d.normalized() * minf(d.length(), SPEED * dt)
+		n.position += mv
+		n.position.y = terrain.height(n.position.x, n.position.z)
+		n.rotation.y = lerp_angle(n.rotation.y, atan2(d.x, d.z), minf(1.0, dt * 10.0))
+		w.anim = "walk"
+	elif s.has("face"):
+		var d: Vector3 = s.face - w.node.position
+		w.node.rotation.y = atan2(d.x, d.z)
+		w.q.pop_front()
+	elif s.has("until"):
+		w.anim = s.get("anim", "idle")
+		if s.until.call():
+			w.q.pop_front()
+	elif s.has("wait"):
+		w.anim = s.get("anim", "idle")
+		s.wait -= dt
+		if s.wait <= 0.0:
+			w.q.pop_front()
+	elif s.has("fn"):
+		w.q.pop_front()
+		s.fn.call()
+
+func _animate(w: Dictionary, dt: float) -> void:
+	w.t += dt
+	var t: float = w.t
+	var ll: Node3D = w.leg_l
+	var lr: Node3D = w.leg_r
+	var al: Node3D = w.arm_l
+	var ar: Node3D = w.arm_r
+	if ll == null or ar == null:
+		return
+	match w.anim:
+		"walk":
+			var k := sin(t * 9.0) * 0.6
+			ll.rotation.x = k
+			lr.rotation.x = -k
+			al.rotation.x = -k * 0.8
+			ar.rotation.x = k * 0.8
+		"chop", "build":
+			ll.rotation.x = 0.0
+			lr.rotation.x = 0.0
+			ar.rotation.x = -1.4 + sin(t * 7.0) * 1.1
+			al.rotation.x = -0.4
+		"plant":
+			ll.rotation.x = 0.3
+			lr.rotation.x = -0.2
+			ar.rotation.x = -0.9 + sin(t * 4.0) * 0.4
+			al.rotation.x = -0.9 + sin(t * 4.0 + 1.0) * 0.4
+		_:
+			ll.rotation.x = lerpf(ll.rotation.x, 0.0, dt * 8.0)
+			lr.rotation.x = lerpf(lr.rotation.x, 0.0, dt * 8.0)
+			al.rotation.x = lerpf(al.rotation.x, 0.0, dt * 8.0)
+			ar.rotation.x = lerpf(ar.rotation.x, 0.0, dt * 8.0)

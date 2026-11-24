@@ -30,3 +30,4 @@ ST_IDLE	Wartet	Idle
 ST_NO_TREES	Keine Bäume in der Nähe	No trees nearby
 ST_NO_LOGS	Keine Stämme im Lager	No logs in storage
 ST_NO_ROCKS	Keine Felsen in der Nähe	No rocks nearby
+UI_STAGE3	Etappe 3: Siedler bei der Arbeit	Stage 3: Settlers at work

@@ -16,10 +16,11 @@ const COST := {
 }
 const BUILD_TIME := 8.0
 # Arbeitszeit in Sekunden je Produktionsschritt
-const WORK := {"holzfaeller": 9.0, "foerster": 12.0, "saegewerk": 7.0, "steinmetz": 10.0}
+const WORK := {"saegewerk": 7.0}   # Holzfäller, Steinmetz, Förster arbeiten jetzt als echte Siedler
 
 var terrain: Node3D
 var buildings: Array = []
+var pending: Array = []      # Waren, die Träger abholen sollen: {b, item}
 
 func can_afford(t: String) -> bool:
 	for k in COST[t]:
@@ -45,10 +46,12 @@ func add(k: String, n: int) -> void:
 func _process(dt: float) -> void:
 	for b in buildings:
 		if b.build < 1.0:
+			if not b.get("builder_on_site", false):
+				continue
 			b.build = minf(1.0, b.build + dt / BUILD_TIME)
 			b.node.scale = Vector3(b.s, b.s * (0.15 + 0.85 * b.build), b.s)
 			continue
-		if not WORK.has(b.type):
+		if not WORK.has(b.type) or not b.get("worker_inside", false):
 			continue
 		b.t += dt
 		if b.t < WORK[b.type]:
@@ -78,7 +81,9 @@ func _work(b: Dictionary) -> void:
 				b.status = "ST_NO_LOGS"
 				return
 			stock.stamm -= 1
-			add("bretter", 2)
+			changed.emit()
+			pending.append({"b": b, "item": "bretter"})
+			pending.append({"b": b, "item": "bretter"})
 			b.status = "ST_WORKING"
 		"steinmetz":
 			var rk = terrain.nearest_rock(b.pos, 22.0)

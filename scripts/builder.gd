@@ -14,6 +14,7 @@ const TYPES := {
 
 var terrain: Node3D
 var economy: Node
+var settlers: Node3D
 var _buttons := {}
 var camera: Camera3D
 var buildings: Array = []        # {type, pos, node}
@@ -234,6 +235,8 @@ func confirm() -> void:
 	buildings.append(rec)
 	economy.buildings.append(rec)
 	economy.pay(placing)
+	if settlers:
+		settlers.on_building_placed(rec)
 	var t := placing
 	cancel()
 	if economy.can_afford(t):

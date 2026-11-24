@@ -5,6 +5,8 @@ const Terrain := preload("res://scripts/terrain.gd")
 const CameraRig := preload("res://scripts/camera_rig.gd")
 const Builder := preload("res://scripts/builder.gd")
 const Economy := preload("res://scripts/economy.gd")
+const Settlers := preload("res://scripts/settlers.gd")
+var settlers: Node3D
 var economy: Node
 var stock_label: Label
 var builder: Node3D
@@ -26,7 +28,13 @@ func _ready() -> void:
 	economy.terrain = terrain
 	add_child(economy)
 	_setup_stock()
+	settlers = Settlers.new()
+	settlers.name = "Siedler"
+	settlers.terrain = terrain
+	settlers.economy = economy
+	add_child(settlers)
 	builder = Builder.new()
+	builder.settlers = settlers
 	builder.economy = economy
 	builder.name = "Bauen"
 	builder.terrain = terrain
@@ -126,7 +134,7 @@ func _setup_ui() -> void:
 	title.add_theme_font_size_override("font_size", 20)
 	vb.add_child(title)
 	var info := Label.new()
-	info.text = "UI_STAGE2B"
+	info.text = "UI_STAGE3"
 	vb.add_child(info)
 	var ctr := Label.new()
 	ctr.text = "UI_CONTROLS"
