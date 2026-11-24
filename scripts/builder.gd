@@ -25,6 +25,9 @@ var chosen := false              # Platz gewählt, wartet auf Bestätigung
 var _down_pos := Vector2.ZERO
 var confirm_box: HBoxContainer
 var hint: Label
+var info_panel: PanelContainer
+var info_label: Label
+var selected = null
 var _ghost_ok_mat := StandardMaterial3D.new()
 
 func _ready() -> void:
@@ -72,6 +75,25 @@ func setup_ui(layer: CanvasLayer) -> void:
 	hint.add_theme_constant_override("outline_size", 6)
 	hint.visible = false
 	layer.add_child(hint)
+	info_panel = PanelContainer.new()
+	var isb := StyleBoxFlat.new()
+	isb.bg_color = Color(0.165, 0.114, 0.07, 0.92)
+	isb.border_color = Color(0.79, 0.64, 0.29)
+	isb.set_border_width_all(2)
+	isb.set_corner_radius_all(10)
+	isb.set_content_margin_all(10)
+	info_panel.add_theme_stylebox_override("panel", isb)
+	info_panel.anchor_left = 1.0
+	info_panel.anchor_right = 1.0
+	info_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	info_panel.offset_top = 14
+	info_panel.offset_right = -14
+	info_panel.custom_minimum_size = Vector2(260, 0)
+	info_panel.visible = false
+	layer.add_child(info_panel)
+	info_label = Label.new()
+	info_label.add_theme_color_override("font_color", Color(0.96, 0.9, 0.78))
+	info_panel.add_child(info_label)
 	confirm_box = HBoxContainer.new()
 	confirm_box.anchor_left = 0.5
 	confirm_box.anchor_right = 0.5
@@ -175,8 +197,33 @@ func ground_point(screen: Vector2):
 		t += 0.6
 	return null
 
+func _process(_dt: float) -> void:
+	if selected != null and info_panel.visible:
+		var b: Dictionary = selected
+		var txt := tr(TYPES[b.type].key) + "\n" + tr(b.status)
+		if b.build < 1.0:
+			txt += "  %d %%" % int(b.build * 100.0)
+		info_label.text = txt
+
+func _select_at(screen: Vector2) -> void:
+	var p = ground_point(screen)
+	selected = null
+	if p != null:
+		var best := 999.0
+		for b in buildings:
+			var d := Vector2(b.pos.x - p.x, b.pos.z - p.z).length()
+			if d < TYPES[b.type].r * SCALE + 0.5 and d < best:
+				best = d
+				selected = b
+	info_panel.visible = selected != null
+
 func _unhandled_input(e: InputEvent) -> void:
 	if placing == "":
+		if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT:
+			if e.pressed:
+				_down_pos = e.position
+			elif e.position.distance_to(_down_pos) < 6.0:
+				_select_at(e.position)
 		return
 	if e is InputEventMouseMotion and not chosen:
 		var p = ground_point(e.position)
