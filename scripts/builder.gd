@@ -3,19 +3,13 @@ extends Node3D
 ## Zweistufig wie in der Browser-Version, damit man nicht versehentlich falsch baut.
 
 const SCALE := 1.5
-const TYPES := {
-	"holzfaeller": {"key": "BLD_HOLZFAELLER", "r": 2.2},
-	"foerster": {"key": "BLD_FOERSTER", "r": 2.0},
-	"saegewerk": {"key": "BLD_SAEGEWERK", "r": 2.4},
-	"steinmetz": {"key": "BLD_STEINMETZ", "r": 2.2},
-	"wohnhaus": {"key": "BLD_WOHNHAUS", "r": 2.0},
-	"wachturm": {"key": "BLD_WACHTURM", "r": 1.6},
-}
 
 var terrain: Node3D
 var economy: Node
 var settlers: Node3D
 var _buttons := {}
+var type_row: HBoxContainer
+var _open := ""
 var camera: Camera3D
 var buildings: Array = []        # {type, pos, node}
 var placing := ""
@@ -51,16 +45,23 @@ func setup_ui(layer: CanvasLayer) -> void:
 	bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	bar.offset_bottom = -12
 	layer.add_child(bar)
-	var hb := HBoxContainer.new()
-	hb.add_theme_constant_override("separation", 8)
-	bar.add_child(hb)
-	for t in TYPES:
-		var b := Button.new()
-		b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-		b.custom_minimum_size = Vector2(120, 52)
-		_buttons[t] = b
-		b.pressed.connect(func(): start(t))
-		hb.add_child(b)
+	var vb := VBoxContainer.new()
+	bar.add_child(vb)
+	type_row = HBoxContainer.new()
+	type_row.add_theme_constant_override("separation", 6)
+	type_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	type_row.visible = false
+	vb.add_child(type_row)
+	var cat_row := HBoxContainer.new()
+	cat_row.add_theme_constant_override("separation", 6)
+	cat_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	vb.add_child(cat_row)
+	for c in economy.data.cats:
+		var cb := Button.new()
+		cb.text = c.key
+		cb.custom_minimum_size = Vector2(110, 36)
+		cb.pressed.connect(func(): _open_cat(c))
+		cat_row.add_child(cb)
 	_refresh_buttons()
 	economy.changed.connect(_refresh_buttons)
 	hint = Label.new()
@@ -119,9 +120,33 @@ func setup_ui(layer: CanvasLayer) -> void:
 	no.pressed.connect(cancel)
 	confirm_box.add_child(no)
 
+func _key(t: String) -> String:
+	return "BLD_" + t.to_upper()
+
+func _open_cat(c: Dictionary) -> void:
+	for ch in type_row.get_children():
+		ch.queue_free()
+	_buttons.clear()
+	if _open == c.key:
+		_open = ""
+		type_row.visible = false
+		return
+	_open = c.key
+	for t in c.types:
+		if t == "lager" or not economy.data.types.has(t):
+			continue
+		var b := Button.new()
+		b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		b.custom_minimum_size = Vector2(110, 52)
+		b.pressed.connect(func(): start(t))
+		type_row.add_child(b)
+		_buttons[t] = b
+	type_row.visible = true
+	_refresh_buttons()
+
 func _refresh_buttons() -> void:
 	for t in _buttons:
-		_buttons[t].text = tr(TYPES[t].key) + "\n" + economy.cost_text(t)
+		_buttons[t].text = economy.type_info(t).icon + " " + tr(_key(t)) + "\n" + economy.cost_text(t)
 		_buttons[t].modulate = Color.WHITE if economy.can_afford(t) else Color(1, 0.6, 0.6)
 
 func _notification(what: int) -> void:
@@ -170,21 +195,39 @@ func _update_ghost_rot() -> void:
 		ghost.rotation.y = ghost_rot
 
 func can_place(p: Vector3) -> bool:
-	var r: float = TYPES[placing].r * SCALE
+	var r: float = float(economy.data.types[placing].r) * SCALE
 	for a in [0.0, PI / 2, PI, PI * 1.5]:
 		var q := p + Vector3(cos(a), 0, sin(a)) * r
 		if terrain.height(q.x, q.z) < terrain.WATER_Y + 0.4:
 			return false
 		if absf(terrain.height(q.x, q.z) - p.y) > 1.6:
 			return false
+	var info: Dictionary = economy.type_info(placing)
+	if info.get("mine") != null:
+		# Bergwerke nur am Berg
+		return terrain.mountain(p.x, p.z) > 2.5 and terrain.height(p.x, p.z) > terrain.WATER_Y + 0.5 and _no_overlap(p, r)
 	if terrain.mountain(p.x, p.z) > 6.0:
+		return false
+	if placing == "fischer" and not _water_near(p, 10.0):
 		return false
 	if Vector2(p.x, p.z).length() < 9.5:
 		return false   # Haupthaus
+	return _no_overlap(p, r)
+
+func _no_overlap(p: Vector3, r: float) -> bool:
+	if Vector2(p.x, p.z).length() < 9.5:
+		return false
 	for b in buildings:
-		if Vector2(b.pos.x - p.x, b.pos.z - p.z).length() < r + TYPES[b.type].r * SCALE + 0.6:
+		if Vector2(b.pos.x - p.x, b.pos.z - p.z).length() < r + float(economy.data.types[b.type].r) * SCALE + 0.6:
 			return false
 	return true
+
+func _water_near(p: Vector3, r: float) -> bool:
+	for a in 12:
+		var q := p + Vector3(cos(a * TAU / 12.0), 0, sin(a * TAU / 12.0)) * r
+		if terrain.height(q.x, q.z) < terrain.WATER_Y:
+			return true
+	return false
 
 func ground_point(screen: Vector2):
 	var from := camera.project_ray_origin(screen)
@@ -200,7 +243,9 @@ func ground_point(screen: Vector2):
 func _process(_dt: float) -> void:
 	if selected != null and info_panel.visible:
 		var b: Dictionary = selected
-		var txt := tr(TYPES[b.type].key) + "\n" + tr(b.status)
+		var txt := tr(_key(b.type)) + "\n" + tr(b.status)
+		if b.status == "ST_MISSING":
+			txt += " " + tr("ITEM_" + String(b.missing).to_upper())
 		if b.build < 1.0:
 			txt += "  %d %%" % int(b.build * 100.0)
 		info_label.text = txt
@@ -212,7 +257,7 @@ func _select_at(screen: Vector2) -> void:
 		var best := 999.0
 		for b in buildings:
 			var d := Vector2(b.pos.x - p.x, b.pos.z - p.z).length()
-			if d < TYPES[b.type].r * SCALE + 0.5 and d < best:
+			if d < float(economy.data.types[b.type].r) * SCALE + 0.5 and d < best:
 				best = d
 				selected = b
 	info_panel.visible = selected != null

@@ -1,0 +1,1290 @@
+{
+ "types": {
+  "lager": {
+   "name": "Lagerhaus",
+   "icon": "🏠",
+   "cost": {
+    "bretter": 6,
+    "stein": 4
+   },
+   "r": 3.2,
+   "desc": "Zusätzliches Lager: Träger bringen Waren zum nächsten Lager – verkürzt die Wege in fernen Gebieten und bringt 2 Träger mehr.",
+   "mine": null
+  },
+  "holzfaeller": {
+   "name": "Holzfäller",
+   "icon": "🪓",
+   "cost": {
+    "bretter": 3
+   },
+   "r": 2,
+   "desc": "Fällt Bäume → Baumstämme. Pflanzt nur ab und zu nach (etwa 1 von 3).",
+   "mine": null
+  },
+  "foerster": {
+   "name": "Förster",
+   "icon": "🌲",
+   "cost": {
+    "bretter": 2
+   },
+   "r": 2,
+   "desc": "Pflanzt im grünen Umkreis neue Bäume – damit dem Holzfäller das Holz nicht ausgeht.",
+   "mine": null
+  },
+  "saegewerk": {
+   "name": "Sägewerk",
+   "icon": "🪚",
+   "cost": {
+    "bretter": 4,
+    "stein": 2
+   },
+   "r": 2.3,
+   "desc": "1 Baumstamm → 2 Bretter",
+   "mine": null
+  },
+  "steinmetz": {
+   "name": "Steinmetz",
+   "icon": "⛏️",
+   "cost": {
+    "bretter": 3
+   },
+   "r": 2,
+   "desc": "Schlägt Steine aus Felsen.",
+   "mine": null
+  },
+  "bauernhof": {
+   "name": "Bauernhof",
+   "icon": "🌾",
+   "cost": {
+    "bretter": 5,
+    "stein": 2
+   },
+   "r": 2.6,
+   "desc": "Bis zu 12 Felder · sät, lässt wachsen, erntet → 2 Getreide je Feld",
+   "mine": null
+  },
+  "muehle": {
+   "name": "Mühle",
+   "icon": "🌬️",
+   "cost": {
+    "bretter": 5,
+    "stein": 3
+   },
+   "r": 2,
+   "desc": "1 Getreide → 1 Mehl",
+   "mine": null
+  },
+  "brunnen": {
+   "name": "Brunnen",
+   "icon": "🪣",
+   "cost": {
+    "bretter": 1,
+    "stein": 3
+   },
+   "r": 1.3,
+   "desc": "Schöpft Wasser.",
+   "mine": null
+  },
+  "baeckerei": {
+   "name": "Bäckerei",
+   "icon": "🍞",
+   "cost": {
+    "bretter": 4,
+    "stein": 3
+   },
+   "r": 2.3,
+   "desc": "1 Mehl + 1 Wasser → 2 Brot",
+   "mine": null
+  },
+  "steinmine": {
+   "name": "Steinbruch",
+   "icon": "⛰️",
+   "cost": {
+    "bretter": 4
+   },
+   "r": 1.6,
+   "desc": "Im Gebirge am grauen Vorkommen. 1 Brot, Fisch oder Schinken → 1 Stein",
+   "mine": "stein"
+  },
+  "eisenmine": {
+   "name": "Eisenmine",
+   "icon": "🟤",
+   "cost": {
+    "bretter": 4,
+    "stein": 1
+   },
+   "r": 1.6,
+   "desc": "Im Gebirge am roten Vorkommen. 1 Brot, Fisch oder Schinken → 1 Eisenerz",
+   "mine": "eisenerz"
+  },
+  "kohlemine": {
+   "name": "Kohlemine",
+   "icon": "⚫",
+   "cost": {
+    "bretter": 4,
+    "stein": 1
+   },
+   "r": 1.6,
+   "desc": "Im Gebirge am schwarzen Vorkommen. 1 Brot, Fisch oder Schinken → 1 Kohle",
+   "mine": "kohle"
+  },
+  "schweinezucht": {
+   "name": "Schweinezucht",
+   "icon": "🐖",
+   "cost": {
+    "bretter": 5,
+    "stein": 1
+   },
+   "r": 2.9,
+   "desc": "Füttert Ferkel mit Getreide + Wasser, bis sie groß sind → Schwein",
+   "mine": null
+  },
+  "metzger": {
+   "name": "Metzger",
+   "icon": "🍖",
+   "cost": {
+    "bretter": 4,
+    "stein": 2
+   },
+   "r": 2.1,
+   "desc": "1 Schwein → 2 Schinken (Essen für die Bergwerke)",
+   "mine": null
+  },
+  "fischer": {
+   "name": "Fischer",
+   "icon": "🎣",
+   "cost": {
+    "bretter": 3
+   },
+   "r": 1.6,
+   "desc": "Am Ufer von Fluss oder See. Fängt Fische – Essen für die Bergwerke.",
+   "mine": null
+  },
+  "schmelze": {
+   "name": "Eisenschmelze",
+   "icon": "🔥",
+   "cost": {
+    "bretter": 3,
+    "stein": 5
+   },
+   "r": 2.1,
+   "desc": "1 Eisenerz + 1 Kohle → 1 Eisenbarren",
+   "mine": null
+  },
+  "raeucherei": {
+   "name": "Räucherei",
+   "icon": "🐟",
+   "cost": {
+    "bretter": 3,
+    "stein": 2
+   },
+   "r": 2.1,
+   "desc": "1 Fisch + 1 Baumstamm → 2 Räucherfisch",
+   "mine": null
+  },
+  "kuhstall": {
+   "name": "Kuhstall",
+   "icon": "🐄",
+   "cost": {
+    "bretter": 4,
+    "stein": 1
+   },
+   "r": 2.4,
+   "desc": "1 Getreide + 1 Wasser → 2 Milch",
+   "mine": null
+  },
+  "kaeserei": {
+   "name": "Käserei",
+   "icon": "🧀",
+   "cost": {
+    "bretter": 3,
+    "stein": 2
+   },
+   "r": 2,
+   "desc": "2 Milch → 1 Käse",
+   "mine": null
+  },
+  "konditorei": {
+   "name": "Konditorei",
+   "icon": "🥧",
+   "cost": {
+    "bretter": 3,
+    "stein": 3,
+    "muenzen": 2
+   },
+   "r": 2,
+   "desc": "1 Mehl + 1 Milch + 1 Honig → 2 Kuchen",
+   "mine": null
+  },
+  "winzer": {
+   "name": "Winzer",
+   "icon": "🍇",
+   "cost": {
+    "bretter": 3,
+    "stein": 1
+   },
+   "r": 2.3,
+   "desc": "Pflegt einen Weinberg am Hang → 2 Trauben",
+   "mine": null
+  },
+  "kelterei": {
+   "name": "Kelterei",
+   "icon": "🍷",
+   "cost": {
+    "bretter": 4,
+    "stein": 3
+   },
+   "r": 2.2,
+   "desc": "2 Trauben → 1 Wein (in der großen Baumkelter gepresst)",
+   "mine": null
+  },
+  "goldschmied": {
+   "name": "Goldschmied",
+   "icon": "💍",
+   "cost": {
+    "bretter": 3,
+    "stein": 3,
+    "muenzen": 2
+   },
+   "r": 2,
+   "desc": "1 Golderz + 1 Kohle → 1 Schmuck",
+   "mine": null
+  },
+  "denkmal": {
+   "name": "Denkmal",
+   "icon": "🗽",
+   "cost": {
+    "stein": 10,
+    "ziegel": 2,
+    "muenzen": 8
+   },
+   "r": 2.2,
+   "desc": "Prunkstück für den Ort: Wohnhäuser im Umkreis von 25 Schritten werden doppelt so schnell zufrieden und zahlen 1 🪙 mehr Steuern.",
+   "mine": null
+  },
+  "rutengaenger": {
+   "name": "Rutengänger",
+   "icon": "🪄",
+   "cost": {
+    "bretter": 2
+   },
+   "r": 1.8,
+   "desc": "Sucht mit der Wünschelrute in den Bergen nach Stein, Kohle, Eisen und Gold. Nur gefundene Vorkommen können abgebaut werden.",
+   "mine": null
+  },
+  "hopfenbauer": {
+   "name": "Hopfenbauer",
+   "icon": "🌱",
+   "cost": {
+    "bretter": 3
+   },
+   "r": 2.1,
+   "desc": "Baut Hopfen an → Hopfen (für Bier)",
+   "mine": null
+  },
+  "brauerei": {
+   "name": "Brauerei",
+   "icon": "🍺",
+   "cost": {
+    "bretter": 4,
+    "stein": 2
+   },
+   "r": 2.2,
+   "desc": "Getreide + Hopfen + Wasser → 2 Bier · Honig + Wasser → Met",
+   "mine": null
+  },
+  "wirtshaus": {
+   "name": "Wirtshaus",
+   "icon": "🍻",
+   "cost": {
+    "bretter": 5,
+    "stein": 3
+   },
+   "r": 2.3,
+   "desc": "Schenkt Bier aus – versorgt Wohnhäuser im Umkreis von 25 Schritten",
+   "mine": null
+  },
+  "schaefer": {
+   "name": "Schäferei",
+   "icon": "🐑",
+   "cost": {
+    "bretter": 3
+   },
+   "r": 2.3,
+   "desc": "Schert Schafe → Wolle",
+   "mine": null
+  },
+  "weberei": {
+   "name": "Weberei",
+   "icon": "🧵",
+   "cost": {
+    "bretter": 4,
+    "stein": 1
+   },
+   "r": 2,
+   "desc": "1 Wolle → 1 Stoff",
+   "mine": null
+  },
+  "schneider": {
+   "name": "Schneiderei",
+   "icon": "👕",
+   "cost": {
+    "bretter": 3,
+    "stein": 1
+   },
+   "r": 2,
+   "desc": "1 Stoff → 1 Kleidung",
+   "mine": null
+  },
+  "imker": {
+   "name": "Imkerei",
+   "icon": "🐝",
+   "cost": {
+    "bretter": 2
+   },
+   "r": 2,
+   "desc": "Bienenkörbe → je Ernte 2 Honig und 1 Kerze (aus dem Wachs)",
+   "mine": null
+  },
+  "lehmgrube": {
+   "name": "Lehmgrube",
+   "icon": "🟫",
+   "cost": {
+    "bretter": 2
+   },
+   "r": 2,
+   "desc": "Sticht Lehm → Lehm",
+   "mine": null
+  },
+  "toepfer": {
+   "name": "Töpferei",
+   "icon": "🏺",
+   "cost": {
+    "bretter": 3,
+    "stein": 2
+   },
+   "r": 2,
+   "desc": "1 Lehm → Krüge oder Dachziegel, abwechselnd nach Bedarf",
+   "mine": null
+  },
+  "koehler": {
+   "name": "Köhlerei",
+   "icon": "🔥",
+   "cost": {
+    "bretter": 2,
+    "stein": 1
+   },
+   "r": 2.1,
+   "desc": "2 Baumstämme → 1 Holzkohle (zählt als Kohle) – Kohle ohne Gebirge",
+   "mine": null
+  },
+  "wohnhaus": {
+   "name": "Wohnhaus",
+   "icon": "🏡",
+   "cost": {
+    "bretter": 3,
+    "stein": 1
+   },
+   "r": 2,
+   "desc": "Hütte → Fachwerkhaus → Bürgerhaus. Gut versorgte Häuser bringen Träger und zahlen Steuern 🪙",
+   "mine": null
+  },
+  "markt": {
+   "name": "Marktplatz",
+   "icon": "🏪",
+   "cost": {
+    "bretter": 6,
+    "stein": 4
+   },
+   "r": 2.6,
+   "desc": "Ein Händler kommt regelmäßig vorbei und tauscht deine Überschüsse",
+   "mine": null
+  },
+  "flachsbauer": {
+   "name": "Flachsbauer",
+   "icon": "🌿",
+   "cost": {
+    "bretter": 3
+   },
+   "r": 2,
+   "desc": "Baut Flachs an → Flachs",
+   "mine": null
+  },
+  "seilerei": {
+   "name": "Seilerei",
+   "icon": "🧵",
+   "cost": {
+    "bretter": 3,
+    "stein": 1
+   },
+   "r": 2,
+   "desc": "1 Flachs → 1 Sehne (für Bögen)",
+   "mine": null
+  },
+  "waffenschmied": {
+   "name": "Waffenschmied",
+   "icon": "🗡️",
+   "cost": {
+    "bretter": 4,
+    "stein": 4,
+    "muenzen": 3
+   },
+   "r": 2.3,
+   "desc": "Auf Auftrag: Schwert, Schild",
+   "mine": null
+  },
+  "bogenbauer": {
+   "name": "Bogenbauer",
+   "icon": "🏹",
+   "cost": {
+    "bretter": 3,
+    "stein": 1,
+    "muenzen": 2
+   },
+   "r": 2.1,
+   "desc": "2 Bretter + 1 Sehne → 1 Bogen · 1 Brett + 1 Eisenbarren → 5 Pfeile (Vorrat bis 6 Bögen und 30 Pfeile)",
+   "mine": null
+  },
+  "kaserne": {
+   "name": "Kaserne",
+   "icon": "🏰",
+   "cost": {
+    "bretter": 8,
+    "stein": 8,
+    "ziegel": 4
+   },
+   "r": 3,
+   "desc": "Bildet Schwertkämpfer und Bogenschützen aus, befördert mit Münzen",
+   "mine": null
+  },
+  "burg": {
+   "name": "Burg",
+   "icon": "🏯",
+   "cost": {
+    "bretter": 14,
+    "stein": 20,
+    "eisenbarren": 2,
+    "ziegel": 6
+   },
+   "r": 3.2,
+   "desc": "Großes Gebiet (Radius 40), Platz für 6 Kämpfer",
+   "mine": null
+  },
+  "wagner": {
+   "name": "Wagner",
+   "icon": "🛒",
+   "cost": {
+    "bretter": 5,
+    "stein": 2
+   },
+   "r": 2.3,
+   "desc": "Baut auf Auftrag Karren (2 Bretter + 1 Eisenbarren). Träger mit Karren tragen 4 Waren auf einmal.",
+   "mine": null
+  },
+  "waffenschnitzer": {
+   "name": "Waffenschnitzer",
+   "icon": "🏏",
+   "cost": {
+    "bretter": 3,
+    "stein": 1
+   },
+   "r": 2.1,
+   "desc": "1 Brett → 1 Kampfstock",
+   "mine": null
+  },
+  "wachstube": {
+   "name": "Wachstube",
+   "icon": "🛖",
+   "cost": {
+    "bretter": 3,
+    "stein": 2
+   },
+   "r": 1.6,
+   "desc": "Kleiner Posten für 2 Schwertkämpfer (oder einen Wächter mit Kampfstock). Gebiet: Radius 16.",
+   "mine": null
+  },
+  "wachturm": {
+   "name": "Wachturm",
+   "icon": "🗼",
+   "cost": {
+    "bretter": 5,
+    "stein": 4
+   },
+   "r": 1.6,
+   "desc": "Aussichtsturm für 4 Bogenschützen auf der Plattform. Am Anfang hält ein Wächter mit Kampfstock die Stellung. Gebiet: Radius 22.",
+   "mine": null
+  },
+  "wehrturm": {
+   "name": "Wehrturm",
+   "icon": "🏰",
+   "cost": {
+    "bretter": 5,
+    "stein": 8,
+    "ziegel": 2
+   },
+   "r": 1.8,
+   "desc": "Runder Steinturm: 3 Schwertkämpfer unten, 2 Bogenschützen auf den Zinnen. Gebiet: Radius 30.",
+   "mine": null
+  },
+  "goldmine": {
+   "name": "Goldmine",
+   "icon": "🟡",
+   "cost": {
+    "bretter": 5,
+    "stein": 2
+   },
+   "r": 1.6,
+   "desc": "Im Gebirge am gelben Vorkommen. 1 Brot, Fisch oder Schinken → 1 Golderz",
+   "mine": "gold"
+  },
+  "muenzpraege": {
+   "name": "Münzprägerei",
+   "icon": "🪙",
+   "cost": {
+    "bretter": 4,
+    "stein": 5,
+    "muenzen": 2
+   },
+   "r": 2.2,
+   "desc": "2 Golderz + 1 Kohle → 1 Münze (für Beförderungen, Handel und Fachgebäude)",
+   "mine": null
+  },
+  "schmied": {
+   "name": "Werkzeugschmied",
+   "icon": "🔨",
+   "cost": {
+    "bretter": 4,
+    "stein": 3
+   },
+   "r": 2.3,
+   "desc": "1 Eisenbarren → 1 Werkzeug",
+   "mine": null
+  }
+ },
+ "items": {
+  "stamm": {
+   "name": "Baumstämme",
+   "icon": "🪵"
+  },
+  "bretter": {
+   "name": "Bretter",
+   "icon": "🟫"
+  },
+  "stein": {
+   "name": "Steine",
+   "icon": "🪨"
+  },
+  "getreide": {
+   "name": "Getreide",
+   "icon": "🌾"
+  },
+  "mehl": {
+   "name": "Mehl",
+   "icon": "🥡"
+  },
+  "wasser": {
+   "name": "Wasser",
+   "icon": "💧"
+  },
+  "eisenerz": {
+   "name": "Eisenerz",
+   "icon": "🟤"
+  },
+  "kohle": {
+   "name": "Kohle",
+   "icon": "⚫"
+  },
+  "eisenbarren": {
+   "name": "Eisenbarren",
+   "icon": "🧱"
+  },
+  "fisch": {
+   "name": "Fisch",
+   "icon": "🐟"
+  },
+  "schwein": {
+   "name": "Schweine",
+   "icon": "🐖"
+  },
+  "schinken": {
+   "name": "Schinken",
+   "icon": "🍖"
+  },
+  "golderz": {
+   "name": "Golderz",
+   "icon": "🟡"
+  },
+  "muenzen": {
+   "name": "Münzen",
+   "icon": "🪙"
+  },
+  "flachs": {
+   "name": "Flachs",
+   "icon": "🌿"
+  },
+  "sehne": {
+   "name": "Sehnen",
+   "icon": "🧵"
+  },
+  "schwert": {
+   "name": "Schwerter",
+   "icon": "🗡️"
+  },
+  "schild": {
+   "name": "Schilde",
+   "icon": "🛡️"
+  },
+  "bogen": {
+   "name": "Bögen",
+   "icon": "🏹"
+  },
+  "pfeile": {
+   "name": "Pfeile",
+   "icon": "➶"
+  },
+  "karren": {
+   "name": "Karren",
+   "icon": "🛒"
+  },
+  "kampfstock": {
+   "name": "Kampfstöcke",
+   "icon": "🏏"
+  },
+  "werkzeug": {
+   "name": "Werkzeug",
+   "icon": "🔨"
+  },
+  "brot": {
+   "name": "Brot",
+   "icon": "🍞"
+  },
+  "hopfen": {
+   "name": "Hopfen",
+   "icon": "🌱"
+  },
+  "bier": {
+   "name": "Bier",
+   "icon": "🍺"
+  },
+  "wolle": {
+   "name": "Wolle",
+   "icon": "🧶"
+  },
+  "stoff": {
+   "name": "Stoff",
+   "icon": "🧵"
+  },
+  "kleidung": {
+   "name": "Kleidung",
+   "icon": "👕"
+  },
+  "honig": {
+   "name": "Honig",
+   "icon": "🍯"
+  },
+  "met": {
+   "name": "Met",
+   "icon": "🍶"
+  },
+  "kerzen": {
+   "name": "Kerzen",
+   "icon": "🕯️"
+  },
+  "lehm": {
+   "name": "Lehm",
+   "icon": "🟫"
+  },
+  "kruege": {
+   "name": "Krüge",
+   "icon": "🏺"
+  },
+  "raeucherfisch": {
+   "name": "Räucherfisch",
+   "icon": "🐟"
+  },
+  "wurst": {
+   "name": "Wurst",
+   "icon": "🌭"
+  },
+  "milch": {
+   "name": "Milch",
+   "icon": "🥛"
+  },
+  "kaese": {
+   "name": "Käse",
+   "icon": "🧀"
+  },
+  "kuchen": {
+   "name": "Kuchen",
+   "icon": "🥧"
+  },
+  "trauben": {
+   "name": "Trauben",
+   "icon": "🍇"
+  },
+  "wein": {
+   "name": "Wein",
+   "icon": "🍷"
+  },
+  "schmuck": {
+   "name": "Schmuck",
+   "icon": "💍"
+  },
+  "ziegel": {
+   "name": "Dachziegel",
+   "icon": "🧱"
+  }
+ },
+ "io": {
+  "holzfaeller": [
+   [],
+   [
+    "stamm"
+   ]
+  ],
+  "foerster": [
+   [],
+   []
+  ],
+  "saegewerk": [
+   [
+    "stamm"
+   ],
+   [
+    "bretter"
+   ]
+  ],
+  "steinmetz": [
+   [],
+   [
+    "stein"
+   ]
+  ],
+  "bauernhof": [
+   [],
+   [
+    "getreide"
+   ]
+  ],
+  "muehle": [
+   [
+    "getreide"
+   ],
+   [
+    "mehl"
+   ]
+  ],
+  "brunnen": [
+   [],
+   [
+    "wasser"
+   ]
+  ],
+  "baeckerei": [
+   [
+    "mehl",
+    "wasser"
+   ],
+   [
+    "brot"
+   ]
+  ],
+  "fischer": [
+   [],
+   [
+    "fisch"
+   ]
+  ],
+  "schweinezucht": [
+   [
+    "getreide",
+    "wasser"
+   ],
+   [
+    "schwein"
+   ]
+  ],
+  "metzger": [
+   [
+    "schwein"
+   ],
+   [
+    "schinken",
+    "wurst"
+   ]
+  ],
+  "steinmine": [
+   [
+    "brot|fisch|schinken"
+   ],
+   [
+    "stein"
+   ]
+  ],
+  "kohlemine": [
+   [
+    "brot|fisch|schinken"
+   ],
+   [
+    "kohle"
+   ]
+  ],
+  "eisenmine": [
+   [
+    "brot|fisch|schinken"
+   ],
+   [
+    "eisenerz"
+   ]
+  ],
+  "goldmine": [
+   [
+    "brot|fisch|schinken"
+   ],
+   [
+    "golderz"
+   ]
+  ],
+  "schmelze": [
+   [
+    "eisenerz",
+    "kohle"
+   ],
+   [
+    "eisenbarren"
+   ]
+  ],
+  "schmied": [
+   [
+    "eisenbarren"
+   ],
+   [
+    "werkzeug"
+   ]
+  ],
+  "muenzpraege": [
+   [
+    "golderz",
+    "kohle"
+   ],
+   [
+    "muenzen"
+   ]
+  ],
+  "wagner": [
+   [
+    "bretter",
+    "eisenbarren"
+   ],
+   [
+    "karren"
+   ]
+  ],
+  "waffenschnitzer": [
+   [
+    "bretter"
+   ],
+   [
+    "kampfstock"
+   ]
+  ],
+  "flachsbauer": [
+   [],
+   [
+    "flachs"
+   ]
+  ],
+  "seilerei": [
+   [
+    "flachs"
+   ],
+   [
+    "sehne"
+   ]
+  ],
+  "waffenschmied": [
+   [
+    "eisenbarren",
+    "kohle",
+    "bretter"
+   ],
+   [
+    "schwert",
+    "schild"
+   ]
+  ],
+  "bogenbauer": [
+   [
+    "bretter",
+    "sehne",
+    "eisenbarren"
+   ],
+   [
+    "bogen",
+    "pfeile"
+   ]
+  ],
+  "rutengaenger": [
+   [],
+   [
+    "🔍 Vorkommen"
+   ]
+  ],
+  "winzer": [
+   [],
+   [
+    "trauben"
+   ]
+  ],
+  "kelterei": [
+   [
+    "trauben"
+   ],
+   [
+    "wein"
+   ]
+  ],
+  "goldschmied": [
+   [
+    "golderz",
+    "kohle"
+   ],
+   [
+    "schmuck"
+   ]
+  ],
+  "denkmal": [
+   [
+    "stein",
+    "ziegel",
+    "muenzen"
+   ],
+   [
+    "😊 Zufriedenheit"
+   ]
+  ],
+  "kaserne": [
+   [
+    "schwert",
+    "schild",
+    "bogen",
+    "pfeile",
+    "muenzen"
+   ],
+   [
+    "⚔️ Kämpfer"
+   ]
+  ],
+  "raeucherei": [
+   [
+    "fisch",
+    "stamm"
+   ],
+   [
+    "raeucherfisch"
+   ]
+  ],
+  "kuhstall": [
+   [
+    "getreide",
+    "wasser"
+   ],
+   [
+    "milch"
+   ]
+  ],
+  "kaeserei": [
+   [
+    "milch"
+   ],
+   [
+    "kaese"
+   ]
+  ],
+  "konditorei": [
+   [
+    "mehl",
+    "milch",
+    "honig"
+   ],
+   [
+    "kuchen"
+   ]
+  ],
+  "hopfenbauer": [
+   [],
+   [
+    "hopfen"
+   ]
+  ],
+  "brauerei": [
+   [
+    "getreide",
+    "hopfen",
+    "wasser",
+    "honig"
+   ],
+   [
+    "bier",
+    "met"
+   ]
+  ],
+  "wirtshaus": [
+   [
+    "bier"
+   ],
+   [
+    "🍻 Ausschank"
+   ]
+  ],
+  "schaefer": [
+   [],
+   [
+    "wolle"
+   ]
+  ],
+  "weberei": [
+   [
+    "wolle"
+   ],
+   [
+    "stoff"
+   ]
+  ],
+  "schneider": [
+   [
+    "stoff"
+   ],
+   [
+    "kleidung"
+   ]
+  ],
+  "imker": [
+   [],
+   [
+    "honig",
+    "kerzen"
+   ]
+  ],
+  "lehmgrube": [
+   [],
+   [
+    "lehm"
+   ]
+  ],
+  "toepfer": [
+   [
+    "lehm"
+   ],
+   [
+    "kruege",
+    "ziegel"
+   ]
+  ],
+  "koehler": [
+   [
+    "stamm"
+   ],
+   [
+    "kohle"
+   ]
+  ],
+  "wohnhaus": [
+   [
+    "brot|fisch|schinken",
+    "raeucherfisch|wurst",
+    "kaese",
+    "kuchen",
+    "wasser",
+    "bier",
+    "kleidung",
+    "met",
+    "kruege",
+    "kerzen",
+    "ziegel",
+    "schmuck",
+    "wein"
+   ],
+   [
+    "muenzen",
+    "👥 Träger"
+   ]
+  ]
+ },
+ "unlock": {
+  "raeucherei": 1,
+  "kuhstall": 1,
+  "brauerei": 1,
+  "wirtshaus": 1,
+  "hopfenbauer": 1,
+  "koehler": 1,
+  "kaeserei": 2,
+  "schaefer": 2,
+  "weberei": 2,
+  "schneider": 2,
+  "markt": 2,
+  "lehmgrube": 2,
+  "toepfer": 2,
+  "goldmine": 2,
+  "muenzpraege": 2,
+  "imker": 3,
+  "konditorei": 3,
+  "flachsbauer": 3,
+  "seilerei": 3,
+  "bogenbauer": 3,
+  "waffenschmied": 3,
+  "kaserne": 3,
+  "wehrturm": 3,
+  "burg": 4,
+  "goldschmied": 4,
+  "winzer": 4,
+  "kelterei": 4,
+  "denkmal": 5
+ },
+ "start": {
+  "stamm": 8,
+  "bretter": 80,
+  "stein": 55,
+  "getreide": 0,
+  "mehl": 0,
+  "wasser": 0,
+  "brot": 0,
+  "eisenerz": 0,
+  "kohle": 0,
+  "eisenbarren": 0,
+  "flachs": 0,
+  "sehne": 0,
+  "schwert": 0,
+  "schild": 0,
+  "bogen": 0,
+  "pfeile": 0,
+  "fisch": 0,
+  "schwein": 0,
+  "schinken": 0,
+  "golderz": 0,
+  "muenzen": 0,
+  "karren": 0,
+  "kampfstock": 2,
+  "werkzeug": 10,
+  "hopfen": 0,
+  "bier": 0,
+  "wolle": 0,
+  "stoff": 0,
+  "kleidung": 0,
+  "honig": 0,
+  "met": 0,
+  "kerzen": 0,
+  "lehm": 0,
+  "kruege": 0,
+  "raeucherfisch": 0,
+  "wurst": 0,
+  "milch": 0,
+  "kaese": 0,
+  "kuchen": 0,
+  "trauben": 0,
+  "wein": 0,
+  "schmuck": 0,
+  "ziegel": 0
+ },
+ "cats": [
+  {
+   "key": "CAT_SIEDLUNG",
+   "icon": "🏡",
+   "types": [
+    "wohnhaus",
+    "wirtshaus",
+    "markt",
+    "denkmal",
+    "lager"
+   ]
+  },
+  {
+   "key": "CAT_BAUSTOFFE",
+   "icon": "🪵",
+   "types": [
+    "holzfaeller",
+    "foerster",
+    "saegewerk",
+    "steinmetz"
+   ]
+  },
+  {
+   "key": "CAT_LANDWIRTSCHAFT",
+   "icon": "🌾",
+   "types": [
+    "bauernhof",
+    "brunnen",
+    "fischer",
+    "schweinezucht",
+    "kuhstall",
+    "schaefer",
+    "hopfenbauer",
+    "imker",
+    "flachsbauer",
+    "winzer"
+   ]
+  },
+  {
+   "key": "CAT_LEBENSMITTEL",
+   "icon": "🍞",
+   "types": [
+    "muehle",
+    "baeckerei",
+    "metzger",
+    "raeucherei",
+    "kaeserei",
+    "brauerei",
+    "konditorei",
+    "kelterei"
+   ]
+  },
+  {
+   "key": "CAT_BERGBAU",
+   "icon": "⛏️",
+   "types": [
+    "rutengaenger",
+    "steinmine",
+    "kohlemine",
+    "eisenmine",
+    "goldmine",
+    "koehler"
+   ]
+  },
+  {
+   "key": "CAT_METALL",
+   "icon": "🔨",
+   "types": [
+    "schmelze",
+    "schmied",
+    "muenzpraege",
+    "wagner"
+   ]
+  },
+  {
+   "key": "CAT_HANDWERK",
+   "icon": "🧵",
+   "types": [
+    "weberei",
+    "schneider",
+    "seilerei",
+    "lehmgrube",
+    "toepfer",
+    "goldschmied"
+   ]
+  },
+  {
+   "key": "CAT_MILITAER",
+   "icon": "⚔️",
+   "types": [
+    "waffenschnitzer",
+    "bogenbauer",
+    "waffenschmied",
+    "kaserne",
+    "wachstube",
+    "wachturm",
+    "wehrturm",
+    "burg"
+   ]
+  }
+ ]
+}

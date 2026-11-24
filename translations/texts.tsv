@@ -31,3 +31,97 @@ ST_NO_TREES	Keine Bäume in der Nähe	No trees nearby
 ST_NO_LOGS	Keine Stämme im Lager	No logs in storage
 ST_NO_ROCKS	Keine Felsen in der Nähe	No rocks nearby
 UI_STAGE3	Etappe 3: Siedler bei der Arbeit	Stage 3: Settlers at work
+BLD_BAUERNHOF	Bauernhof	Farm
+BLD_MUEHLE	Mühle	Mill
+BLD_BRUNNEN	Brunnen	Well
+BLD_BAECKEREI	Bäckerei	Bakery
+BLD_STEINMINE	Steinbruch	Quarry
+BLD_EISENMINE	Eisenmine	Iron Mine
+BLD_KOHLEMINE	Kohlemine	Coal Mine
+BLD_SCHWEINEZUCHT	Schweinezucht	Pig Farm
+BLD_METZGER	Metzger	Butcher
+BLD_FISCHER	Fischer	Fisherman
+BLD_SCHMELZE	Eisenschmelze	Iron Smelter
+BLD_RAEUCHEREI	Räucherei	Smokehouse
+BLD_KUHSTALL	Kuhstall	Cowshed
+BLD_KAESEREI	Käserei	Cheese Dairy
+BLD_KONDITOREI	Konditorei	Confectionery
+BLD_WINZER	Winzer	Vintner
+BLD_KELTEREI	Kelterei	Winepress
+BLD_GOLDSCHMIED	Goldschmied	Goldsmith
+BLD_DENKMAL	Denkmal	Monument
+BLD_RUTENGAENGER	Rutengänger	Dowser
+BLD_HOPFENBAUER	Hopfenbauer	Hop Farmer
+BLD_BRAUEREI	Brauerei	Brewery
+BLD_WIRTSHAUS	Wirtshaus	Tavern
+BLD_SCHAEFER	Schäferei	Sheep Farm
+BLD_WEBEREI	Weberei	Weaver
+BLD_SCHNEIDER	Schneiderei	Tailor
+BLD_IMKER	Imkerei	Apiary
+BLD_LEHMGRUBE	Lehmgrube	Clay Pit
+BLD_TOEPFER	Töpferei	Pottery
+BLD_KOEHLER	Köhlerei	Charcoal Burner
+BLD_MARKT	Marktplatz	Marketplace
+BLD_FLACHSBAUER	Flachsbauer	Flax Farmer
+BLD_SEILEREI	Seilerei	Ropemaker
+BLD_WAFFENSCHMIED	Waffenschmied	Weaponsmith
+BLD_BOGENBAUER	Bogenbauer	Bowyer
+BLD_KASERNE	Kaserne	Barracks
+BLD_BURG	Burg	Castle
+BLD_WAGNER	Wagner	Wheelwright
+BLD_WAFFENSCHNITZER	Waffenschnitzer	Staff Carver
+BLD_WACHSTUBE	Wachstube	Guardhouse
+BLD_WEHRTURM	Wehrturm	Defense Tower
+BLD_GOLDMINE	Goldmine	Gold Mine
+BLD_MUENZPRAEGE	Münzprägerei	Mint
+BLD_SCHMIED	Werkzeugschmied	Toolsmith
+ITEM_GETREIDE	Getreide	Grain
+ITEM_MEHL	Mehl	Flour
+ITEM_WASSER	Wasser	Water
+ITEM_EISENERZ	Eisenerz	Iron Ore
+ITEM_KOHLE	Kohle	Coal
+ITEM_EISENBARREN	Eisenbarren	Iron Bars
+ITEM_FISCH	Fisch	Fish
+ITEM_SCHWEIN	Schweine	Pigs
+ITEM_SCHINKEN	Schinken	Ham
+ITEM_GOLDERZ	Golderz	Gold Ore
+ITEM_MUENZEN	Münzen	Coins
+ITEM_FLACHS	Flachs	Flax
+ITEM_SEHNE	Sehnen	Bowstrings
+ITEM_SCHWERT	Schwerter	Swords
+ITEM_SCHILD	Schilde	Shields
+ITEM_BOGEN	Bögen	Bows
+ITEM_PFEILE	Pfeile	Arrows
+ITEM_KARREN	Karren	Carts
+ITEM_KAMPFSTOCK	Kampfstöcke	Fighting Staffs
+ITEM_WERKZEUG	Werkzeug	Tools
+ITEM_BROT	Brot	Bread
+ITEM_HOPFEN	Hopfen	Hops
+ITEM_BIER	Bier	Beer
+ITEM_WOLLE	Wolle	Wool
+ITEM_STOFF	Stoff	Cloth
+ITEM_KLEIDUNG	Kleidung	Clothing
+ITEM_HONIG	Honig	Honey
+ITEM_MET	Met	Mead
+ITEM_KERZEN	Kerzen	Candles
+ITEM_LEHM	Lehm	Clay
+ITEM_KRUEGE	Krüge	Jugs
+ITEM_RAEUCHERFISCH	Räucherfisch	Smoked Fish
+ITEM_WURST	Wurst	Sausage
+ITEM_MILCH	Milch	Milk
+ITEM_KAESE	Käse	Cheese
+ITEM_KUCHEN	Kuchen	Cake
+ITEM_TRAUBEN	Trauben	Grapes
+ITEM_WEIN	Wein	Wine
+ITEM_SCHMUCK	Schmuck	Jewelry
+ITEM_ZIEGEL	Dachziegel	Roof Tiles
+CAT_SIEDLUNG	Siedlung	Settlement
+CAT_BAUSTOFFE	Baustoffe	Materials
+CAT_LANDWIRTSCHAFT	Landwirtschaft	Farming
+CAT_LEBENSMITTEL	Lebensmittel	Food
+CAT_BERGBAU	Bergbau	Mining
+CAT_METALL	Metall	Metal
+CAT_HANDWERK	Handwerk	Crafts
+CAT_MILITAER	Militär	Military
+UI_STAGE4	Etappe 4: alle Gebäude & Warenketten	Stage 4: all buildings & production chains
+ST_MISSING	Fehlt:	Missing:

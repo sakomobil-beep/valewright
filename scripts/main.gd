@@ -134,7 +134,7 @@ func _setup_ui() -> void:
 	title.add_theme_font_size_override("font_size", 20)
 	vb.add_child(title)
 	var info := Label.new()
-	info.text = "UI_STAGE3"
+	info.text = "UI_STAGE4"
 	vb.add_child(info)
 	var ctr := Label.new()
 	ctr.text = "UI_CONTROLS"
@@ -180,9 +180,13 @@ func _setup_stock() -> void:
 
 func _update_stock() -> void:
 	var s := ""
-	for k in ["stamm", "bretter", "stein"]:
-		s += "%s %s %d     " % [economy.ICONS[k], tr("ITEM_" + k.to_upper()), economy.stock[k]]
-	stock_label.text = s.strip_edges()
+	for k in ["stamm", "bretter", "stein", "werkzeug"]:
+		s += "%s %s %d    " % [economy.icon(k), tr("ITEM_" + k.to_upper()), economy.stock[k]]
+	var extra := ""
+	for k in economy.stock:
+		if economy.stock[k] > 0 and not k in ["stamm", "bretter", "stein", "werkzeug"]:
+			extra += "%s %d  " % [economy.icon(k), economy.stock[k]]
+	stock_label.text = s.strip_edges() + ("\n" + extra.strip_edges() if extra != "" else "")
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSLATION_CHANGED and stock_label:

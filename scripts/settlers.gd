@@ -110,6 +110,7 @@ func on_building_placed(b: Dictionary) -> void:
 		var t := spawn("traeger", lager_door())
 		t.role = "traeger"
 	var w := spawn("bauarbeiter", lager_door())
+	b.status = "ST_BUILDING"
 	w.q = [
 		{"go": door_of(b)},
 		{"fn": func(): b.builder_on_site = true},
@@ -120,8 +121,10 @@ func on_building_placed(b: Dictionary) -> void:
 	]
 
 func _on_built(b: Dictionary) -> void:
-	if b.type in ["holzfaeller", "steinmetz", "foerster", "saegewerk"]:
-		var w := spawn(b.type, lager_door())
+	if b.type in ["holzfaeller", "steinmetz", "foerster"] or economy.produces(b.type):
+		var job: String = b.type if ResourceLoader.exists("res://models/w_%s.glb" % b.type) else "traeger"
+		var w := spawn(job, lager_door())
+		w.job = b.type
 		w.home = b
 		w.q = [{"go": door_of(b)}, {"fn": func(): _next_job(w)}]
 
@@ -180,8 +183,8 @@ func _next_job(w: Dictionary) -> void:
 				{"wait": 3.0},
 				{"fn": func(): _next_job(w)},
 			]
-		"saegewerk":
-			w.node.visible = false      # arbeitet drinnen an der Säge
+		_:
+			w.node.visible = false      # arbeitet drinnen (Säge, Backofen, Esse …)
 			b.worker_inside = true
 
 # Nur nicht reservierte Ziele nehmen (sonst laufen zwei Holzfäller zum selben Baum)
