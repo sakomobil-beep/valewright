@@ -150,7 +150,7 @@ func _build_trees() -> void:
 		var dens := noise.get_noise_2d(x * 3.0 + 50.0, z * 3.0 - 20.0)
 		if dens < 0.05 or not _free_spot(x, z):
 			continue
-		var t := Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.8, 1.35)), Vector3(x, height(x, z) - 0.1, z))
+		var t := Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.65, 1.1)), Vector3(x, height(x, z) - 0.1, z))
 		if mountain(x, z) > 2.0 or rng.randf() < 0.35:
 			fir_pos.append(t)
 		else:

@@ -1,0 +1,220 @@
+extends Node3D
+## Bauen (Etappe 2): Gebäude wählen → Platz zeigen → bestätigen.
+## Zweistufig wie in der Browser-Version, damit man nicht versehentlich falsch baut.
+
+const SCALE := 1.5
+const TYPES := {
+	"holzfaeller": {"key": "BLD_HOLZFAELLER", "r": 2.2},
+	"foerster": {"key": "BLD_FOERSTER", "r": 2.0},
+	"saegewerk": {"key": "BLD_SAEGEWERK", "r": 2.4},
+	"steinmetz": {"key": "BLD_STEINMETZ", "r": 2.2},
+	"wohnhaus": {"key": "BLD_WOHNHAUS", "r": 2.0},
+	"wachturm": {"key": "BLD_WACHTURM", "r": 1.6},
+}
+
+var terrain: Node3D
+var camera: Camera3D
+var buildings: Array = []        # {type, pos, node}
+var placing := ""
+var ghost: Node3D
+var ghost_rot := 0.0
+var chosen := false              # Platz gewählt, wartet auf Bestätigung
+var _down_pos := Vector2.ZERO
+var confirm_box: HBoxContainer
+var hint: Label
+var _ghost_ok_mat := StandardMaterial3D.new()
+
+func _ready() -> void:
+	_ghost_ok_mat.albedo_color = Color(0.4, 1.0, 0.4, 0.35)
+	_ghost_ok_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+
+func setup_ui(layer: CanvasLayer) -> void:
+	var bar := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.165, 0.114, 0.07, 0.9)
+	sb.border_color = Color(0.79, 0.64, 0.29)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(12)
+	sb.set_content_margin_all(8)
+	bar.add_theme_stylebox_override("panel", sb)
+	bar.anchor_left = 0.5
+	bar.anchor_right = 0.5
+	bar.anchor_top = 1.0
+	bar.anchor_bottom = 1.0
+	bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	bar.offset_bottom = -12
+	layer.add_child(bar)
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 8)
+	bar.add_child(hb)
+	for t in TYPES:
+		var b := Button.new()
+		b.text = TYPES[t].key
+		b.custom_minimum_size = Vector2(110, 40)
+		b.pressed.connect(func(): start(t))
+		hb.add_child(b)
+	hint = Label.new()
+	hint.anchor_left = 0.5
+	hint.anchor_right = 0.5
+	hint.anchor_top = 1.0
+	hint.anchor_bottom = 1.0
+	hint.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	hint.offset_top = -110
+	hint.add_theme_color_override("font_color", Color(1, 0.95, 0.8))
+	hint.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	hint.add_theme_constant_override("outline_size", 6)
+	hint.visible = false
+	layer.add_child(hint)
+	confirm_box = HBoxContainer.new()
+	confirm_box.anchor_left = 0.5
+	confirm_box.anchor_right = 0.5
+	confirm_box.anchor_top = 1.0
+	confirm_box.anchor_bottom = 1.0
+	confirm_box.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	confirm_box.offset_top = -160
+	confirm_box.visible = false
+	layer.add_child(confirm_box)
+	var ok := Button.new()
+	ok.text = "UI_BUILD_CONFIRM"
+	ok.custom_minimum_size = Vector2(140, 40)
+	ok.pressed.connect(confirm)
+	confirm_box.add_child(ok)
+	var rot := Button.new()
+	rot.text = "UI_BUILD_ROTATE"
+	rot.custom_minimum_size = Vector2(120, 40)
+	rot.pressed.connect(func(): ghost_rot += PI / 4; _update_ghost_rot())
+	confirm_box.add_child(rot)
+	var no := Button.new()
+	no.text = "UI_BUILD_CANCEL"
+	no.custom_minimum_size = Vector2(120, 40)
+	no.pressed.connect(cancel)
+	confirm_box.add_child(no)
+
+func model(t: String) -> Node3D:
+	var ps: PackedScene = load("res://models/%s.glb" % t)
+	var n: Node3D = ps.instantiate()
+	n.scale = Vector3.ONE * SCALE
+	_shadows(n)
+	return n
+
+func _shadows(n: Node) -> void:
+	if n is GeometryInstance3D:
+		n.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	for c in n.get_children():
+		_shadows(c)
+
+func start(t: String) -> void:
+	cancel()
+	placing = t
+	ghost = model(t)
+	add_child(ghost)
+	chosen = false
+	hint.text = tr("UI_BUILD_HINT")
+	hint.visible = true
+
+func cancel() -> void:
+	if ghost:
+		ghost.queue_free()
+	ghost = null
+	placing = ""
+	chosen = false
+	if confirm_box:
+		confirm_box.visible = false
+	if hint:
+		hint.visible = false
+
+func _update_ghost_rot() -> void:
+	if ghost:
+		ghost.rotation.y = ghost_rot
+
+func can_place(p: Vector3) -> bool:
+	var r: float = TYPES[placing].r * SCALE
+	for a in [0.0, PI / 2, PI, PI * 1.5]:
+		var q := p + Vector3(cos(a), 0, sin(a)) * r
+		if terrain.height(q.x, q.z) < terrain.WATER_Y + 0.4:
+			return false
+		if absf(terrain.height(q.x, q.z) - p.y) > 1.6:
+			return false
+	if terrain.mountain(p.x, p.z) > 6.0:
+		return false
+	if Vector2(p.x, p.z).length() < 9.5:
+		return false   # Haupthaus
+	for b in buildings:
+		if Vector2(b.pos.x - p.x, b.pos.z - p.z).length() < r + TYPES[b.type].r * SCALE + 0.6:
+			return false
+	return true
+
+func ground_point(screen: Vector2):
+	var from := camera.project_ray_origin(screen)
+	var dir := camera.project_ray_normal(screen)
+	var t := 0.0
+	for i in 600:
+		var p := from + dir * t
+		if p.y <= terrain.height(p.x, p.z):
+			return p
+		t += 0.6
+	return null
+
+func _unhandled_input(e: InputEvent) -> void:
+	if placing == "":
+		return
+	if e is InputEventMouseMotion and not chosen:
+		var p = ground_point(e.position)
+		if p != null:
+			p.y = terrain.height(p.x, p.z)
+			ghost.position = p
+			_tint(ghost, can_place(p))
+	elif e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT:
+		if e.pressed:
+			_down_pos = e.position
+		elif e.position.distance_to(_down_pos) < 6.0:
+			var p = ground_point(e.position)
+			if p == null:
+				return
+			p.y = terrain.height(p.x, p.z)
+			ghost.position = p
+			if can_place(p):
+				chosen = true
+				confirm_box.visible = true
+				hint.text = tr("UI_BUILD_CHOSEN")
+				_tint(ghost, true)
+			else:
+				hint.text = tr("UI_BUILD_BLOCKED")
+	elif e is InputEventKey and e.pressed:
+		if e.keycode == KEY_R:
+			ghost_rot += PI / 4
+			_update_ghost_rot()
+		elif e.keycode == KEY_ESCAPE:
+			cancel()
+		elif e.keycode == KEY_ENTER and chosen:
+			confirm()
+
+func _tint(n: Node, ok: bool) -> void:
+	if n is GeometryInstance3D:
+		n.transparency = 0.35
+		var m := StandardMaterial3D.new()
+		m.albedo_color = Color(0.4, 1.0, 0.4) if ok else Color(1.0, 0.35, 0.3)
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.albedo_color.a = 0.0
+		n.material_overlay = m if not ok else null
+		if not ok:
+			m.albedo_color.a = 0.45
+	for c in n.get_children():
+		_tint(c, ok)
+
+func confirm() -> void:
+	if not chosen or not ghost:
+		return
+	var p := ghost.position
+	var n := model(placing)
+	n.position = p
+	n.rotation.y = ghost_rot
+	add_child(n)
+	buildings.append({"type": placing, "pos": p, "node": n})
+	# kleine Bau-Animation: Gebäude wächst aus dem Boden
+	n.scale = Vector3(SCALE, 0.05, SCALE)
+	create_tween().tween_property(n, "scale", Vector3.ONE * SCALE, 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	var t := placing
+	cancel()
+	start(t)    # gleich das nächste Gebäude derselben Art platzieren können

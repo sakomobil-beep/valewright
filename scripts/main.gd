@@ -3,9 +3,12 @@ extends Node3D
 
 const Terrain := preload("res://scripts/terrain.gd")
 const CameraRig := preload("res://scripts/camera_rig.gd")
+const Builder := preload("res://scripts/builder.gd")
+var builder: Node3D
 
 var terrain: Node3D
 var fps_label: Label
+var ui_layer: CanvasLayer
 
 func _ready() -> void:
 	_setup_environment()
@@ -15,6 +18,12 @@ func _ready() -> void:
 	_build_lager()
 	_setup_camera()
 	_setup_ui()
+	builder = Builder.new()
+	builder.name = "Bauen"
+	builder.terrain = terrain
+	builder.camera = $Kamera/Camera3D
+	add_child(builder)
+	builder.setup_ui(ui_layer)
 
 func _setup_environment() -> void:
 	var sky_mat := ProceduralSkyMaterial.new()
@@ -52,36 +61,12 @@ func _setup_environment() -> void:
 	add_child(sun)
 
 func _build_lager() -> void:
-	# Platzhalter für das Haupthaus (Rathaus-Lager) im Odenwälder Fachwerk.
-	# Die detaillierten Modelle aus der Browser-Version folgen in Etappe 2.
-	var g := Node3D.new()
+	# Haupthaus (Rathaus-Lager) – Modell aus der Browser-Version übernommen
+	var g: Node3D = load("res://models/lager.glb").instantiate()
 	g.name = "Haupthaus"
+	g.scale = Vector3.ONE * 1.5
 	g.position = Vector3(0, terrain.height(0, 0), 0)
 	add_child(g)
-	var plaster := _mat(Color(0.93, 0.87, 0.74))
-	var beam := _mat(Color(0.3, 0.18, 0.1))
-	var roof := _mat(Color(0.62, 0.17, 0.12))
-	var stone := _mat(Color(0.62, 0.36, 0.28))   # roter Odenwälder Sandstein
-	_box(g, Vector3(7.4, 1.0, 5.4), Vector3(0, 0.5, 0), stone)
-	_box(g, Vector3(7.0, 3.2, 5.0), Vector3(0, 2.6, 0), plaster)
-	# Fachwerkbalken
-	for x in [-3.45, -1.15, 1.15, 3.45]:
-		_box(g, Vector3(0.22, 3.2, 5.1), Vector3(x, 2.6, 0), beam)
-	for y in [1.05, 2.6, 4.15]:
-		_box(g, Vector3(7.1, 0.2, 5.1), Vector3(0, y, 0), beam)
-	for s in [-1, 1]:
-		var d := _box(g, Vector3(0.18, 3.0, 0.18), Vector3(s * 2.3, 2.6, 2.52), beam)
-		d.rotation.z = s * 0.55
-	# Satteldach
-	var r := PrismMesh.new()
-	r.size = Vector3(5.8, 3.6, 7.8)
-	var rm := MeshInstance3D.new()
-	rm.mesh = r
-	rm.material_override = roof
-	rm.position = Vector3(0, 6.0, 0)
-	rm.rotation.y = PI / 2
-	g.add_child(rm)
-	_box(g, Vector3(1.4, 2.0, 0.2), Vector3(0, 2.0, 2.55), beam)   # Tor
 
 func _mat(c: Color) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
@@ -113,6 +98,7 @@ func _setup_camera() -> void:
 func _setup_ui() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
+	ui_layer = layer
 	var panel := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.165, 0.114, 0.07, 0.88)
@@ -131,7 +117,7 @@ func _setup_ui() -> void:
 	title.add_theme_font_size_override("font_size", 20)
 	vb.add_child(title)
 	var info := Label.new()
-	info.text = "UI_STAGE1"
+	info.text = "UI_STAGE2"
 	vb.add_child(info)
 	var ctr := Label.new()
 	ctr.text = "UI_CONTROLS"

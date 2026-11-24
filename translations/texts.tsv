@@ -6,3 +6,16 @@ UI_FPS	%d FPS	%d FPS
 UI_LANGUAGE	Sprache	Language
 GAME_SUBTITLE	Baue. Wirtschafte. Herrsche.	Build. Trade. Rule.
 BLD_LAGER	Haupthaus	Town Hall
+UI_STAGE2	Etappe 2: Bauen (Gebäude unten wählen)	Stage 2: Building (pick a building below)
+UI_BUILD_HINT	Klicke auf einen freien Platz · R = drehen · Esc = abbrechen	Click a free spot · R = rotate · Esc = cancel
+UI_BUILD_CHOSEN	Platz gewählt – jetzt bestätigen	Spot chosen – now confirm
+UI_BUILD_BLOCKED	Hier kann nicht gebaut werden	You cannot build here
+UI_BUILD_CONFIRM	✔ Bauen	✔ Build
+UI_BUILD_ROTATE	⟳ Drehen	⟳ Rotate
+UI_BUILD_CANCEL	✖ Abbrechen	✖ Cancel
+BLD_HOLZFAELLER	Holzfäller	Woodcutter
+BLD_FOERSTER	Förster	Forester
+BLD_SAEGEWERK	Sägewerk	Sawmill
+BLD_STEINMETZ	Steinmetz	Stonemason
+BLD_WOHNHAUS	Wohnhaus	House
+BLD_WACHTURM	Wachturm	Watchtower

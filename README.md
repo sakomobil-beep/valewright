@@ -10,7 +10,8 @@ Dies ist die **Godot-4-Version** (Godot 4.7.2). Die bisherige Browser-Version li
 
 ## Umzug in Etappen
 1. ✅ Welt & Kamera (Gelände, Fluss, Seen, Berge, Wald, Haupthaus-Platzhalter) + Sprachen Deutsch/Englisch
-2. ⏳ Bauen: Gebäude platzieren, erste Warenkette
+2. 🔨 Bauen: Gebäude wählen, Platz zeigen, bestätigen (läuft) – Warenkette folgt
+   Modelle werden aus der Browser-Version als GLB exportiert (`models/`)
 3. ⏳ Siedler, Wegfindung, Träger
 4. ⏳ Alle Gebäude & Warenketten
 5. ⏳ Gebiet, Wachtürme, Kampf, KI-Gegner
