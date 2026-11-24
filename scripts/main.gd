@@ -4,6 +4,9 @@ extends Node3D
 const Terrain := preload("res://scripts/terrain.gd")
 const CameraRig := preload("res://scripts/camera_rig.gd")
 const Builder := preload("res://scripts/builder.gd")
+const Economy := preload("res://scripts/economy.gd")
+var economy: Node
+var stock_label: Label
 var builder: Node3D
 
 var terrain: Node3D
@@ -18,7 +21,13 @@ func _ready() -> void:
 	_build_lager()
 	_setup_camera()
 	_setup_ui()
+	economy = Economy.new()
+	economy.name = "Wirtschaft"
+	economy.terrain = terrain
+	add_child(economy)
+	_setup_stock()
 	builder = Builder.new()
+	builder.economy = economy
 	builder.name = "Bauen"
 	builder.terrain = terrain
 	builder.camera = $Kamera/Camera3D
@@ -117,7 +126,7 @@ func _setup_ui() -> void:
 	title.add_theme_font_size_override("font_size", 20)
 	vb.add_child(title)
 	var info := Label.new()
-	info.text = "UI_STAGE2"
+	info.text = "UI_STAGE2B"
 	vb.add_child(info)
 	var ctr := Label.new()
 	ctr.text = "UI_CONTROLS"
@@ -139,6 +148,37 @@ func _setup_ui() -> void:
 	fps_label = Label.new()
 	fps_label.add_theme_color_override("font_color", Color(0.7, 0.85, 0.6))
 	vb.add_child(fps_label)
+
+func _setup_stock() -> void:
+	var panel := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.165, 0.114, 0.07, 0.88)
+	sb.border_color = Color(0.79, 0.64, 0.29)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(10)
+	sb.set_content_margin_all(8)
+	panel.add_theme_stylebox_override("panel", sb)
+	panel.anchor_left = 0.5
+	panel.anchor_right = 0.5
+	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	panel.offset_top = 12
+	ui_layer.add_child(panel)
+	stock_label = Label.new()
+	stock_label.add_theme_font_size_override("font_size", 20)
+	stock_label.add_theme_color_override("font_color", Color(0.96, 0.9, 0.78))
+	panel.add_child(stock_label)
+	economy.changed.connect(_update_stock)
+	_update_stock()
+
+func _update_stock() -> void:
+	var s := ""
+	for k in ["stamm", "bretter", "stein"]:
+		s += "%s %s %d     " % [economy.ICONS[k], tr("ITEM_" + k.to_upper()), economy.stock[k]]
+	stock_label.text = s.strip_edges()
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED and stock_label:
+		_update_stock()
 
 func _process(_dt: float) -> void:
 	fps_label.text = tr("UI_FPS") % Engine.get_frames_per_second()

@@ -19,3 +19,14 @@ BLD_SAEGEWERK	Sägewerk	Sawmill
 BLD_STEINMETZ	Steinmetz	Stonemason
 BLD_WOHNHAUS	Wohnhaus	House
 BLD_WACHTURM	Wachturm	Watchtower
+UI_STAGE2B	Etappe 2: Bauen & erste Warenkette	Stage 2: Building & first production chain
+UI_NOT_ENOUGH	Nicht genug Material!	Not enough materials!
+ITEM_STAMM	Stämme	Logs
+ITEM_BRETTER	Bretter	Planks
+ITEM_STEIN	Stein	Stone
+ST_BUILDING	Im Bau	Under construction
+ST_WORKING	Arbeitet	Working
+ST_IDLE	Wartet	Idle
+ST_NO_TREES	Keine Bäume in der Nähe	No trees nearby
+ST_NO_LOGS	Keine Stämme im Lager	No logs in storage
+ST_NO_ROCKS	Keine Felsen in der Nähe	No rocks nearby

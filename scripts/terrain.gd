@@ -11,6 +11,9 @@ var noise := FastNoiseLite.new()
 var detail := FastNoiseLite.new()
 var mountains: Array = []
 var lakes: Array = []
+var trees: Array = []   # {pos, mm, i, t, alive}
+var rocks: Array = []   # {pos, i, t, left}
+var rock_mm: MultiMesh
 
 func _init() -> void:
 	noise.seed = 4711
@@ -155,8 +158,14 @@ func _build_trees() -> void:
 			fir_pos.append(t)
 		else:
 			leaf_pos.append(t)
-	add_child(_tree_multimesh(leaf_pos, false))
-	add_child(_tree_multimesh(fir_pos, true))
+	var a := _tree_multimesh(leaf_pos, false)
+	var b := _tree_multimesh(fir_pos, true)
+	add_child(a)
+	add_child(b)
+	for i in leaf_pos.size():
+		trees.append({"pos": leaf_pos[i].origin, "mm": a.multimesh, "i": i, "t": leaf_pos[i], "alive": true})
+	for i in fir_pos.size():
+		trees.append({"pos": fir_pos[i].origin, "mm": b.multimesh, "i": i, "t": fir_pos[i], "alive": true})
 
 func _tree_multimesh(list: Array, fir: bool) -> MultiMeshInstance3D:
 	var st := SurfaceTool.new()
@@ -245,7 +254,48 @@ func _build_rocks() -> void:
 	mm.instance_count = list.size()
 	for i in list.size():
 		mm.set_instance_transform(i, list[i])
+		rocks.append({"pos": list[i].origin, "i": i, "t": list[i], "left": 6})
+	rock_mm = mm
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
 	mmi.name = "Felsen"
 	add_child(mmi)
+
+## --- Rohstoffe für die Wirtschaft ---
+func nearest_tree(p: Vector3, r: float, alive := true):
+	var best = null
+	var bd := r
+	for t in trees:
+		if t.alive != alive:
+			continue
+		var d := Vector2(t.pos.x - p.x, t.pos.z - p.z).length()
+		if d < bd:
+			bd = d
+			best = t
+	return best
+
+func fell_tree(t: Dictionary) -> void:
+	t.alive = false
+	t.mm.set_instance_transform(t.i, Transform3D(Basis().scaled(Vector3.ONE * 0.001), t.pos))
+
+func plant_tree(t: Dictionary) -> void:
+	t.alive = true
+	var tw := create_tween()
+	tw.tween_method(func(k): t.mm.set_instance_transform(t.i, Transform3D(t.t.basis.scaled(Vector3.ONE * maxf(k, 0.001)), t.pos)), 0.05, 1.0, 20.0)
+
+func nearest_rock(p: Vector3, r: float):
+	var best = null
+	var bd := r
+	for k in rocks:
+		if k.left <= 0:
+			continue
+		var d := Vector2(k.pos.x - p.x, k.pos.z - p.z).length()
+		if d < bd:
+			bd = d
+			best = k
+	return best
+
+func mine_rock(k: Dictionary) -> void:
+	k.left -= 1
+	var f: float = maxf(0.001, 0.35 + 0.65 * k.left / 6.0)
+	rock_mm.set_instance_transform(k.i, Transform3D(k.t.basis.scaled(Vector3.ONE * f), k.pos))

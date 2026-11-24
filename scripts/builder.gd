@@ -13,6 +13,8 @@ const TYPES := {
 }
 
 var terrain: Node3D
+var economy: Node
+var _buttons := {}
 var camera: Camera3D
 var buildings: Array = []        # {type, pos, node}
 var placing := ""
@@ -50,10 +52,13 @@ func setup_ui(layer: CanvasLayer) -> void:
 	bar.add_child(hb)
 	for t in TYPES:
 		var b := Button.new()
-		b.text = TYPES[t].key
-		b.custom_minimum_size = Vector2(110, 40)
+		b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		b.custom_minimum_size = Vector2(120, 52)
+		_buttons[t] = b
 		b.pressed.connect(func(): start(t))
 		hb.add_child(b)
+	_refresh_buttons()
+	economy.changed.connect(_refresh_buttons)
 	hint = Label.new()
 	hint.anchor_left = 0.5
 	hint.anchor_right = 0.5
@@ -91,6 +96,15 @@ func setup_ui(layer: CanvasLayer) -> void:
 	no.pressed.connect(cancel)
 	confirm_box.add_child(no)
 
+func _refresh_buttons() -> void:
+	for t in _buttons:
+		_buttons[t].text = tr(TYPES[t].key) + "\n" + economy.cost_text(t)
+		_buttons[t].modulate = Color.WHITE if economy.can_afford(t) else Color(1, 0.6, 0.6)
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED and economy:
+		_refresh_buttons()
+
 func model(t: String) -> Node3D:
 	var ps: PackedScene = load("res://models/%s.glb" % t)
 	var n: Node3D = ps.instantiate()
@@ -106,6 +120,10 @@ func _shadows(n: Node) -> void:
 
 func start(t: String) -> void:
 	cancel()
+	if not economy.can_afford(t):
+		hint.text = tr("UI_NOT_ENOUGH")
+		hint.visible = true
+		return
 	placing = t
 	ghost = model(t)
 	add_child(ghost)
@@ -211,10 +229,12 @@ func confirm() -> void:
 	n.position = p
 	n.rotation.y = ghost_rot
 	add_child(n)
-	buildings.append({"type": placing, "pos": p, "node": n})
-	# kleine Bau-Animation: Gebäude wächst aus dem Boden
-	n.scale = Vector3(SCALE, 0.05, SCALE)
-	create_tween().tween_property(n, "scale", Vector3.ONE * SCALE, 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	n.scale = Vector3(SCALE, SCALE * 0.15, SCALE)   # Baustelle – wächst während der Bauzeit
+	var rec := {"type": placing, "pos": p, "node": n, "build": 0.0, "s": SCALE, "t": 0.0, "status": "ST_BUILDING"}
+	buildings.append(rec)
+	economy.buildings.append(rec)
+	economy.pay(placing)
 	var t := placing
 	cancel()
-	start(t)    # gleich das nächste Gebäude derselben Art platzieren können
+	if economy.can_afford(t):
+		start(t)    # gleich das nächste Gebäude derselben Art platzieren können
