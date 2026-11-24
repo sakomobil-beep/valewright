@@ -1,0 +1,8 @@
+key	de	en
+UI_TITLE	Valewright – Godot-Version	Valewright – Godot Version
+UI_STAGE1	Etappe 1: Welt & Kamera	Stage 1: World & Camera
+UI_CONTROLS	Linke Maus ziehen = verschieben · Rechte Maus = drehen\nMausrad = zoomen · WASD = bewegen · Q/E = drehen	Drag left mouse = pan · Right mouse = rotate\nMouse wheel = zoom · WASD = move · Q/E = rotate
+UI_FPS	%d FPS	%d FPS
+UI_LANGUAGE	Sprache	Language
+GAME_SUBTITLE	Baue. Wirtschafte. Herrsche.	Build. Trade. Rule.
+BLD_LAGER	Haupthaus	Town Hall

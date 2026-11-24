@@ -126,17 +126,33 @@ func _setup_ui() -> void:
 	var vb := VBoxContainer.new()
 	panel.add_child(vb)
 	var title := Label.new()
-	title.text = "Valewright – Godot-Version"
+	title.text = "UI_TITLE"
 	title.add_theme_color_override("font_color", Color(0.91, 0.77, 0.42))
 	title.add_theme_font_size_override("font_size", 20)
 	vb.add_child(title)
 	var info := Label.new()
-	info.text = "Etappe 1: Welt & Kamera\nLinke Maus ziehen = verschieben · Rechte Maus = drehen\nMausrad = zoomen · WASD = bewegen · Q/E = drehen"
-	info.add_theme_color_override("font_color", Color(0.96, 0.9, 0.78))
+	info.text = "UI_STAGE1"
 	vb.add_child(info)
+	var ctr := Label.new()
+	ctr.text = "UI_CONTROLS"
+	ctr.add_theme_color_override("font_color", Color(0.96, 0.9, 0.78))
+	vb.add_child(ctr)
+	var hb := HBoxContainer.new()
+	vb.add_child(hb)
+	var ll := Label.new()
+	ll.text = "UI_LANGUAGE"
+	ll.add_theme_color_override("font_color", Color(0.96, 0.9, 0.78))
+	hb.add_child(ll)
+	for lang in ["de", "en"]:
+		var b := Button.new()
+		b.text = "Deutsch" if lang == "de" else "English"
+		b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		b.pressed.connect(func(): I18n.set_language(lang))
+		hb.add_child(b)
+	info.add_theme_color_override("font_color", Color(0.96, 0.9, 0.78))
 	fps_label = Label.new()
 	fps_label.add_theme_color_override("font_color", Color(0.7, 0.85, 0.6))
 	vb.add_child(fps_label)
 
 func _process(_dt: float) -> void:
-	fps_label.text = "%d FPS" % Engine.get_frames_per_second()
+	fps_label.text = tr("UI_FPS") % Engine.get_frames_per_second()
