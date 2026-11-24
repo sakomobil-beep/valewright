@@ -12,7 +12,7 @@ Dies ist die **Godot-4-Version** (Godot 4.7.2). Die bisherige Browser-Version li
 1. ✅ Welt & Kamera (Gelände, Fluss, Seen, Berge, Wald, Haupthaus-Platzhalter) + Sprachen Deutsch/Englisch
 2. ✅ Bauen (wählen, Platz zeigen, bestätigen), Baukosten, Bauzeit, Lageranzeige, erste Warenkette Holzfäller → Sägewerk, Steinmetz, Förster
    Modelle werden aus der Browser-Version als GLB exportiert (`models/`)
-3. 🔨 Siedler: Bauarbeiter, Holzfäller, Steinmetz, Förster, Sägewerker, Träger (läuft) – Wegfindung um Wasser folgt
+3. ✅ Siedler: Bauarbeiter, Holzfäller, Steinmetz, Förster, Sägewerker, Träger · Wegfindung um Wasser, Steilhänge und Gebäude · mehr Träger bei Wachstum
 4. ⏳ Alle Gebäude & Warenketten
 5. ⏳ Gebiet, Wachtürme, Kampf, KI-Gegner
 6. ⏳ Menüs, Speichern/Laden, Tutorial, Kampagne „Die Chronik von Valewright“

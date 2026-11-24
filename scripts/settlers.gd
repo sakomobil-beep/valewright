@@ -9,6 +9,9 @@ var terrain: Node3D
 var economy: Node
 var workers: Array = []
 var reserved := {}            # Bäume/Felsen, die schon jemand bearbeitet
+var grid := AStarGrid2D.new() # Wegfindung: Wasser, Steilhänge und Gebäude werden umgangen
+const CELL := 2.0
+var _half := 0.0
 
 func lager_door() -> Vector3:
 	var p := Vector3(0, 0, 6.0)
@@ -21,6 +24,7 @@ func door_of(b: Dictionary) -> Vector3:
 	return p
 
 func _ready() -> void:
+	_build_grid()
 	for i in 3:
 		var w := spawn("traeger", lager_door() + Vector3(i - 1.0, 0, 0.8))
 		w.role = "traeger"
@@ -39,8 +43,72 @@ func spawn(job: String, at: Vector3) -> Dictionary:
 	workers.append(w)
 	return w
 
+# ---------- Wegfindung ----------
+func _build_grid() -> void:
+	_half = terrain.SIZE * 0.5
+	var n := int(terrain.SIZE / CELL)
+	grid.region = Rect2i(0, 0, n, n)
+	grid.cell_size = Vector2(CELL, CELL)
+	grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+	grid.update()
+	for j in n:
+		for i in n:
+			var x := -_half + (i + 0.5) * CELL
+			var z := -_half + (j + 0.5) * CELL
+			var h: float = terrain.height(x, z)
+			var steep := absf(terrain.height(x + 1.0, z) - h) + absf(terrain.height(x, z + 1.0) - h)
+			if h < terrain.WATER_Y + 0.35 or steep > 1.6:
+				grid.set_point_solid(Vector2i(i, j), true)
+	# Haupthaus
+	block_area(Vector3.ZERO, 4.5)
+
+func _cell(p: Vector3) -> Vector2i:
+	var n := grid.region.size.x
+	return Vector2i(clampi(int((p.x + _half) / CELL), 0, n - 1), clampi(int((p.z + _half) / CELL), 0, n - 1))
+
+func block_area(p: Vector3, r: float) -> void:
+	var c := _cell(p)
+	var k := int(ceil(r / CELL))
+	for j in range(-k, k + 1):
+		for i in range(-k, k + 1):
+			var q := c + Vector2i(i, j)
+			if grid.is_in_boundsv(q) and Vector2(i, j).length() * CELL <= r:
+				grid.set_point_solid(q, true)
+
+func _open_near(c: Vector2i) -> Vector2i:
+	if not grid.is_point_solid(c):
+		return c
+	for r in range(1, 6):
+		for j in range(-r, r + 1):
+			for i in range(-r, r + 1):
+				var q := c + Vector2i(i, j)
+				if grid.is_in_boundsv(q) and not grid.is_point_solid(q):
+					return q
+	return c
+
+func find_path(a: Vector3, b: Vector3) -> Array:
+	var ca := _open_near(_cell(a))
+	var cb := _open_near(_cell(b))
+	var pts := grid.get_id_path(ca, cb, true)
+	var out: Array = []
+	# nur jeden zweiten Wegpunkt nehmen – wirkt natürlicher
+	for i in range(1, pts.size(), 2):
+		var q: Vector2i = pts[i]
+		var x := -_half + (q.x + 0.5) * CELL
+		var z := -_half + (q.y + 0.5) * CELL
+		out.append(Vector3(x, terrain.height(x, z), z))
+	if pts.size() > 0 and pts[-1] == cb:
+		out.append(b)
+	return out
+
 # ---------- Aufträge ----------
 func on_building_placed(b: Dictionary) -> void:
+	block_area(b.pos, 2.0 * WORKER_SCALE)
+	# mehr Träger, wenn die Siedlung wächst
+	var carriers := workers.filter(func(x): return x.role == "traeger").size()
+	if carriers < 3 + economy.buildings.size() / 2:
+		var t := spawn("traeger", lager_door())
+		t.role = "traeger"
 	var w := spawn("bauarbeiter", lager_door())
 	w.q = [
 		{"go": door_of(b)},
@@ -206,10 +274,17 @@ func _step(w: Dictionary, dt: float) -> void:
 	var s: Dictionary = w.q[0]
 	if s.has("go"):
 		var n: Node3D = w.node
-		var to: Vector3 = s.go
+		if not s.has("path"):
+			s.path = find_path(n.position, s.go)
+		if s.path.is_empty():
+			w.q.pop_front()
+			return
+		var to: Vector3 = s.path[0]
 		var d := Vector3(to.x - n.position.x, 0, to.z - n.position.z)
 		if d.length() < 0.15:
-			w.q.pop_front()
+			s.path.pop_front()
+			if s.path.is_empty():
+				w.q.pop_front()
 			return
 		var mv := d.normalized() * minf(d.length(), SPEED * dt)
 		n.position += mv
