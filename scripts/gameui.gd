@@ -377,6 +377,9 @@ func apply_settings() -> void:
 	for we in main.find_children("*", "WorldEnvironment", false, false):
 		we.environment.ssao_enabled = opts.effects
 		we.environment.glow_enabled = opts.effects
+	var ef = main.get_node_or_null("Effekte")
+	if ef:
+		ef.enabled = opts.effects
 	var gr = main.get_node_or_null("Gras")
 	if gr:
 		gr.set_quality(String(opts.grass))

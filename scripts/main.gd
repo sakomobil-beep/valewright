@@ -240,6 +240,10 @@ func _setup_stock() -> void:
 	grass.rig = $Kamera
 	grass.economy = economy
 	add_child(grass)
+	var effects := preload("res://scripts/effects.gd").new()
+	effects.name = "Effekte"
+	effects.economy = economy
+	add_child(effects)
 	var sfx := preload("res://scripts/sfx.gd").new()
 	sfx.name = "Sfx"
 	add_child(sfx)
