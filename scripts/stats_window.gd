@@ -89,7 +89,9 @@ func toggle(m := "stats") -> void:
 	var title := Label.new()
 	var tt: String = tr("UI_STATS") if mode == "stats" else tr("UI_BALANCE")
 	var rx := RegEx.create_from_string("\\s*\\([A-Z]\\)$")
-	title.text = ("📊 " if mode == "stats" else "📈 ") + rx.sub(tt, "")
+	if mode == "military":
+		tt = tr("UI_MILITARY")
+	title.text = {"stats": "📊 ", "balance": "📈 ", "military": "⚔️ "}[mode] + rx.sub(tt, "")
 	title.add_theme_font_size_override("font_size", 24)
 	title.add_theme_color_override("font_color", GOLD)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -100,7 +102,7 @@ func toggle(m := "stats") -> void:
 	head.add_child(tabs)
 	for i in 3:
 		var b := Button.new()
-		b.text = tr((["STW_OVERVIEW", "STW_GOODS", "STW_BUILDINGS"] if mode == "stats" else ["BLW_TABLE", "BLW_BOTTLENECKS", "BLW_HISTORY"])[i])
+		b.text = tr({"stats": ["STW_OVERVIEW", "STW_GOODS", "STW_BUILDINGS"], "balance": ["BLW_TABLE", "BLW_BOTTLENECKS", "BLW_HISTORY"], "military": ["STW_OVERVIEW", "MLW_FIGHTERS", "MLW_TOWERS"]}[mode][i])
 		b.toggle_mode = true
 		b.button_pressed = i == tab
 		b.custom_minimum_size = Vector2(120, 34)
@@ -142,7 +144,12 @@ func _fill() -> void:
 	if tabs:
 		for k in tabs.get_child_count():
 			tabs.get_child(k).button_pressed = k == tab
-	if mode == "balance":
+	if mode == "military":
+		match tab:
+			0: _mil_overview()
+			1: _mil_fighters()
+			2: _mil_towers()
+	elif mode == "balance":
 		match tab:
 			0: _bal_table()
 			1: _bal_bottlenecks()
@@ -619,3 +626,174 @@ func _bal_history() -> void:
 	_chart([{"name": tr("BLW_COL_MADE"), "data": made, "col": GREEN}, {"name": tr("BLW_COL_USED"), "data": used, "col": RED}], 190.0)
 	_section(tr("BLW_HIST_COINS"))
 	_chart([{"name": tr("ITEM_MUENZEN"), "data": hist.map(func(s): return float(s.stock.get("muenzen", 0))), "col": GOLD}, {"name": tr("MIL_LAND") + " %", "data": _series("land"), "col": BLUE}], 150.0)
+
+
+# ======================= Militär =======================
+func _ai_strength(ai: Dictionary) -> float:
+	var n := int(ai.lager.get("garrison", 0))
+	for b in ai.buildings:
+		if main.military.GARRISON.has(b.type) and not b.get("destroyed", false):
+			n += int(b.get("garrison", 0))
+	var rk: int = 0 if ai.diff == "leicht" else (1 if ai.diff == "mittel" else 2)
+	return n * 10.0 * (1.0 + rk * 0.6)
+
+func _own_strength() -> float:
+	var t := 0.0
+	for s in main.military.soldiers:
+		if s.owner == 0:
+			t += main.military.strength(s)
+	return t
+
+func _bar(parent: Control, value: float, mx: float, col: Color, w := 360.0) -> void:
+	var bar := ProgressBar.new()
+	bar.show_percentage = false
+	bar.max_value = maxf(1.0, mx)
+	bar.value = value
+	bar.custom_minimum_size = Vector2(w, 16)
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var fs := StyleBoxFlat.new()
+	fs.bg_color = col
+	fs.set_corner_radius_all(4)
+	bar.add_theme_stylebox_override("fill", fs)
+	var bs := StyleBoxFlat.new()
+	bs.bg_color = Color(0, 0, 0, 0.3)
+	bs.set_corner_radius_all(4)
+	bar.add_theme_stylebox_override("background", bs)
+	parent.add_child(bar)
+
+func _mil_overview() -> void:
+	var m: Node = main.military
+	if m.peace():
+		_label(_body, tr("MSG_PEACE"), 15, GOLD)
+	var own: Array = m.soldiers.filter(func(s): return s.owner == 0)
+	var towers: Array = _own_buildings().filter(func(b): return m.is_military(b.type) and b.build >= 1.0)
+	var hungry := own.filter(func(s): return s.get("hungry", false)).size()
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	_body.add_child(grid)
+	_tile(grid, "⚔️", str(own.filter(func(s): return s.kind != "bogen").size()), tr("MLW_SWORD"), "")
+	_tile(grid, "🏹", str(own.filter(func(s): return s.kind == "bogen").size()), tr("MLW_BOW"), "")
+	_tile(grid, "💪", str(int(_own_strength())), tr("MLW_POWER"), "")
+	_tile(grid, "🚶", str(m.count_available(0)), tr("MLW_FREE"), "")
+	_tile(grid, "🏰", str(towers.size()), tr("MLW_TOWER_N"), "")
+	_tile(grid, "🚩", "%d %%" % int(m.land_share(0) * 100.0), tr("MIL_LAND"), "")
+	_tile(grid, "🍞", str(hungry), tr("MIL_HUNGRY"), "")
+	_tile(grid, "🛡️", str(int(main.economy.stock.get("kampfstock", 0))), tr("ITEM_KAMPFSTOCK"), "")
+	_section(tr("MLW_COMPARE"))
+	var rows: Array = [[tr("MLW_YOU"), _own_strength(), m.land_share(0) * 100.0, Color(0.4, 0.7, 1.0), true]]
+	for ai in m.ais:
+		rows.append([tr(ai.name), _ai_strength(ai) if ai.get("alive", true) else 0.0, m.land_share(ai.id) * 100.0, m.OWNER_COL[ai.id], ai.get("alive", true)])
+	var mx := 1.0
+	for r in rows:
+		mx = maxf(mx, r[1])
+	for r in rows:
+		var hb := HBoxContainer.new()
+		hb.add_theme_constant_override("separation", 10)
+		_body.add_child(hb)
+		_label(hb, r[0], 14, r[3] if r[4] else DIM, 220)
+		_bar(hb, r[1], mx, r[3])
+		_label(hb, ("%s %d" % [tr("MIL_STRENGTH"), int(r[1])]) if r[4] else tr("MIL_DEFEATED"), 13, TEXT, 110)
+		_label(hb, "%s %d %%" % [tr("MIL_LAND"), int(r[2])], 13, DIM, 90)
+	_section(tr("MLW_GROWTH"))
+	_chart([{"name": tr("ST_SOLDIERS"), "data": _series("sold"), "col": RED}, {"name": tr("MIL_LAND") + " %", "data": _series("land"), "col": BLUE}], 150.0)
+
+func _mil_fighters() -> void:
+	var m: Node = main.military
+	var own: Array = m.soldiers.filter(func(s): return s.owner == 0)
+	_label(_body, tr("MIL_RANKS_HELP") % [" → ".join(m.RANKS.schwert.map(func(k): return tr(k))), " → ".join(m.RANKS.bogen.map(func(k): return tr(k)))], 12, DIM)
+	if own.is_empty():
+		_label(_body, tr("MLW_NO_FIGHTERS"), 14, DIM)
+		return
+	var head := HBoxContainer.new()
+	_body.add_child(head)
+	for c in [[tr("MLW_COL_KIND"), 70], [tr("MLW_COL_RANK"), 190], [tr("MIL_STRENGTH"), 90], [tr("MLW_COL_XP"), 150], [tr("MLW_COL_WHERE"), 200], [tr("MLW_COL_STATE"), 100]]:
+		_label(head, c[0], 13, GOLD, c[1])
+	own.sort_custom(func(a, b): return m.strength(a) > m.strength(b))
+	var odd := false
+	for s in own:
+		odd = not odd
+		var bg := PanelContainer.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(1, 1, 1, 0.04) if odd else Color(0, 0, 0, 0)
+		sb.set_corner_radius_all(4)
+		bg.add_theme_stylebox_override("panel", sb)
+		_body.add_child(bg)
+		var hb := HBoxContainer.new()
+		bg.add_child(hb)
+		_label(hb, "🏹" if s.kind == "bogen" else ("🏏" if s.get("militia", false) else "⚔️"), 16, TEXT, 70)
+		var stars := "★".repeat(s.rank + 1) + "☆".repeat(m.max_rank(s.kind) - s.rank)
+		_label(hb, tr(m.RANKS[s.kind][s.rank]) + "  " + stars, 14, TEXT, 190)
+		_label(hb, str(int(m.strength(s))), 15, TEXT, 90)
+		var xpbox := HBoxContainer.new()
+		xpbox.custom_minimum_size.x = 150
+		hb.add_child(xpbox)
+		if s.rank < mini(2, m.max_rank(s.kind)):
+			_bar(xpbox, float(s.get("xp", 0.0)), 1.0, GOLD, 120)
+		else:
+			_label(xpbox, tr("MLW_COINS_ONLY") if s.rank < m.max_rank(s.kind) else tr("MLW_MAX"), 12, DIM)
+		var where: String = tr("MLW_FREE_STATE")
+		if s.state == "garrison" and s.get("home") != null:
+			where = tr("BLD_" + String(s.home.type).to_upper())
+		elif s.state in ["attack", "arrived", "fight"]:
+			where = tr("MLW_ATTACKING")
+		elif s.state == "moving":
+			where = tr("MLW_ON_WAY")
+		_label(hb, where, 14, TEXT, 200)
+		_label(hb, tr("MIL_HUNGRY") if s.get("hungry", false) else tr("MLW_FED"), 13, RED if s.get("hungry", false) else GREEN, 100)
+
+func _mil_towers() -> void:
+	var m: Node = main.military
+	var towers: Array = _own_buildings().filter(func(b): return m.POSTS.has(b.type) and b.build >= 1.0)
+	_section(tr("MLW_OWN_TOWERS"))
+	if towers.is_empty():
+		_label(_body, tr("MLW_NO_TOWERS"), 14, DIM)
+	for b in towers:
+		var hb := HBoxContainer.new()
+		hb.add_theme_constant_override("separation", 10)
+		_body.add_child(hb)
+		var ic := TextureRect.new()
+		ic.texture = UiIcons.bld_tex(b.type)
+		ic.custom_minimum_size = Vector2(30, 30)
+		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		hb.add_child(ic)
+		_label(hb, tr("BLD_" + String(b.type).to_upper()), 14, TEXT, 150)
+		var P: Dictionary = m.POSTS[b.type]
+		var here: Array = m.soldiers.filter(func(x): return x.get("home") == b and x.state == "garrison")
+		for kind in ["schwert", "bogen"]:
+			var cap := int(P.get(kind, 0))
+			var have := here.filter(func(x): return x.get("kind", "schwert") == kind and not x.get("militia", false)).size()
+			if kind == "schwert":
+				have += here.filter(func(x): return x.get("militia", false)).size()
+			var txt := ("⚔️ " if kind == "schwert" else "🏹 ") + ("●".repeat(have) + "○".repeat(maxi(0, cap - have)) if cap > 0 else "–")
+			_label(hb, txt, 15, GREEN if have >= cap and cap > 0 else (RED if have == 0 and cap > 0 else TEXT), 170)
+		var send := Button.new()
+		send.text = tr("MLW_SEND")
+		send.tooltip_text = tr("ORD_POST")
+		send.disabled = not m.soldiers.any(func(c): return c.owner == 0 and c.state == "idle" and m.slot_free(b, c))
+		send.pressed.connect(func():
+			m.send_to_post(b)
+			_fill())
+		hb.add_child(send)
+	_section(tr("MIL_ENEMIES"))
+	if m.ais.is_empty():
+		_label(_body, tr("MIL_NONE"), 14, DIM)
+	for ai in m.ais:
+		var p := PanelContainer.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0, 0, 0, 0.28)
+		sb.border_color = m.OWNER_COL[ai.id]
+		sb.border_width_left = 4
+		sb.set_corner_radius_all(6)
+		sb.set_content_margin_all(10)
+		p.add_theme_stylebox_override("panel", sb)
+		_body.add_child(p)
+		var v := VBoxContainer.new()
+		p.add_child(v)
+		var alive: bool = ai.get("alive", true)
+		_label(v, tr(ai.name), 16, m.OWNER_COL[ai.id] if alive else DIM)
+		var st: String = tr("MIL_DEFEATED") if not alive else (tr("AI_PEACEFUL") if ai.get("peaceful", false) else tr("AI_AGGRESSIVE"))
+		var tw: int = ai.buildings.filter(func(b): return m.GARRISON.has(b.type) and not b.get("destroyed", false)).size()
+		_label(v, "%s · %s · %s %d · %s %d · %s %d · %s %d %%%s" % [tr("DIFF_" + String(ai.diff).to_upper()), st, tr("ST_BUILDINGS"), ai.buildings.size(), tr("MLW_TOWER_N"), tw, tr("MIL_STRENGTH"), int(_ai_strength(ai)), tr("MIL_LAND"), int(m.land_share(ai.id) * 100.0), ("  · 😠 " + tr("MLW_ANGRY")) if ai.get("angry", false) and alive else ""], 13, TEXT)

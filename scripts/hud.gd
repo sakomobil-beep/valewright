@@ -62,7 +62,7 @@ func setup(l: CanvasLayer) -> void:
 	_icon_btn(hb, "📊", func(): stats_win.toggle("stats")).tooltip_text = tr("UI_STATS")
 	_icon_btn(hb, "📈", func(): stats_win.toggle("balance")).tooltip_text = tr("UI_BALANCE")
 	_icon_btn(hb, "🔗", func(): open_window("chains")).tooltip_text = tr("UI_CHAINS")
-	_icon_btn(hb, "⚔️", func(): open_window("military")).tooltip_text = tr("UI_MILITARY")
+	_icon_btn(hb, "⚔️", func(): stats_win.toggle("military")).tooltip_text = tr("UI_MILITARY")
 	_icon_btn(hb, "🏪", func(): main.market.open()).tooltip_text = tr("UI_MARKET")
 	hb.add_child(VSeparator.new())
 	_icon_btn(hb, "🏷️", toggle_labels).tooltip_text = tr("UI_LABELS")
@@ -112,7 +112,7 @@ func _unhandled_input(e: InputEvent) -> void:
 			KEY_K:
 				open_window("chains")
 			KEY_M:
-				open_window("military")
+				stats_win.toggle("military")
 			KEY_L:
 				toggle_labels()
 			KEY_V:

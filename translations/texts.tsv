@@ -496,3 +496,29 @@ BLW_TRANSPORT	Transport	Transport
 BLW_TRANSPORT_T	%d Träger · %d Waren warten an den Gebäuden auf Abholung	%d carriers · %d goods waiting to be picked up
 BLW_HIST_ALL	Herstellung und Verbrauch aller Waren pro Minute	Production and use of all goods per minute
 BLW_HIST_COINS	Münzen und Landanteil	Coins and land share
+MLW_FIGHTERS	Kämpfer	Fighters
+MLW_TOWERS	Türme & Gegner	Towers & enemies
+MLW_SWORD	Schwertkämpfer	swordsmen
+MLW_BOW	Bogenschützen	archers
+MLW_POWER	Gesamtstärke	total strength
+MLW_FREE	frei für Angriffe	free for attacks
+MLW_TOWER_N	Türme	towers
+MLW_COMPARE	Kräftevergleich	Balance of power
+MLW_YOU	Du	You
+MLW_GROWTH	Entwicklung	Development
+MLW_NO_FIGHTERS	Noch keine Kämpfer – baue eine Kaserne oder halte Kampfstöcke für Wächter bereit.	No fighters yet – build a barracks or keep fighting sticks for guards.
+MLW_COL_KIND	Art	Type
+MLW_COL_RANK	Rang	Rank
+MLW_COL_XP	Übung	Drill
+MLW_COL_WHERE	Ort	Location
+MLW_COL_STATE	Zustand	Condition
+MLW_COINS_ONLY	nur mit 🪙	coins only
+MLW_MAX	höchster Rang	top rank
+MLW_FREE_STATE	frei	free
+MLW_ATTACKING	im Angriff	attacking
+MLW_ON_WAY	unterwegs	on the way
+MLW_FED	satt	fed
+MLW_NO_TOWERS	Noch keine Türme – Wachstube und Wachturm erweitern dein Gebiet.	No towers yet – guardhouse and watchtower expand your land.
+MLW_ANGRY	zornig	angry
+MLW_SEND	➜ Kämpfer schicken	➜ Send fighter
+MLW_OWN_TOWERS	Deine Türme	Your towers
