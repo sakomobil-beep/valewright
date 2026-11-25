@@ -122,9 +122,10 @@ func _process(dt: float) -> void:
 	if not _sun_set:
 		_sun_set = true
 		var sun: DirectionalLight3D = main.get_node("Sonne")
-		sun.rotation_degrees = Vector3(-55.0, -30.0, 0)
-		sun.light_energy = 1.3
-		sun.light_color = Color(1.0, 0.96, 0.88)
+		# wie im Browser: Sonne von links oben (-40, 55, 30), warmes Licht
+		sun.look_at_from_position(Vector3(-40, 55, 30), Vector3.ZERO, Vector3.UP)
+		sun.light_energy = 1.25
+		sun.light_color = Color("ffdcaa")
 	_mm_t += dt
 	if _mm_t > 0.5:
 		_mm_t = 0.0

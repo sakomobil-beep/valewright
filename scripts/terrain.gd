@@ -134,9 +134,9 @@ func _ready() -> void:
 
 func _ground_color(x: float, z: float, h: float, steep: float) -> Color:
 	var v := clampf(detail.get_noise_2d(x * 0.6, z * 0.6) + 0.5, 0.0, 1.0)
-	var grass := Color(0.45, 0.63, 0.27).lerp(Color(0.33, 0.52, 0.22), v)
-	# trockenere Wiesen an Hügeln, sattes Grün in Senken
-	grass = grass.lerp(Color(0.6, 0.64, 0.33), clampf((h - 4.0) / 8.0, 0.0, 0.5))
+	# Wiesenfarben wie im Browser (0x8fae4e / 0xb3b552): warmes Gelbgrün
+	var grass := Color("8fae4e").lerp(Color("b3b552"), v)
+	grass = grass.lerp(Color("86a04a"), clampf((h - 4.0) / 8.0, 0.0, 0.5))
 	var c := grass
 	if h < WATER_Y + 0.9:
 		c = c.lerp(Color(0.8, 0.72, 0.52), clampf((WATER_Y + 0.9 - h) / 0.8, 0.0, 1.0))   # Sand am Ufer

@@ -120,7 +120,7 @@ func _scatter() -> void:
 			var sc := _rng.randf_range(0.7, 1.35)
 			var t := Transform3D(Basis(Vector3.UP, _rng.randf() * TAU).scaled(Vector3(sc, sc * _rng.randf_range(0.8, 1.4), sc)), Vector3(x, y - 0.03, z))
 			gmm.set_instance_transform(n, t)
-			var g := Color(0.32, 0.52, 0.2).lerp(Color(0.48, 0.62, 0.25), _rng.randf())
+			var g := Color.from_hsv(0.24 + _rng.randf() * 0.05, 0.5, 0.55 + _rng.randf() * 0.2)
 			gmm.set_instance_color(n, g.srgb_to_linear())
 			n += 1
 	gmm.visible_instance_count = n

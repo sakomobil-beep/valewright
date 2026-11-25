@@ -136,18 +136,22 @@ func _setup_environment() -> void:
 	env.background_mode = Environment.BG_SKY
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.62, 0.64, 0.6)
-	env.ambient_light_energy = 0.55
+	env.ambient_light_color = Color("ffeed8")   # warmes Himmelslicht wie im Browser
+	env.ambient_light_energy = 0.32
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.tonemap_mode = Environment.TONE_MAPPER_ACES   # wie ACESFilmic im Browser: kräftige, satte Farben
+	env.tonemap_exposure = 1.0
+	env.adjustment_enabled = true
+	env.adjustment_saturation = 1.1
+	env.adjustment_contrast = 1.08
 	env.ssao_enabled = true            # Umgebungsverdeckung wie im Browser
 	env.ssao_radius = 1.5
 	env.glow_enabled = true            # Bloom
 	env.glow_intensity = 0.4
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.8, 0.87, 0.92)
-	env.fog_density = 0.0012
-	env.fog_aerial_perspective = 0.4
+	env.fog_density = 0.0004
+	env.fog_aerial_perspective = 0.1
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
