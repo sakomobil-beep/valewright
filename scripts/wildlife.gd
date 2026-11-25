@@ -28,7 +28,87 @@ func _box(parent: Node3D, size: Vector3, pos: Vector3, col: Color, rot := Vector
 func _ready() -> void:
 	call_deferred("_spawn_all")
 
+# ---------- Fischgründe wie addFish im Browser: Ringe, springende Fische, 6 Fische, wachsen nach ----------
+var fish_spots: Array = []
+func _add_fish(x: float, z: float) -> void:
+	if terrain.height(x, z) > terrain.WATER_Y - 0.5:
+		return
+	var g := Node3D.new()
+	add_child(g)
+	g.position = Vector3(x, terrain.WATER_Y + 0.03, z)
+	var rings: Array = []
+	for k in 2:
+		var r := MeshInstance3D.new()
+		var tm := TorusMesh.new()
+		tm.inner_radius = 0.5
+		tm.outer_radius = 0.62
+		tm.rings = 20
+		tm.ring_segments = 3
+		r.mesh = tm
+		r.scale = Vector3(1, 0.05, 1)
+		var m := StandardMaterial3D.new()
+		m.albedo_color = Color(0.85, 0.95, 1.0, 0.45)
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		r.material_override = m
+		g.add_child(r)
+		rings.append(r)
+	var fish := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = 0.0
+	cm.bottom_radius = 0.14
+	cm.height = 0.55
+	cm.radial_segments = 5
+	fish.mesh = cm
+	var fm := StandardMaterial3D.new()
+	fm.albedo_color = Color(0.55, 0.62, 0.68)
+	fm.metallic = 0.4
+	fish.material_override = fm
+	fish.visible = false
+	g.add_child(fish)
+	fish_spots.append({"pos": Vector3(x, 0, z), "g": g, "rings": rings, "fish": fish, "amount": 6, "max": 6, "reserved": false, "regen": 0.0, "jump": randf() * 5.0, "jt": 0.0, "ja": 0.0})
+
+func _fish_step(dt: float) -> void:
+	var now := Time.get_ticks_msec() / 1000.0
+	var tf: float = economy.tf() if economy else 1.0
+	for f in fish_spots:
+		if f.amount < f.max:
+			f.regen += dt
+			if f.regen > 90.0 * tf:
+				f.regen = 0.0
+				f.amount += 1
+		var k: float = float(f.amount) / f.max
+		for i in 2:
+			var ph := fmod(now * 0.5 + i * 0.5, 1.0)
+			var r: MeshInstance3D = f.rings[i]
+			var sc := 0.4 + ph * 1.6 * (0.3 + k)
+			r.scale = Vector3(sc, 0.05, sc)
+			r.material_override.albedo_color.a = 0.45 * (1.0 - ph) * (1.0 if k > 0 else 0.0)
+		f.jump -= dt
+		if f.jump < 0 and f.amount > 0:
+			f.jump = 3.0 + randf() * 6.0
+			f.jt = 0.0
+			f.fish.visible = true
+			f.ja = randf() * 6.0
+		if f.fish.visible:
+			f.jt += dt
+			var u: float = f.jt / 0.8
+			f.fish.position = Vector3(cos(f.ja) * (u - 0.5) * 1.2, sin(u * PI) * 0.9, sin(f.ja) * (u - 0.5) * 1.2)
+			f.fish.rotation = Vector3(0, -f.ja, PI / 2 + (0.5 - u) * 2.0)
+			if u >= 1.0:
+				f.fish.visible = false
+
 func _spawn_all() -> void:
+	var half: float = terrain.SIZE * 0.5
+	var z := -half + 10.0
+	while z <= half - 10.0:
+		_add_fish(terrain.river_x(z), z)
+		z += 22.0
+	for l in terrain.lakes:
+		_add_fish(l.p.x, l.p.y)
+		if l.r > 9.0:
+			_add_fish(l.p.x + l.r * 0.45, l.p.y - l.r * 0.2)
+			_add_fish(l.p.x - l.r * 0.4, l.p.y + l.r * 0.35)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(terrain.world_seed) + 501
 	var sc: float = terrain.SIZE / 360.0
@@ -127,6 +207,7 @@ func _make_boat(d: Dictionary) -> Dictionary:
 	return d
 
 func _process(dt: float) -> void:
+	_fish_step(dt)
 	var t := Time.get_ticks_msec() / 1000.0
 	# Vögel kreisen und flattern
 	for b in _birds:

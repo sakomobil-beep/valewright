@@ -374,7 +374,7 @@ MIL_ENEMIES	Gegner	Rivals
 MIL_NONE	Keine Gegner in diesem Spiel.	No rivals in this game.
 MIL_DEFEATED	💀 besiegt	💀 defeated
 MIL_LAND	Land	Land
-ST_NO_FISH	Kein tiefes Wasser in der Nähe	No deep water nearby
+ST_NO_FISH	Keine Fische in der Nähe – warten, bis sie nachwachsen	No fish nearby – waiting for them to grow back
 SITE_FOUND	Fundament wird gelegt	Laying the foundation
 SITE_FRAME	Holzgerüst wird aufgestellt	Raising the timber frame
 SITE_WALLS	Wände werden hochgezogen	Building the walls

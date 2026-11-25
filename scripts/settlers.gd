@@ -966,20 +966,28 @@ func _water_at(x: float, z: float) -> bool:
 
 func _fisher_job(w: Dictionary, b: Dictionary) -> void:
 	var wl = get_parent().get_node_or_null("Tiere")
-	# Fangplatz: tiefes Wasser 8–26 m vom Haus
+	# Fangplatz: nächster Fischgrund mit Fischen (Umkreis 26 m, wie im Browser)
 	var spot = null
-	var best := 1e9
-	for k in 48:
-		var a := k * TAU / 48.0
-		for r in [9.0, 13.0, 17.0, 21.0, 25.0]:
-			var p: Vector3 = b.pos + Vector3(cos(a) * r, 0, sin(a) * r)
-			if terrain.height(p.x, p.z) < terrain.WATER_Y - 0.8 and r < best:
-				best = r
-				spot = p
+	var fs = null
+	var best := 26.0 * 1.5
+	if wl:
+		for f in wl.fish_spots:
+			if f.amount <= 0 or f.reserved:
+				continue
+			var dd := Vector2(f.pos.x - b.pos.x, f.pos.z - b.pos.z).length()
+			if dd < best:
+				best = dd
+				fs = f
+	if fs:
+		spot = fs.pos
 	if spot == null or wl == null:
 		b.status = "ST_NO_FISH"
 		w.q = [{"wait": 5.0}, {"fn": func(): _next_job(w)}]
 		return
+	fs.reserved = true
+	var catch_fn := func():
+		fs.amount -= 1
+		fs.reserved = false
 	# Kleiner See: kein Platz für ein Boot – er wirft die Angel vom Ufer aus
 	if absf(spot.x - terrain.river_x(spot.z)) > 10.0 * terrain.river_w:
 		var d2: Vector3 = (b.pos - spot)
@@ -997,7 +1005,7 @@ func _fisher_job(w: Dictionary, b: Dictionary) -> void:
 			{"face": spot},
 			{"fn": func(): _carry(w, "angel")},
 			{"anim": "fish", "wait": economy.WORK_TIME * 0.7},
-			{"fn": func(): sfx("chop", -18.0); _carry(w, "fisch")},
+			{"fn": func(): sfx("chop", -18.0); catch_fn.call(); _carry(w, "fisch")},
 			{"go": door_of(b)},
 			{"fn": func(): _carry(w, null); economy.put_out(b, "fisch", 1)},
 			{"wait": 2.0},
@@ -1031,7 +1039,7 @@ func _fisher_job(w: Dictionary, b: Dictionary) -> void:
 		{"until": func(): return boat.goto == null},
 		{"fn": func(): boat.fishing = true},
 		{"wait": economy.WORK_TIME * 0.7},
-		{"fn": func(): boat.fishing = false; boat.goto = b.boat_moor; boat.catch.visible = true},
+		{"fn": func(): catch_fn.call(); boat.fishing = false; boat.goto = b.boat_moor; boat.catch.visible = true},
 		{"until": func(): return boat.goto == null},
 		{"fn": func(): boat.man.visible = false; boat.catch.visible = false; w.node.position = b.boat_shore; w.node.visible = true; _carry(w, "fisch")},
 		{"go": door_of(b)},
