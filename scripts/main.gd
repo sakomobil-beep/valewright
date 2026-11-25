@@ -234,10 +234,18 @@ func _setup_stock() -> void:
 	stock_label.add_theme_color_override("font_color", Color(0.96, 0.9, 0.78))
 	panel.add_child(stock_label)
 	economy.changed.connect(_update_stock)
+	var sfx := preload("res://scripts/sfx.gd").new()
+	sfx.name = "Sfx"
+	add_child(sfx)
 	economy.message.connect(_toast)
 	_update_stock()
 
 func _toast(text: String) -> void:
+	var snd := "msg"
+	if text == tr("MSG_VICTORY"): snd = "win"
+	elif text == tr("MSG_DEFEAT"): snd = "lose"
+	elif "%s" in tr("MSG_AI_ATTACK") and text.begins_with(tr("MSG_AI_ATTACK").split("%s")[0]): snd = "horn"
+	get_node("Sfx").play(snd, -6.0)
 	var l := Label.new()
 	l.text = text
 	l.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED

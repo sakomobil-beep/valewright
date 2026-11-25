@@ -163,7 +163,7 @@ func _open_cat(c: Dictionary) -> void:
 		return
 	_open = c.key
 	for t in c.types:
-		if t == "lager" or not economy.data.types.has(t):
+		if not economy.data.types.has(t):
 			continue
 		var b := Button.new()
 		b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
@@ -349,6 +349,9 @@ func _demolish(b: Dictionary) -> void:
 	for k in c:
 		economy.add(k, int(c[k]) / 2)
 	b.removed = true
+	if b.get("pile") and is_instance_valid(b.pile):
+		b.pile.queue_free()
+	economy.pending = economy.pending.filter(func(j): return j.b != b)
 	b.destroyed = true
 	buildings.erase(b)
 	economy.buildings.erase(b)
@@ -538,6 +541,7 @@ func confirm() -> void:
 	economy.buildings.append(rec)
 	economy.pay(placing)
 	if settlers:
+		settlers.sfx("place")
 		settlers.on_building_placed(rec)
 	var t := placing
 	cancel()

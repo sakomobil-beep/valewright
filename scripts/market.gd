@@ -114,6 +114,7 @@ func _buy(k: String) -> void:
 		return
 	e.stock.muenzen -= pr
 	e.note("use", "muenzen", pr)
+	_coin()
 	e.add(k, 1)
 	_refresh()
 
@@ -126,4 +127,11 @@ func _sell(k: String) -> void:
 	e.stock[k] -= 1
 	e.note("use", k, 1)
 	e.add("muenzen", pr)
+	_coin()
 	_refresh()
+
+
+func _coin() -> void:
+	var s = get_tree().current_scene.get_node_or_null("Sfx")
+	if s:
+		s.play("coin", -4.0)

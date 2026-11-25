@@ -19,6 +19,18 @@ func lager_door() -> Vector3:
 	p.y = terrain.height(p.x, p.z)
 	return p
 
+# Tür des nächsten fertigen Lagers (Haupthaus oder zusätzliches Lagerhaus)
+func nearest_lager(from: Vector3) -> Vector3:
+	var best := lager_door()
+	var bd := best.distance_to(from)
+	for b in economy.buildings:
+		if b.type == "lager" and b.build >= 1.0:
+			var d := door_of(b)
+			if d.distance_to(from) < bd:
+				bd = d.distance_to(from)
+				best = d
+	return best
+
 func door_of(b: Dictionary) -> Vector3:
 	var p: Vector3 = b.pos + Vector3(0, 0, 3.4).rotated(Vector3.UP, b.node.rotation.y)
 	p.y = terrain.height(p.x, p.z)
@@ -148,6 +160,13 @@ func on_building_placed(b: Dictionary) -> void:
 	]
 
 func _on_built(b: Dictionary) -> void:
+	sfx("build")
+	if b.type == "lager":
+		b.status = "ST_WORKING"
+		for i in 2:
+			var t := spawn("traeger", door_of(b))
+			t.role = "traeger"
+		return
 	if military and military.is_military(b.type):
 		military.on_player_built(b)
 		return
@@ -188,7 +207,7 @@ func _next_job(w: Dictionary) -> void:
 				{"go": _beside(tr_.pos, b.pos)},
 				{"face": tr_.pos},
 				{"anim": "chop", "wait": 3.0},
-				{"fn": func(): terrain.fell_tree(tr_); reserved.erase(tr_.pos); _carry(w, "stamm")},
+				{"fn": func(): sfx("chop", -8.0); terrain.fell_tree(tr_); reserved.erase(tr_.pos); _carry(w, "stamm")},
 				{"go": door_of(b)},
 				{"fn": func(): _carry(w, null); economy.pending.append({"b": b, "item": "stamm"})},
 				{"wait": 1.5},
@@ -284,6 +303,10 @@ func _carry(w: Dictionary, item) -> void:
 		w.carry = null
 	if item == null:
 		return
+	if item == "karre":
+		w.carry = _cart()
+		w.node.add_child(w.carry)
+		return
 	var m := MeshInstance3D.new()
 	var mat := StandardMaterial3D.new()
 	if item == "stamm":
@@ -321,17 +344,32 @@ func _carrier_jobs() -> void:
 			continue
 		var job: Dictionary = economy.pending.pop_front()
 		var b: Dictionary = job.b
+		var drop := nearest_lager(door_of(b))
+		# weite Wege: Karre nehmen und bis zu 3 gleiche Waren vom selben Gebäude mitnehmen
+		var n := 1
+		var cart: bool = drop.distance_to(door_of(b)) > 35.0
+		if cart:
+			for j in economy.pending.duplicate():
+				if n >= 3:
+					break
+				if j.b == b and j.item == job.item:
+					economy.pending.erase(j)
+					n += 1
 		w.q = [
 			{"go": door_of(b)},
 			{"wait": 0.5},
-			{"fn": func(): _carry(w, job.item)},
-			{"go": lager_door()},
-			{"fn": func(): _carry(w, null); economy.add(job.item, 1)},
+			{"fn": func(): _carry(w, "karre" if cart else job.item)},
+			{"go": drop},
+			{"fn": func(): _carry(w, null); economy.add(job.item, n)},
 		]
 
 # ---------- Ablauf & Animation ----------
 func _process(dt: float) -> void:
 	_carrier_jobs()
+	_pile_t -= dt
+	if _pile_t <= 0.0:
+		_pile_t = 0.5
+		_update_piles()
 	for w in workers.duplicate():
 		if w.get("dead", false):
 			workers.erase(w)
@@ -411,3 +449,82 @@ func _animate(w: Dictionary, dt: float) -> void:
 			lr.rotation.x = lerpf(lr.rotation.x, 0.0, dt * 8.0)
 			al.rotation.x = lerpf(al.rotation.x, 0.0, dt * 8.0)
 			ar.rotation.x = lerpf(ar.rotation.x, 0.0, dt * 8.0)
+
+
+# ---------- Karre & Warenhaufen ----------
+var _pile_t := 0.0
+
+func sfx(n: String, vol := 0.0) -> void:
+	var s = get_parent().get_node_or_null("Sfx")
+	if s:
+		s.play(n, vol)
+
+func _cart() -> Node3D:
+	var g := Node3D.new()
+	var wood := StandardMaterial3D.new()
+	wood.albedo_color = Color(0.55, 0.38, 0.2)
+	var box := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(0.7, 0.3, 0.9)
+	box.mesh = bm
+	box.material_override = wood
+	box.position = Vector3(0, 0.45, 0.75)
+	g.add_child(box)
+	var load_ := MeshInstance3D.new()
+	var lm := BoxMesh.new()
+	lm.size = Vector3(0.55, 0.25, 0.7)
+	load_.mesh = lm
+	var lmat := StandardMaterial3D.new()
+	lmat.albedo_color = Color(0.8, 0.7, 0.45)
+	load_.material_override = lmat
+	load_.position = Vector3(0, 0.7, 0.75)
+	g.add_child(load_)
+	for sx in [-0.4, 0.4]:
+		var wh := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.25
+		cm.bottom_radius = 0.25
+		cm.height = 0.08
+		wh.mesh = cm
+		wh.material_override = wood
+		wh.rotation.z = PI / 2
+		wh.position = Vector3(sx, 0.25, 0.75)
+		g.add_child(wh)
+	g.scale = Vector3.ONE / WORKER_SCALE
+	return g
+
+# Waren, die auf Abholung warten, liegen als Haufen vor dem Gebäude
+func _update_piles() -> void:
+	var count := {}
+	for j in economy.pending:
+		count[j.b] = count.get(j.b, 0) + 1
+	for b in economy.buildings:
+		var n: int = mini(count.get(b, 0), 8)
+		var pile: Node3D = b.get("pile")
+		if n == 0:
+			if pile:
+				pile.visible = false
+			continue
+		if pile == null or not is_instance_valid(pile):
+			pile = Node3D.new()
+			get_parent().add_child(pile)
+			var mat := StandardMaterial3D.new()
+			mat.albedo_color = Color(0.72, 0.55, 0.32)
+			for i in 8:
+				var m := MeshInstance3D.new()
+				var bm := BoxMesh.new()
+				bm.size = Vector3(0.5, 0.35, 0.5)
+				m.mesh = bm
+				m.material_override = mat
+				m.position = Vector3((i % 3) * 0.55 - 0.55, 0.18 + (i / 3) * 0.36, 0)
+				pile.add_child(m)
+			b.pile = pile
+		var d := door_of(b)
+		var side: Vector3 = Vector3(2.2, 0, 0).rotated(Vector3.UP, b.node.rotation.y)
+		var p := d + side
+		p.y = terrain.height(p.x, p.z)
+		pile.position = p
+		pile.rotation.y = b.node.rotation.y
+		pile.visible = true
+		for i in 8:
+			pile.get_child(i).visible = i < n
