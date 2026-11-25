@@ -85,7 +85,9 @@ func mountain(x: float, z: float) -> float:
 		var rr: float = m.r * 1.6
 		if d < rr:
 			var k := 1.0 - d / rr
-			h += m.h * k * k * (3.0 - 2.0 * k) * (0.85 + 0.3 * detail.get_noise_2d(x * 2.0, z * 2.0))
+			var shape := k * k * (3.0 - 2.0 * k)
+			var ridge := 1.0 - absf(noise.get_noise_2d(x * 2.2 + 400.0, z * 2.2))
+			h += m.h * shape * (0.82 + 0.18 * noise.get_noise_2d(x * 0.9, z * 0.9)) + ridge * ridge * ridge * 7.0 * shape
 	return h
 
 func height(x: float, z: float) -> float:
@@ -109,21 +111,28 @@ func _ready() -> void:
 	_build_ground()
 	_build_water()
 	_build_trees()
+	_build_grass()
 	_build_rocks()
 	_make_deposits()
 
 func _ground_color(x: float, z: float, h: float, steep: float) -> Color:
-	var grass := Color(0.47, 0.62, 0.27).lerp(Color(0.36, 0.52, 0.22), clampf(detail.get_noise_2d(x * 0.6, z * 0.6) + 0.5, 0.0, 1.0))
+	var v := clampf(detail.get_noise_2d(x * 0.6, z * 0.6) + 0.5, 0.0, 1.0)
+	var grass := Color(0.45, 0.63, 0.27).lerp(Color(0.33, 0.52, 0.22), v)
+	# trockenere Wiesen an Hügeln, sattes Grün in Senken
+	grass = grass.lerp(Color(0.6, 0.64, 0.33), clampf((h - 4.0) / 8.0, 0.0, 0.5))
 	var c := grass
-	if h < WATER_Y + 0.5:
-		c = Color(0.78, 0.7, 0.5)            # Sand am Ufer
+	if h < WATER_Y + 0.9:
+		c = c.lerp(Color(0.8, 0.72, 0.52), clampf((WATER_Y + 0.9 - h) / 0.8, 0.0, 1.0))   # Sand am Ufer
 	var mh := mountain(x, z)
-	if mh > 3.0:
-		c = c.lerp(Color(0.52, 0.5, 0.47), clampf((mh - 3.0) / 5.0, 0.0, 1.0))
-	if mh > 16.0:
-		c = c.lerp(Color(0.95, 0.96, 0.98), clampf((mh - 16.0) / 4.0, 0.0, 1.0))  # Schneekuppen
-	if steep > 0.35:
-		c = c.lerp(Color(0.48, 0.44, 0.4), clampf((steep - 0.35) * 2.0, 0.0, 1.0))
+	if mh > 2.0:
+		c = c.lerp(Color(0.5, 0.49, 0.42), clampf((mh - 2.0) / 6.0, 0.0, 1.0))   # Geröll/Almwiese
+	if mh > 8.0:
+		c = c.lerp(Color(0.55, 0.52, 0.48), clampf((mh - 8.0) / 5.0, 0.0, 1.0))  # Fels
+	var snow_line := 23.0 + detail.get_noise_2d(x * 1.5, z * 1.5) * 3.0
+	if mh > snow_line and steep < 0.55:
+		c = c.lerp(Color(0.9, 0.92, 0.95), clampf((mh - snow_line) / 3.0, 0.0, 0.9))  # Schnee nur auf flacheren Kuppen
+	# Alpha = 1: Shader legt keine Felsbänder darüber (z. B. Schnee, Sand)
+	c.a = 1.0 if (mh > snow_line and steep < 0.55) else 0.0
 	return c
 
 func _build_ground() -> void:
@@ -136,30 +145,24 @@ func _build_ground() -> void:
 	for j in RES + 1:
 		for i in RES + 1:
 			hs[j * (RES + 1) + i] = height(-half + i * step, -half + j * step)
+	var W := RES + 1
+	var hgt := func(i: int, j: int) -> float: return hs[clampi(j, 0, RES) * W + clampi(i, 0, RES)]
+	for j in W:
+		for i in W:
+			var x := -half + i * step
+			var z := -half + j * step
+			var y: float = hs[j * W + i]
+			var n := Vector3(hgt.call(i - 1, j) - hgt.call(i + 1, j), 2.0 * step, hgt.call(i, j - 1) - hgt.call(i, j + 1)).normalized()
+			st.set_color(_ground_color(x, z, y, 1.0 - n.y))
+			st.set_normal(n)
+			st.add_vertex(Vector3(x, y, z))
 	for j in RES:
 		for i in RES:
-			var quad := [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]]
-			var p := []
-			for q in quad:
-				var x: float = -half + q[0] * step
-				var z: float = -half + q[1] * step
-				p.append(Vector3(x, hs[q[1] * (RES + 1) + q[0]], z))
-			for tri in [[0, 1, 2], [0, 2, 3]]:
-				var a: Vector3 = p[tri[0]]
-				var b: Vector3 = p[tri[1]]
-				var c: Vector3 = p[tri[2]]
-				var n := (b - a).cross(c - a).normalized()
-				if n.y < 0.0:
-					n = -n
-				var mid := (a + b + c) / 3.0
-				var col := _ground_color(mid.x, mid.z, mid.y, 1.0 - n.y)
-				for v in [a, b, c]:
-					st.set_color(col)
-					st.set_normal(n)
-					st.add_vertex(v)
-	var mat := StandardMaterial3D.new()
-	mat.vertex_color_use_as_albedo = true
-	mat.roughness = 0.95
+			var a := j * W + i
+			st.add_index(a); st.add_index(a + 1); st.add_index(a + W + 1)
+			st.add_index(a); st.add_index(a + W + 1); st.add_index(a + W)
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://shaders/ground.gdshader")
 	var mi := MeshInstance3D.new()
 	mi.mesh = st.commit()
 	mi.material_override = mat
@@ -487,3 +490,46 @@ func reveal_deposit(d: Dictionary) -> void:
 	g.position = d.pos
 	add_child(g)
 	d.node = g
+
+
+# Grasbüschel und Blumen als MultiMesh – lockern die Wiesen auf
+func _build_grass() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = world_seed + 21
+	var blade := PrismMesh.new()
+	blade.size = Vector3(0.5, 0.8, 0.1)
+	var mat := StandardMaterial3D.new()
+	mat.vertex_color_use_as_albedo = true
+	mat.roughness = 1.0
+	mat.vertex_color_is_srgb = true
+	blade.material = mat
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.mesh = blade
+	var pts: Array = []
+	var count := int(16000 * (SIZE / 360.0) * (SIZE / 360.0))
+	for k in count:
+		var x := rng.randf_range(-SIZE * 0.48, SIZE * 0.48)
+		var z := rng.randf_range(-SIZE * 0.48, SIZE * 0.48)
+		var h := height(x, z)
+		if h < WATER_Y + 0.8 or mountain(x, z) > 5.0 or Vector2(x, z).length() < 12.0:
+			continue
+		pts.append([x, h, z])
+	mm.instance_count = pts.size()
+	for i in pts.size():
+		var p: Array = pts[i]
+		var sc := rng.randf_range(0.7, 1.4)
+		var t := Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(sc, sc * rng.randf_range(0.8, 1.5), sc)), Vector3(p[0], p[1] + 0.25 * sc, p[2]))
+		mm.set_instance_transform(i, t)
+		var r := rng.randf()
+		var col := Color(0.3, 0.5, 0.18).lerp(Color(0.42, 0.58, 0.22), rng.randf())
+		if r < 0.025: col = Color(0.95, 0.85, 0.3)      # Butterblume
+		elif r < 0.04: col = Color(0.9, 0.5, 0.65)     # Klee
+		elif r < 0.055: col = Color(0.95, 0.95, 0.95)   # Gänseblümchen
+		mm.set_instance_color(i, col)
+	var mi := MultiMeshInstance3D.new()
+	mi.multimesh = mm
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.name = "Gras"
+	add_child(mi)
