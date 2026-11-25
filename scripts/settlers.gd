@@ -195,6 +195,8 @@ func _next_job(w: Dictionary) -> void:
 		w.q = [{"wait": 3.0}, {"fn": func(): _next_job(w)}]
 		return
 	match w.job:
+		"fischer":
+			_fisher_job(w, b)
 		"holzfaeller":
 			var tr_ = _free(terrain.nearest_tree(b.pos, 22.0), terrain.trees, true)
 			if tr_ == null:
@@ -713,3 +715,60 @@ func _clear_props(b: Dictionary) -> void:
 		if is_instance_valid(b.props[id]):
 			b.props[id].queue_free()
 		b.props.erase(id)
+
+
+# ---------- Fischer: rudert mit seinem eigenen Boot hinaus und angelt ----------
+func _water_at(x: float, z: float) -> bool:
+	return terrain.height(x, z) < terrain.WATER_Y - 0.25
+
+func _fisher_job(w: Dictionary, b: Dictionary) -> void:
+	var wl = get_parent().get_node_or_null("Tiere")
+	# Fangplatz: tiefes Wasser 8–26 m vom Haus
+	var spot = null
+	var best := 1e9
+	for k in 48:
+		var a := k * TAU / 48.0
+		for r in [9.0, 13.0, 17.0, 21.0, 25.0]:
+			var p: Vector3 = b.pos + Vector3(cos(a) * r, 0, sin(a) * r)
+			if terrain.height(p.x, p.z) < terrain.WATER_Y - 0.8 and r < best:
+				best = r
+				spot = p
+	if spot == null or wl == null:
+		b.status = "ST_NO_FISH"
+		w.q = [{"wait": 5.0}, {"fn": func(): _next_job(w)}]
+		return
+	# Anlegestelle: vom Fangplatz Richtung Haus bis ans Ufer
+	if not b.has("boat"):
+		var dir: Vector3 = (b.pos - spot)
+		dir.y = 0
+		dir = dir.normalized()
+		var m: Vector3 = spot
+		for k in 80:
+			var nx: Vector3 = m + dir * 0.5
+			if not _water_at(nx.x, nx.z):
+				break
+			m = nx
+		var shore: Vector3 = m + dir * 1.6
+		shore.y = terrain.height(shore.x, shore.z)
+		b.boat = wl.make_fisher_boat(m, atan2(-dir.x, -dir.z))
+		b.boat_moor = m
+		b.boat_shore = shore
+	var boat: Dictionary = b.boat
+	var fish_at: Vector3 = spot + Vector3(randf_range(-2, 2), 0, randf_range(-2, 2))
+	if not _water_at(fish_at.x, fish_at.z):
+		fish_at = spot
+	b.status = "ST_WORKING"
+	w.q = [
+		{"go": b.boat_shore},
+		{"fn": func(): w.node.visible = false; boat.man.visible = true; boat.goto = fish_at},
+		{"until": func(): return boat.goto == null},
+		{"fn": func(): boat.fishing = true},
+		{"wait": economy.WORK_TIME * 0.7},
+		{"fn": func(): boat.fishing = false; boat.goto = b.boat_moor; boat.catch.visible = true},
+		{"until": func(): return boat.goto == null},
+		{"fn": func(): boat.man.visible = false; boat.catch.visible = false; w.node.position = b.boat_shore; w.node.visible = true; _carry(w, "fisch")},
+		{"go": door_of(b)},
+		{"fn": func(): _carry(w, null); economy.pending.append({"b": b, "item": "fisch"})},
+		{"wait": 2.0},
+		{"fn": func(): _next_job(w)},
+	]

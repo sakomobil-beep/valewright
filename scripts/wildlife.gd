@@ -52,12 +52,6 @@ func _spawn_all() -> void:
 			if terrain.height(p.x, p.z) < terrain.WATER_Y + 0.5:
 				continue
 			_deer.append(_make_deer(p, k == 0, rng))
-	# Boote: zwei auf dem Fluss, je eins auf großen Seen
-	for k in 2:
-		_boats.append(_make_boat({"kind": "river", "s": rng.randf_range(-0.35, 0.35) * terrain.SIZE, "dir": 1.0 if k == 0 else -1.0}))
-	for l in terrain.lakes:
-		if l.r > 11.0:
-			_boats.append(_make_boat({"kind": "lake", "lake": l, "a": rng.randf() * TAU}))
 
 # ---------- Vögel ----------
 func _make_bird(c: Vector3, rng: RandomNumberGenerator) -> Dictionary:
@@ -127,6 +121,7 @@ func _make_boat(d: Dictionary) -> Dictionary:
 		_box(o, Vector3(1.3, 0.05, 0.07), Vector3(0.6 * sx, -0.1, 0), Color(0.6, 0.45, 0.28), Vector3(0, 0, -0.25 * sx))
 		oars.append(o)
 	d.node = n
+	d.man = man
 	d.oars = oars
 	d.t = 0.0
 	return d
@@ -147,9 +142,9 @@ func _process(dt: float) -> void:
 	# Rehe grasen, ziehen weiter und flüchten vor Menschen
 	for d in _deer:
 		_deer_step(d, dt, t)
-	# Boote rudern den Fluss auf und ab bzw. im Kreis auf dem See
+	# Boote der Fischer: rudern zum Fangplatz, angeln, rudern zurück
 	for bt in _boats:
-		_boat_step(bt, dt, t)
+		_fisher_boat_step(bt, dt, t)
 
 func _deer_step(d: Dictionary, dt: float, t: float) -> void:
 	var n: Node3D = d.node
@@ -193,28 +188,54 @@ func _deer_step(d: Dictionary, dt: float, t: float) -> void:
 		d.neck.rotation.x = lerpf(d.neck.rotation.x, 0.0, dt * 4.0)
 	n.position.y = terrain.height(n.position.x, n.position.z)
 
-func _boat_step(b: Dictionary, dt: float, t: float) -> void:
+# Boot gehört zu einer Fischerhütte; liegt am Ufer, bis der Fischer einsteigt
+func make_fisher_boat(at: Vector3, yaw: float) -> Dictionary:
+	var d := _make_boat({})
+	var n: Node3D = d.node
+	n.position = Vector3(at.x, terrain.WATER_Y + 0.02, at.z)
+	n.rotation.y = yaw
+	d.man.visible = false
+	# Angelrute mit Schnur
+	var rod := Node3D.new()
+	rod.position = Vector3(0.15, 0.95, 0.0)
+	rod.rotation.x = -0.6
+	d.man.add_child(rod)
+	_box(rod, Vector3(0.03, 0.03, 1.8), Vector3(0, 0, 0.9), Color(0.45, 0.32, 0.2))
+	_box(rod, Vector3(0.01, 1.1, 0.01), Vector3(0, -0.55, 1.8), Color(0.9, 0.9, 0.9), Vector3(0.6, 0, 0))
+	rod.visible = false
+	d.rod = rod
+	# Fang im Boot
+	var c := Sprite3D.new()
+	c.texture = UiIcons.item_tex("fisch")
+	c.pixel_size = 0.006
+	c.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+	c.position = Vector3(0, 0.6, 0.7)
+	c.visible = false
+	n.add_child(c)
+	d.catch = c
+	d.goto = null
+	d.fishing = false
+	_boats.append(d)
+	return d
+
+func _fisher_boat_step(b: Dictionary, dt: float, t: float) -> void:
 	var n: Node3D = b.node
-	var p: Vector3
-	var ahead: Vector3
-	if b.kind == "river":
-		b.s += b.dir * 1.4 * dt
-		var lim: float = terrain.SIZE * 0.45
-		if absf(b.s) > lim:
-			b.dir = -b.dir
-			b.s = clampf(b.s, -lim, lim)
-		p = Vector3(terrain.river_x(b.s) + 2.0 * b.dir, 0, b.s)
-		ahead = Vector3(terrain.river_x(b.s + b.dir), 0, b.s + b.dir) - Vector3(terrain.river_x(b.s), 0, b.s)
-	else:
-		b.a += dt * 0.12
-		var l: Dictionary = b.lake
-		p = Vector3(l.p.x + cos(b.a) * l.r * 0.55, 0, l.p.y + sin(b.a) * l.r * 0.55)
-		ahead = Vector3(-sin(b.a), 0, cos(b.a))
-	p.y = terrain.WATER_Y + 0.02 + sin(t * 1.8 + p.x) * 0.04
-	n.position = p
-	n.rotation.y = atan2(ahead.x, ahead.z)
+	var moving := false
+	if b.goto != null:
+		var to: Vector3 = b.goto - n.position
+		to.y = 0
+		if to.length() < 0.3:
+			b.goto = null
+		else:
+			n.position += to.normalized() * minf(to.length(), 1.6 * dt)
+			n.rotation.y = lerp_angle(n.rotation.y, atan2(to.x, to.z), minf(1.0, dt * 3.0))
+			moving = true
+	n.position.y = terrain.WATER_Y + 0.02 + sin(t * 1.8 + n.position.x) * 0.04
 	n.rotation.z = sin(t * 1.3) * 0.04
-	var r := sin(t * 3.0)
+	b.rod.visible = b.fishing
+	var r := sin(t * 3.0) if moving else 0.0
 	for i in 2:
 		b.oars[i].rotation.y = r * 0.5 * (1 if i == 0 else -1)
-		b.oars[i].rotation.x = cos(t * 3.0) * 0.15
+		b.oars[i].rotation.x = (cos(t * 3.0) * 0.15) if moving else 0.0
+	if b.fishing:
+		b.rod.rotation.x = -0.6 + sin(t * 1.1) * 0.06
