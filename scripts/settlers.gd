@@ -231,6 +231,14 @@ func _next_job(w: Dictionary) -> void:
 				{"wait": 1.5},
 				{"fn": func(): _next_job(w)},
 			]
+			# jeden dritten Baum pflanzt er neu (wie im Browser)
+			b.cut = int(b.get("cut", 0)) + 1
+			if b.cut % 3 == 0 and not tr_.get("blocked", false) and Vector2(tr_.pos.x - b.pos.x, tr_.pos.z - b.pos.z).length() > 6.0:
+				w.q.insert(w.q.size() - 2, {"go": _beside(tr_.pos, b.pos)})
+				w.q.insert(w.q.size() - 2, {"fn": func(): b.status = "ST_PLANT"})
+				w.q.insert(w.q.size() - 2, {"anim": "plant", "wait": 1.5})
+				w.q.insert(w.q.size() - 2, {"fn": func(): if not tr_.alive and not tr_.get("blocked", false): terrain.plant_tree(tr_)})
+				w.q.insert(w.q.size() - 2, {"go": door_of(b)})
 		"steinmetz":
 			var rk = _free(terrain.nearest_rock(b.pos, 22.0), terrain.rocks, false)
 			if rk == null:
@@ -247,6 +255,22 @@ func _next_job(w: Dictionary) -> void:
 				{"go": door_of(b)},
 				{"fn": func(): _carry(w, null); economy.put_out(b, "stein", 1)},
 				{"wait": 1.5},
+				{"fn": func(): _next_job(w)},
+			]
+		"brunnen":
+			# schöpft sichtbar Wasser am Brunnen und bringt es ins Haus (wie im Browser)
+			if b.get("paused", false) or economy.out_total(b) >= 8:
+				b.status = "ST_PAUSED" if b.get("paused", false) else "ST_OUT_FULL"
+				w.q = [{"wait": 2.0}, {"fn": func(): _next_job(w)}]
+				return
+			b.status = "ST_DRAW_WATER"
+			w.q = [
+				{"go": door_of(b)},
+				{"face": b.pos},
+				{"anim": "stoke", "wait": 2.4 * 2.5 * economy.tf() * (0.8 if b.get("up", 0) > 0 else 1.0)},
+				{"fn": func(): _carry(w, "wasser")},
+				{"wait": 0.6},
+				{"fn": func(): _carry(w, null); economy.put_out(b, "wasser", 2)},
 				{"fn": func(): _next_job(w)},
 			]
 		"bauernhof":

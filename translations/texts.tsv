@@ -432,3 +432,6 @@ ST_SOW	Sät	Sowing
 ST_WAIT_RIPE	Wartet, bis das Getreide reif ist	Waiting for the grain to ripen
 ST_FETCH_PIG	Holt ein großes Schwein	Fetching a grown pig
 ST_FEED	Füttert die Ferkel	Feeding the piglets
+ST_PLANT	Pflanzt neuen Baum	Planting a new tree
+ST_DRAW_WATER	Schöpft Wasser	Drawing water
+INFO_FIELDS	Felder: %d · reif: %d · wachsend: %d	Fields: %d · ripe: %d · growing: %d

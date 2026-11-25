@@ -552,6 +552,9 @@ func _orders_text(b: Dictionary) -> String:
 			return "\n" + tr("ORD_SMITH") % [int(b.get("wo", {}).get("schwert", 0)), int(b.get("wo", {}).get("schild", 0))]
 		"wagner":
 			return "\n" + tr("ORD_WAGNER") % int(b.get("orders", 0))
+	if b.has("plots"):
+		var pl: Array = b.plots
+		return "\n" + tr("INFO_FIELDS") % [pl.size(), pl.filter(func(q): return q.state == "reif").size(), pl.filter(func(q): return q.state == "wächst").size()]
 	if military and military.POSTS.has(b.type) and b.get("owner", 0) == 0:
 		var t := ""
 		for s in military.soldiers:
