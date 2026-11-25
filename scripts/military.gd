@@ -31,6 +31,9 @@ var claims: Array = []          # {pos, r, owner, b}
 var soldiers: Array = []        # {w (settlers-Eintrag), owner, str, home, state}
 var ais: Array = []             # {id, name, lager, buildings, reserve, timers, diff}
 var _border: MultiMeshInstance3D
+var _caps: MultiMeshInstance3D
+var _seam: MeshInstance3D
+var _seam_mat: ShaderMaterial
 var time := 0.0
 var game_over := false
 
@@ -39,20 +42,38 @@ func _ready() -> void:
 	_half = terrain.SIZE * 0.5
 	n = int(terrain.SIZE / CELL)
 	owner_grid.resize(n * n)
+	# Grenze: weicher Saum am Boden + alle paar Meter ein Grenzstein mit Kappe in Spielerfarbe
+	_seam = MeshInstance3D.new()
+	_seam_mat = ShaderMaterial.new()
+	_seam_mat.shader = load("res://shaders/border_seam.gdshader")
+	_seam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_seam)
+	var smat := ShaderMaterial.new()
+	smat.shader = load("res://shaders/fogged.gdshader")
+	smat.set_shader_parameter("albedo", Color(0.62, 0.6, 0.56))
+	var stone := BoxMesh.new()
+	stone.size = Vector3(0.5, 0.85, 0.36)
+	stone.material = smat
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.use_colors = true
-	var post := BoxMesh.new()
-	post.size = Vector3(0.35, 2.2, 0.35)
-	var mat := ShaderMaterial.new()
-	mat.shader = load("res://shaders/fogged.gdshader")
-	mat.set_shader_parameter("use_instance_color", true)
-	post.material = mat
-	mm.mesh = post
+	mm.mesh = stone
 	_border = MultiMeshInstance3D.new()
 	_border.multimesh = mm
-	_border.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_border)
+	var cmat := ShaderMaterial.new()
+	cmat.shader = load("res://shaders/fogged.gdshader")
+	cmat.set_shader_parameter("use_instance_color", true)
+	var cap := BoxMesh.new()
+	cap.size = Vector3(0.56, 0.16, 0.42)
+	cap.material = cmat
+	var cm := MultiMesh.new()
+	cm.transform_format = MultiMesh.TRANSFORM_3D
+	cm.use_colors = true
+	cm.mesh = cap
+	_caps = MultiMeshInstance3D.new()
+	_caps.multimesh = cm
+	_caps.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_caps)
 	claims.append({"pos": Vector3.ZERO, "r": START_RADIUS, "owner": 0, "b": null})
 
 func start_ais(count: int, diff: String, list: Array = []) -> void:
@@ -176,27 +197,117 @@ func recompute() -> void:
 			owner_grid[j * n + i] = best
 	_draw_border()
 
+# Grenze als weiche Linie (Marching Squares über das Besitzraster) statt Treppenstufen
+func _corner(o: int, ci: int, cj: int) -> float:
+	var c := 0
+	for d in [Vector2i(-1, -1), Vector2i(0, -1), Vector2i(-1, 0), Vector2i(0, 0)]:
+		var x: int = ci + d.x
+		var y: int = cj + d.y
+		if x >= 0 and y >= 0 and x < n and y < n and owner_grid[y * n + x] == o:
+			c += 1
+	return c / 4.0
+
+func _field(o: int, x: float, z: float, cache: Dictionary) -> float:
+	var gx: float = (x + _half) / CELL
+	var gz: float = (z + _half) / CELL
+	var i := clampi(int(floor(gx)), 0, n - 1)
+	var j := clampi(int(floor(gz)), 0, n - 1)
+	var u := clampf(gx - i, 0.0, 1.0)
+	var v := clampf(gz - j, 0.0, 1.0)
+	var f := func(a: int, b: int) -> float:
+		var key := a * 100000 + b
+		if not cache.has(key):
+			cache[key] = _corner(o, a, b)
+		return cache[key]
+	return lerpf(lerpf(f.call(i, j), f.call(i + 1, j), u), lerpf(f.call(i, j + 1), f.call(i + 1, j + 1), u), v)
+
 func _draw_border() -> void:
-	var list: Array = []
-	for j in n:
-		for i in n:
-			var o := owner_grid[j * n + i]
-			if o < 0:
-				continue
-			for dv in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]:
-				var q: Vector2i = Vector2i(i, j) + dv
-				if q.x < 0 or q.y < 0 or q.x >= n or q.y >= n or owner_grid[q.y * n + q.x] != o:
-					var x: float = -_half + (i + 0.5 + dv.x * 0.45) * CELL
-					var z: float = -_half + (j + 0.5 + dv.y * 0.45) * CELL
-					var h: float = terrain.height(x, z)
-					if h > terrain.WATER_Y:
-						list.append([Vector3(x, h + 1.0, z), OWNER_COL[o]])
-					break
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var stones: Array = []
+	var W := 2.4
+	var any := false
+	var owners := {}
+	for v in owner_grid:
+		if v >= 0:
+			owners[v] = true
+	for o in owners:
+		var col: Color = OWNER_COL[o]
+		var cache := {}
+		var cv := func(a: int, b: int) -> float:
+			var key := a * 100000 + b
+			if not cache.has(key):
+				cache[key] = _corner(o, a, b)
+			return cache[key]
+		var cnt := 0
+		for j in n:
+			for i in n:
+				var c00: float = cv.call(i, j)
+				var c10: float = cv.call(i + 1, j)
+				var c11: float = cv.call(i + 1, j + 1)
+				var c01: float = cv.call(i, j + 1)
+				var x0: float = -_half + i * CELL
+				var z0: float = -_half + j * CELL
+				var P: Array = []
+				for e in [[c00, c10, Vector2(x0, z0), Vector2(x0 + CELL, z0)], [c10, c11, Vector2(x0 + CELL, z0), Vector2(x0 + CELL, z0 + CELL)], [c11, c01, Vector2(x0 + CELL, z0 + CELL), Vector2(x0, z0 + CELL)], [c01, c00, Vector2(x0, z0 + CELL), Vector2(x0, z0)]]:
+					var a: float = e[0]
+					var b2: float = e[1]
+					if (a - 0.45) * (b2 - 0.45) < 0.0:
+						var t: float = (0.45 - a) / (b2 - a)
+						P.append((e[2] as Vector2).lerp(e[3], t))
+				var segs: Array = []
+				if P.size() == 2:
+					segs.append([P[0], P[1]])
+				elif P.size() == 4:
+					segs.append([P[0], P[1]])
+					segs.append([P[2], P[3]])
+				for sg in segs:
+					var p0: Vector2 = sg[0]
+					var p1: Vector2 = sg[1]
+					var dirv := (p1 - p0)
+					if dirv.length() < 0.01:
+						continue
+					var nn := Vector2(-dirv.y, dirv.x).normalized()
+					var mid := (p0 + p1) * 0.5
+					if _field(o, mid.x + nn.x * 1.0, mid.y + nn.y * 1.0, cache) < _field(o, mid.x - nn.x * 1.0, mid.y - nn.y * 1.0, cache):
+						nn = -nn      # nn zeigt nach innen
+					var pts := [p0, p1, p1 + nn * W, p0 + nn * W]
+					var vs: Array = []
+					var under := false
+					for m in 4:
+						var pp: Vector2 = pts[m]
+						var h: float = terrain.height(pp.x, pp.y)
+						if h < terrain.WATER_Y:
+							under = true
+						vs.append(Vector3(pp.x, h + 0.12, pp.y))
+					if under:
+						continue
+					any = true
+					var uvy := [0.0, 0.0, 1.0, 1.0]
+					for idx in [0, 1, 2, 0, 2, 3]:
+						st.set_color(col)
+						st.set_uv(Vector2(0, uvy[idx]))
+						st.add_vertex(vs[idx])
+					cnt += 1
+					if cnt % 3 == 0:
+						var sp := mid + nn * 0.35
+						var h2: float = terrain.height(sp.x, sp.y)
+						stones.append([Vector3(sp.x, h2, sp.y), atan2(dirv.x, dirv.y), col])
+	if any:
+		var mesh := st.commit()
+		mesh.surface_set_material(0, _seam_mat)
+		_seam.mesh = mesh
+	else:
+		_seam.mesh = null
 	var mm := _border.multimesh
-	mm.instance_count = list.size()
-	for k in list.size():
-		mm.set_instance_transform(k, Transform3D(Basis(), list[k][0]))
-		mm.set_instance_color(k, list[k][1])
+	var cm := _caps.multimesh
+	mm.instance_count = stones.size()
+	cm.instance_count = stones.size()
+	for k in stones.size():
+		var bas := Basis(Vector3.UP, stones[k][1])
+		mm.set_instance_transform(k, Transform3D(bas, stones[k][0] + Vector3(0, 0.35, 0)))
+		cm.set_instance_transform(k, Transform3D(bas, stones[k][0] + Vector3(0, 0.82, 0)))
+		cm.set_instance_color(k, stones[k][2])
 
 # ---------- Spieler: Militärgebäude besetzen ----------
 func count_available(owner: int) -> int:
