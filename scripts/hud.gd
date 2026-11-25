@@ -35,8 +35,14 @@ var _unread := 0
 var labels_on := false
 var _game_time := 0.0
 
+var stats_win: Node
+
 func setup(l: CanvasLayer) -> void:
 	layer = l
+	stats_win = preload("res://scripts/stats_window.gd").new()
+	stats_win.main = main
+	stats_win.layer = l
+	add_child(stats_win)
 	var bar := PanelContainer.new()
 	_panel_style(bar, 8)
 	bar.anchor_left = 1.0
@@ -53,7 +59,7 @@ func setup(l: CanvasLayer) -> void:
 		b.tooltip_text = tr({0.0: "SPD_PAUSE", 1.0: "SPD_NORMAL", 2.0: "SPD_FAST", 4.0: "SPD_FASTEST"}[sp[0]])
 		_speed_btns.append([b, sp[0]])
 	hb.add_child(VSeparator.new())
-	_icon_btn(hb, "📊", func(): open_window("stats")).tooltip_text = tr("UI_STATS")
+	_icon_btn(hb, "📊", func(): stats_win.toggle()).tooltip_text = tr("UI_STATS")
 	_icon_btn(hb, "📈", func(): open_window("balance")).tooltip_text = tr("UI_BALANCE")
 	_icon_btn(hb, "🔗", func(): open_window("chains")).tooltip_text = tr("UI_CHAINS")
 	_icon_btn(hb, "⚔️", func(): open_window("military")).tooltip_text = tr("UI_MILITARY")
@@ -100,7 +106,7 @@ func _unhandled_input(e: InputEvent) -> void:
 			KEY_3:
 				set_speed(4.0)
 			KEY_T:
-				open_window("stats")
+				stats_win.toggle()
 			KEY_B:
 				open_window("balance")
 			KEY_K:

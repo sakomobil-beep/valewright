@@ -441,3 +441,29 @@ SPD_PAUSE	Pause (Leertaste)	Pause (space)
 SPD_NORMAL	Normale Geschwindigkeit	Normal speed
 SPD_FAST	Doppelt so schnell	Double speed
 SPD_FASTEST	Vierfach schnell	Four times as fast
+STW_OVERVIEW	Überblick	Overview
+STW_GOODS	Waren	Goods
+STW_BUILDINGS	Gebäude	Buildings
+STW_AGO	vor %d Min.	%d min ago
+STW_NOW	jetzt	now
+STW_CARRIERS	Träger	Carriers
+STW_HAPPY	zufriedene Häuser	content houses
+STW_STOCK_TOTAL	Waren im Lager	goods in stock
+STW_GROWTH	Entwicklung der Siedlung	Settlement growth
+STW_TOP	Was am meisten hergestellt wird (letzte 5 Minuten)	Most produced (last 5 minutes)
+STW_NO_PROD	Noch keine Herstellung – baue Holzfäller und Sägewerk.	Nothing produced yet – build a woodcutter and a sawmill.
+STW_PER_MIN	%s pro Minute	%s per minute
+STW_GOODS_HINT	Tippe auf eine Ware, um ihren Verlauf zu sehen. „Bilanz“ = Herstellung minus Verbrauch pro Minute (letzte 5 Minuten).	Tap a good to see its history. “Balance” = production minus use per minute (last 5 minutes).
+STW_IN_STOCK	im Lager:	in stock:
+STW_STOCK	Lagerbestand	Stock
+STW_COL_ITEM	Ware	Good
+STW_COL_STOCK	Lager	Stock
+STW_COL_MADE	hergestellt	produced
+STW_COL_USED	verbraucht	used
+STW_COL_NET	Bilanz/Min.	balance/min
+STW_COL_TREND	Verlauf	history
+STW_COL_BLD	Gebäude	Building
+STW_COL_COUNT	Anzahl	Count
+STW_COL_WORK	arbeiten	working
+STW_COL_WAIT	warten	waiting
+STW_COL_SITE	im Bau	under construction
