@@ -68,6 +68,7 @@ func main_menu() -> void:
 	_button(vb, "MENU_CAMPAIGN", campaign_menu)
 	_button(vb, "MENU_NEW", new_game_menu)
 	_button(vb, "MENU_LOAD", func(): load_menu(false))
+	_button(vb, "MENU_SETTINGS", func(): settings_menu(false))
 	_button(vb, "MENU_HELP", func(): help_page(false))
 	_button(vb, "MENU_ABOUT", func(): about_page(false))
 	var hb := HBoxContainer.new()
@@ -217,6 +218,7 @@ func pause_menu() -> void:
 	_button(vb, "MENU_CONTINUE", func(): close(); get_tree().paused = false)
 	_button(vb, "MENU_SAVE", save_menu)
 	_button(vb, "MENU_LOAD", func(): load_menu(true))
+	_button(vb, "MENU_SETTINGS", func(): settings_menu(true))
 	_button(vb, "MENU_HELP", func(): help_page(true))
 	_button(vb, "MENU_MAIN", func(): get_tree().paused = false; Session.to_menu())
 
@@ -299,4 +301,76 @@ func about_page(in_game: bool) -> void:
 	vb.add_child(HSeparator.new())
 	_label(vb, "ABOUT_CREDITS_T", 18, GOLD, true)
 	_label(vb, "ABOUT_CREDITS", 14, TEXT, true)
+	_button(vb, "UI_BACK", pause_menu if in_game else main_menu)
+
+# ---------- Einstellungen ----------
+const SETTINGS := "user://settings.cfg"
+var opts := {"volume": 0.8, "shadows": true, "effects": true, "cam_speed": 1.0, "language": ""}
+
+func load_settings() -> void:
+	var c := ConfigFile.new()
+	if c.load(SETTINGS) == OK:
+		for k in opts:
+			opts[k] = c.get_value("game", k, opts[k])
+
+func save_settings() -> void:
+	var c := ConfigFile.new()
+	c.load(SETTINGS)
+	for k in opts:
+		c.set_value("game", k, opts[k])
+	c.save(SETTINGS)
+
+func apply_settings() -> void:
+	load_settings()
+	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(0.001, opts.volume)))
+	var sun: DirectionalLight3D = main.get_node_or_null("Sonne")
+	if sun:
+		sun.shadow_enabled = opts.shadows
+	for we in main.find_children("*", "WorldEnvironment", false, false):
+		we.environment.ssao_enabled = opts.effects
+		we.environment.glow_enabled = opts.effects
+	var rig = main.get_node_or_null("Kamera")
+	if rig:
+		rig.pan_speed = 0.9 * opts.cam_speed
+
+func settings_menu(in_game: bool) -> void:
+	load_settings()
+	var vb := _window(480)
+	_label(vb, "MENU_SETTINGS", 28, GOLD, true)
+	_label(vb, "SET_VOLUME")
+	var vol := HSlider.new()
+	vol.min_value = 0.0
+	vol.max_value = 1.0
+	vol.step = 0.05
+	vol.value = opts.volume
+	vol.value_changed.connect(func(v): opts.volume = v; save_settings(); apply_settings())
+	vb.add_child(vol)
+	_label(vb, "SET_CAMSPEED")
+	var cs := HSlider.new()
+	cs.min_value = 0.4
+	cs.max_value = 2.0
+	cs.step = 0.1
+	cs.value = opts.cam_speed
+	cs.value_changed.connect(func(v): opts.cam_speed = v; save_settings(); apply_settings())
+	vb.add_child(cs)
+	var sh := CheckButton.new()
+	sh.text = "SET_SHADOWS"
+	sh.button_pressed = opts.shadows
+	sh.toggled.connect(func(v): opts.shadows = v; save_settings(); apply_settings())
+	vb.add_child(sh)
+	var fx := CheckButton.new()
+	fx.text = "SET_EFFECTS"
+	fx.button_pressed = opts.effects
+	fx.toggled.connect(func(v): opts.effects = v; save_settings(); apply_settings())
+	vb.add_child(fx)
+	_label(vb, "SET_LANGUAGE")
+	var hb := HBoxContainer.new()
+	vb.add_child(hb)
+	for lang in ["de", "en"]:
+		var b := Button.new()
+		b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		b.text = "Deutsch" if lang == "de" else "English"
+		b.pressed.connect(func(): I18n.set_language(lang); settings_menu(in_game))
+		hb.add_child(b)
+	_label(vb, "SET_KEYS", 12)
 	_button(vb, "UI_BACK", pause_menu if in_game else main_menu)

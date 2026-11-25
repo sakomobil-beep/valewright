@@ -11,6 +11,10 @@ const Military := preload("res://scripts/military.gd")
 const Missions := preload("res://scripts/missions.gd")
 const SaveGame := preload("res://scripts/savegame.gd")
 const GameUI := preload("res://scripts/gameui.gd")
+const Hud := preload("res://scripts/hud.gd")
+const Market := preload("res://scripts/market.gd")
+var hud: Node
+var market: Node
 var missions: Node
 var savegame: Node
 var gameui: CanvasLayer
@@ -86,9 +90,19 @@ func _ready() -> void:
 	if not Session.started:
 		# Hauptmenü: die Welt dient als Kulisse
 		ui_layer.visible = false
+		gameui.apply_settings()
 		gameui.main_menu()
 		return
 	missions.setup(ui_layer)
+	hud = Hud.new()
+	hud.name = "HUD"
+	hud.main = self
+	add_child(hud)
+	hud.setup(ui_layer)
+	market = Market.new()
+	market.main = self
+	add_child(market)
+	gameui.apply_settings()
 	if Session.load_data != null:
 		savegame.apply(Session.load_data)
 		Session.load_data = null
@@ -192,22 +206,6 @@ func _setup_ui() -> void:
 	var info := Label.new()
 	info.text = "UI_STAGE6"
 	vb.add_child(info)
-	var ctr := Label.new()
-	ctr.text = "UI_CONTROLS"
-	ctr.add_theme_color_override("font_color", Color(0.96, 0.9, 0.78))
-	vb.add_child(ctr)
-	var hb := HBoxContainer.new()
-	vb.add_child(hb)
-	var ll := Label.new()
-	ll.text = "UI_LANGUAGE"
-	ll.add_theme_color_override("font_color", Color(0.96, 0.9, 0.78))
-	hb.add_child(ll)
-	for lang in ["de", "en"]:
-		var b := Button.new()
-		b.text = "Deutsch" if lang == "de" else "English"
-		b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-		b.pressed.connect(func(): I18n.set_language(lang))
-		hb.add_child(b)
 	info.add_theme_color_override("font_color", Color(0.96, 0.9, 0.78))
 	var mb := Button.new()
 	mb.text = "UI_MENU_BTN"

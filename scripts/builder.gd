@@ -9,6 +9,9 @@ var economy: Node
 var settlers: Node3D
 var military: Node3D
 var attack_btn: Button
+var act_box: HBoxContainer
+var act_btns := {}
+var moving = null
 var enemy = null
 var _buttons := {}
 var type_row: HBoxContainer
@@ -88,11 +91,8 @@ func setup_ui(layer: CanvasLayer) -> void:
 	isb.set_corner_radius_all(10)
 	isb.set_content_margin_all(10)
 	info_panel.add_theme_stylebox_override("panel", isb)
-	info_panel.anchor_left = 1.0
-	info_panel.anchor_right = 1.0
-	info_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	info_panel.offset_top = 14
-	info_panel.offset_right = -14
+	info_panel.offset_left = 14
+	info_panel.offset_top = 190
 	info_panel.custom_minimum_size = Vector2(260, 0)
 	info_panel.visible = false
 	layer.add_child(info_panel)
@@ -112,6 +112,19 @@ func setup_ui(layer: CanvasLayer) -> void:
 				hint.visible = true
 			info_panel.visible = false)
 	ivb.add_child(attack_btn)
+	# Gebäude-Aktionen: Pause, Vorrang, Umsetzen, Abreißen
+	act_box = HBoxContainer.new()
+	act_box.add_theme_constant_override("separation", 4)
+	ivb.add_child(act_box)
+	for a in [["pause", "⏸"], ["prio", "⭐"], ["move", "↔️"], ["demolish", "🗑️"]]:
+		var b := Button.new()
+		b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		b.custom_minimum_size = Vector2(44, 34)
+		b.text = a[1]
+		b.tooltip_text = "ACT_" + a[0].to_upper()
+		b.pressed.connect(func(): _action(a[0]))
+		act_box.add_child(b)
+		act_btns[a[0]] = b
 	confirm_box = HBoxContainer.new()
 	confirm_box.anchor_left = 0.5
 	confirm_box.anchor_right = 0.5
@@ -192,8 +205,18 @@ func _shadows(n: Node) -> void:
 	for c in n.get_children():
 		_shadows(c)
 
-func start(t: String) -> void:
+func start(t: String, move := false) -> void:
+	var keep = moving if move else null
 	cancel()
+	moving = keep
+	if moving != null:
+		placing = t
+		ghost = model(t, moving.get("lvl", 0))
+		add_child(ghost)
+		chosen = false
+		hint.text = tr("UI_MOVE_HINT")
+		hint.visible = true
+		return
 	if not economy.is_unlocked(t):
 		hint.text = tr("UI_LOCKED_TIER") % tr("HOUSE_%d" % (int(economy.data.unlock[t]) - 1))
 		hint.visible = true
@@ -210,6 +233,7 @@ func start(t: String) -> void:
 	hint.visible = true
 
 func cancel() -> void:
+	moving = null
 	if ghost:
 		ghost.queue_free()
 	ghost = null
@@ -250,6 +274,8 @@ func _no_overlap(p: Vector3, r: float) -> bool:
 	if Vector2(p.x, p.z).length() < 9.5:
 		return false
 	for b in buildings:
+		if b == moving:
+			continue
 		if Vector2(b.pos.x - p.x, b.pos.z - p.z).length() < r + float(economy.data.types[b.type].r) * SCALE + 0.6:
 			return false
 	return true
@@ -280,7 +306,11 @@ func _process(_dt: float) -> void:
 		attack_btn.visible = true
 		return
 	attack_btn.visible = false
+	act_box.visible = selected != null and selected.type != "bruecke"
 	if selected != null and info_panel.visible:
+		act_btns.pause.text = "▶" if selected.get("paused", false) else "⏸"
+		act_btns.prio.modulate = Color(1, 0.85, 0.3) if selected.get("prio", false) else Color(1, 1, 1, 0.6)
+		act_btns.prio.text = "⭐"
 		var b: Dictionary = selected
 		var txt := tr(_key(b.type)) + "\n" + tr(b.status)
 		if b.type == "wohnhaus" and b.has("lvl") and b.build >= 1.0:
@@ -293,6 +323,46 @@ func _process(_dt: float) -> void:
 		if b.build < 1.0:
 			txt += "  %d %%" % int(b.build * 100.0)
 		info_label.text = txt
+
+func _action(a: String) -> void:
+	if selected == null:
+		return
+	var b: Dictionary = selected
+	match a:
+		"pause":
+			b.paused = not b.get("paused", false)
+			if b.paused:
+				b.status = "ST_PAUSED"
+		"prio":
+			b.prio = not b.get("prio", false)
+		"demolish":
+			_demolish(b)
+		"move":
+			if military and military.is_military(b.type):
+				return
+			moving = b
+			start(b.type, true)
+
+# Abreißen: die Hälfte der Baukosten kommt zurück
+func _demolish(b: Dictionary) -> void:
+	var c: Dictionary = economy.type_info(b.type).cost
+	for k in c:
+		economy.add(k, int(c[k]) / 2)
+	b.removed = true
+	b.destroyed = true
+	buildings.erase(b)
+	economy.buildings.erase(b)
+	if military:
+		military.claims = military.claims.filter(func(x): return x.b != b)
+		military.recompute()
+	if settlers:
+		settlers.unblock_area(b.pos, 2.0 * SCALE)
+		settlers.release(b)
+	var tw := create_tween()
+	tw.tween_property(b.node, "scale:y", 0.02, 0.6)
+	tw.tween_callback(b.node.queue_free)
+	selected = null
+	info_panel.visible = false
 
 func _select_at(screen: Vector2) -> void:
 	var p = ground_point(screen)
@@ -441,6 +511,17 @@ func place_loaded(sv: Dictionary) -> void:
 
 func confirm() -> void:
 	if not chosen or not ghost:
+		return
+	if moving != null:
+		var b: Dictionary = moving
+		if settlers:
+			settlers.unblock_area(b.pos, 2.0 * SCALE)
+			settlers.block_area(ghost.position, 2.0 * SCALE)
+		b.pos = ghost.position
+		b.node.position = ghost.position
+		b.node.rotation.y = ghost_rot
+		economy.message.emit(tr("MSG_MOVED"))
+		cancel()
 		return
 	if placing == "bruecke":
 		if _span != null:

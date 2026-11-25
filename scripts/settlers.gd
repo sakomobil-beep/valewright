@@ -67,6 +67,26 @@ func _cell(p: Vector3) -> Vector2i:
 	var n := grid.region.size.x
 	return Vector2i(clampi(int((p.x + _half) / CELL), 0, n - 1), clampi(int((p.z + _half) / CELL), 0, n - 1))
 
+func unblock_area(p: Vector3, r: float) -> void:
+	var c := _cell(p)
+	var k := int(ceil(r / CELL))
+	for j in range(-k, k + 1):
+		for i in range(-k, k + 1):
+			var q := c + Vector2i(i, j)
+			if grid.is_in_boundsv(q) and Vector2(i, j).length() * CELL <= r:
+				var x := -_half + (q.x + 0.5) * CELL
+				var z := -_half + (q.y + 0.5) * CELL
+				if terrain.height(x, z) > terrain.WATER_Y + 0.35:
+					grid.set_point_solid(q, false)
+
+# Arbeiter eines abgerissenen Gebäudes gehen heim
+func release(b: Dictionary) -> void:
+	for w in workers:
+		if w.get("home") == b:
+			w.home = null
+			w.node.visible = true
+			w.q = [{"go": lager_door()}, {"fn": func(): _remove(w)}]
+
 func block_area(p: Vector3, r: float) -> void:
 	var c := _cell(p)
 	var k := int(ceil(r / CELL))
@@ -149,7 +169,12 @@ func _on_built(b: Dictionary) -> void:
 		w.q = [{"go": door_of(b)}, {"fn": func(): _next_job(w)}]
 
 func _next_job(w: Dictionary) -> void:
+	if w.home == null:
+		return
 	var b: Dictionary = w.home
+	if b.get("paused", false) or b.get("removed", false):
+		w.q = [{"wait": 3.0}, {"fn": func(): _next_job(w)}]
+		return
 	match w.job:
 		"holzfaeller":
 			var tr_ = _free(terrain.nearest_tree(b.pos, 22.0), terrain.trees, true)

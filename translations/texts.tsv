@@ -272,3 +272,47 @@ HELP_GOALS_T	🎯 Spielziele	🎯 Victory conditions
 HELP_GOALS	Eroberung: alle Gegner besiegen · Wirtschaftssieg: ein zufriedenes Herrenhaus und 300 Münzen · Gebietssieg: 60 % des bebaubaren Landes · Endlosspiel: kein Ende. Nach einem Sieg kannst du immer weiterspielen. Für jeden Gegner lassen sich Stärke und Verhalten (greift an / friedlich) einstellen.	Conquest: defeat all opponents · Economic victory: a happy manor and 300 coins · Territorial victory: 60% of the buildable land · Endless game: no ending. After a victory you can always keep playing. Strength and behaviour (attacks / peaceful) can be set for each opponent.
 HELP_SAVE_T	💾 Speichern	💾 Saving
 HELP_SAVE	Im Pausenmenü (Esc oder „☰ Menü“) kannst du in 3 Plätzen speichern und laden. Zusätzlich speichert das Spiel alle 3 Minuten automatisch.	In the pause menu (Esc or “☰ Menu”) you can save and load in 3 slots. The game also saves automatically every 3 minutes.
+MENU_SETTINGS	⚙️ Einstellungen	⚙️ Settings
+SET_VOLUME	🔊 Lautstärke	🔊 Volume
+SET_CAMSPEED	🎥 Kamera-Geschwindigkeit	🎥 Camera speed
+SET_SHADOWS	Schatten	Shadows
+SET_EFFECTS	Effekte (Umgebungsverdeckung, Leuchten)	Effects (ambient occlusion, glow)
+SET_LANGUAGE	🌐 Sprache	🌐 Language
+SET_KEYS	Tasten: Leertaste = Pause · 1/2/3 = Tempo · R = drehen · Esc = Menü · Handy: zwei Finger = zoomen & drehen	Keys: Space = pause · 1/2/3 = speed · R = rotate · Esc = menu · Phone: two fingers = zoom & rotate
+UI_STATS	Statistik	Statistics
+UI_CHAINS	Produktionsketten	Production chains
+UI_MARKET	Marktplatz	Marketplace
+UI_CLOSE	Schließen	Close
+ST_SETTLERS	Siedler	Settlers
+ST_SOLDIERS	Soldaten	Soldiers
+ST_BUILDINGS	Gebäude	Buildings
+ST_TABLE_HEAD	Ware · Lager · hergestellt · verbraucht	Good · stock · produced · used
+CHAINS_HINT	🟢 läuft · 🟠 es fehlt eine Zutat · ⚪ noch nicht gebaut	🟢 running · 🟠 an input is missing · ⚪ not built yet
+CHAINS_NATURE	Natur	nature
+CHAINS_WORKING	arbeiten	working
+CHAIN_MATERIALS	🪵 Baustoffe	🪵 Materials
+CHAIN_FOOD	🍞 Nahrung	🍞 Food
+CHAIN_FINE	🧀 Feine Kost	🧀 Fine food
+CHAIN_METAL	⛏️ Bergbau & Metall	⛏️ Mining & metal
+CHAIN_GOLD	🪙 Gold	🪙 Gold
+CHAIN_BEER	🍺 Bier & Met	🍺 Beer & mead
+CHAIN_CLOTH	👕 Kleidung	👕 Clothing
+CHAIN_POTTERY	🏺 Töpferei & Köhlerei	🏺 Pottery & charcoal
+CHAIN_LUXURY	💎 Luxus	💎 Luxury
+CHAIN_MILITARY	⚔️ Militär	⚔️ Military
+MSG_TRADER_HERE	🧑‍💼 Ein Händler ist auf dem Marktplatz angekommen!	🧑‍💼 A trader has arrived at the marketplace!
+MSG_TRADER_GONE	Der Händler ist weitergezogen.	The trader has moved on.
+MSG_NEED_MARKET	Baue zuerst einen Marktplatz (Siedlung).	Build a marketplace first (Settlement).
+MSG_TRADER_IN	Der nächste Händler kommt in ca. %d Min.	The next trader arrives in about %d min.
+ST_TRADER_HERE	Händler ist da – öffne 🏪 oben rechts	Trader is here – open 🏪 at the top right
+ST_TRADER_COMING	Wartet auf den nächsten Händler	Waiting for the next trader
+MARKET_HINT	Du hast %d 🪙. Der Händler kann dir diesmal noch %d 🪙 zahlen.	You have %d 🪙. The trader can still pay you %d 🪙 this visit.
+MARKET_BUY	Kaufen %d 🪙	Buy %d 🪙
+MARKET_SELL	Verkaufen +%d 🪙	Sell +%d 🪙
+ACT_PAUSE	Pausieren / fortsetzen	Pause / resume
+ACT_PRIO	Vorrang: bekommt Zutaten zuerst	Priority: gets inputs first
+ACT_MOVE	Umsetzen	Move
+ACT_DEMOLISH	Abreißen (die Hälfte des Materials kommt zurück)	Demolish (half of the materials are refunded)
+ST_PAUSED	Pausiert ⏸	Paused ⏸
+UI_MOVE_HINT	Neuen Platz wählen, dann bestätigen	Choose a new spot, then confirm
+MSG_MOVED	↔️ Gebäude umgesetzt	↔️ Building moved

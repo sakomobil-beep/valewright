@@ -31,6 +31,7 @@ const AMOUNT := {"saegewerk": {"bretter": 2}, "bogenbauer": {"pfeile": 5}, "imke
 
 var data: Dictionary
 var stock := {}
+var stats := {"prod": {}, "use": {}}
 var terrain: Node3D
 var buildings: Array = []
 var pending: Array = []      # Waren, die Träger abholen sollen: {b, item}
@@ -58,6 +59,7 @@ func pay(t: String) -> void:
 	var c: Dictionary = data.types[t].cost
 	for k in c:
 		stock[k] -= int(c[k])
+		note("use", k, int(c[k]))
 	changed.emit()
 
 func cost_text(t: String) -> String:
@@ -69,7 +71,11 @@ func cost_text(t: String) -> String:
 
 func add(k: String, n: int) -> void:
 	stock[k] = stock.get(k, 0) + n
+	note("prod", k, n)
 	changed.emit()
+
+func note(kind: String, k: String, n: int) -> void:
+	stats[kind][k] = stats[kind].get(k, 0) + n
 
 func produces(t: String) -> bool:
 	return data.io.has(t) and not t in NO_PRODUCTION and not t in FIELD_WORKERS
@@ -86,7 +92,9 @@ func outputs(t: String) -> Array:
 	return out
 
 func _process(dt: float) -> void:
-	for b in buildings:
+	# Gebäude mit Vorrang ⭐ bekommen ihre Zutaten zuerst
+	var order: Array = buildings.filter(func(b): return b.get("prio", false)) + buildings.filter(func(b): return not b.get("prio", false))
+	for b in order:
 		if b.build < 1.0:
 			if not b.get("builder_on_site", false):
 				continue
@@ -96,7 +104,7 @@ func _process(dt: float) -> void:
 		if b.type == "wohnhaus":
 			_house(b, dt)
 			continue
-		if not produces(b.type) or not b.get("worker_inside", false):
+		if not produces(b.type) or not b.get("worker_inside", false) or b.get("paused", false):
 			continue
 		if not b.get("running", false):
 			_try_start(b)
@@ -123,6 +131,7 @@ func _try_start(b: Dictionary) -> void:
 		take.append(found)
 	for k in take:
 		stock[k] -= 1
+		note("use", k, 1)
 	if take.size():
 		changed.emit()
 	b.running = true
@@ -159,6 +168,7 @@ func _use(k: String) -> void:
 	for f in list:
 		if stock.get(f, 0) > 0:
 			stock[f] -= 1
+			note("use", f, 1)
 			return
 
 func need_item(k: String) -> String:

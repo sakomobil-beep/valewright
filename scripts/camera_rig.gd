@@ -15,6 +15,7 @@ var _drag_pan := false
 var _drag_rot := false
 @onready var cam: Camera3D = $Camera3D
 var terrain: Node3D
+var _touches := {}
 
 func _unhandled_input(e: InputEvent) -> void:
 	if e is InputEventMouseButton:
@@ -35,6 +36,24 @@ func _unhandled_input(e: InputEvent) -> void:
 			_move(Vector2(-e.relative.x * k, -e.relative.y * k))
 	elif e is InputEventMagnifyGesture:
 		dist = clampf(dist / e.factor, min_dist, max_dist)
+	elif e is InputEventPanGesture:
+		_move(e.delta * dist * 0.02)
+	# Handy/Tablet: zwei Finger = zoomen und drehen
+	elif e is InputEventScreenTouch:
+		if e.pressed:
+			_touches[e.index] = e.position
+		else:
+			_touches.erase(e.index)
+	elif e is InputEventScreenDrag and _touches.size() == 2:
+		var ids := _touches.keys()
+		var other: Vector2 = _touches[ids[0] if ids[1] == e.index else ids[1]]
+		var before: Vector2 = _touches[e.index]
+		var d0 := before.distance_to(other)
+		var d1: float = e.position.distance_to(other)
+		if d0 > 1.0:
+			dist = clampf(dist * d0 / maxf(1.0, d1), min_dist, max_dist)
+		yaw += (before - other).angle_to(e.position - other)
+		_touches[e.index] = e.position
 
 func _move(v: Vector2) -> void:
 	var right := Vector3(cos(yaw), 0, -sin(yaw))

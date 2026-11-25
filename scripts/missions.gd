@@ -89,7 +89,7 @@ func setup(layer: CanvasLayer) -> void:
 	panel.anchor_right = 1.0
 	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	panel.offset_right = -14
-	panel.offset_top = 150
+	panel.offset_top = 64
 	panel.custom_minimum_size = Vector2(300, 0)
 	panel.visible = mission != 0 or _victory() != "endless"
 	layer.add_child(panel)
