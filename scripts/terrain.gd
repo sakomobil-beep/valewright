@@ -194,11 +194,12 @@ func _free_spot(x: float, z: float) -> bool:
 	return h > WATER_Y + 0.6 and Vector2(x, z).length() > 22.0 and mountain(x, z) < 12.0
 
 func _build_trees() -> void:
-	# Laub- und Nadelbäume als MultiMesh (schnell, auch bei vielen tausend Bäumen)
+	# Bäume wie in der Browser-Version: Eiche, Birke, Tanne, Kiefer, tote Bäume –
+	# mehrere Varianten je Art (Kronenklumpen, Etagen, Herbstfarben), als MultiMesh
 	var rng := RandomNumberGenerator.new()
 	rng.seed = world_seed + 3
-	var leaf_pos: Array = []
-	var fir_pos: Array = []
+	var groups := {}       # Variante -> Liste von Transforms
+	var order: Array = []  # [Variante, Index] je Baum in Erzeugungsreihenfolge
 	var half := SIZE * 0.5 - 4.0
 	for k in int(9000 * (SIZE / 360.0) * (SIZE / 360.0)):
 		var x := rng.randf_range(-half, half)
@@ -206,77 +207,187 @@ func _build_trees() -> void:
 		var dens := noise.get_noise_2d(x * 3.0 + 50.0, z * 3.0 - 20.0)
 		if dens < forest_k or not _free_spot(x, z):
 			continue
-		var t := Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.65, 1.1)), Vector3(x, height(x, z) - 0.1, z))
-		if mountain(x, z) > 2.0 or rng.randf() < 0.35:
-			fir_pos.append(t)
+		var conifer := mountain(x, z) > 1.5 or rng.randf() > 0.5
+		var sp: String
+		if conifer:
+			sp = "fir" if rng.randf() > 0.45 else "pine"
 		else:
-			leaf_pos.append(t)
-	var a := _tree_multimesh(leaf_pos, false)
-	var b := _tree_multimesh(fir_pos, true)
-	add_child(a)
-	add_child(b)
-	for i in leaf_pos.size():
-		trees.append({"pos": leaf_pos[i].origin, "mm": a.multimesh, "i": i, "t": leaf_pos[i], "alive": true})
-	for i in fir_pos.size():
-		trees.append({"pos": fir_pos[i].origin, "mm": b.multimesh, "i": i, "t": fir_pos[i], "alive": true})
+			sp = "birch" if rng.randf() > 0.7 else "oak"
+		if rng.randf() < 0.025:
+			sp = "dead"
+		var key := "%s%d" % [sp, rng.randi() % TREE_VARIANTS[sp]]
+		var sc := rng.randf_range(0.7, 1.3)
+		var bas := Basis(Vector3.UP, rng.randf() * TAU)
+		bas = Basis(Vector3(1, 0, 0), rng.randf_range(-0.06, 0.06)) * bas
+		bas = bas.scaled(Vector3(sc, sc * rng.randf_range(0.85, 1.2), sc))
+		var t := Transform3D(bas, Vector3(x, height(x, z) - 0.05, z))
+		if not groups.has(key):
+			groups[key] = []
+		groups[key].append(t)
+		order.append([key, groups[key].size() - 1])
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://shaders/tree.gdshader")
+	var mms := {}
+	for key in groups:
+		var sp: String = key.rstrip("0123456789")
+		var vi := int(key.substr(sp.length()))
+		var mesh := _tree_mesh(sp, vi)
+		mesh.surface_set_material(0, mat)
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_colors = true
+		mm.mesh = mesh
+		mm.instance_count = groups[key].size()
+		for i in groups[key].size():
+			mm.set_instance_transform(i, groups[key][i])
+			var tint := rng.randf_range(0.9, 1.08)
+			mm.set_instance_color(i, Color(tint, tint, tint))
+		var mmi := MultiMeshInstance3D.new()
+		mmi.multimesh = mm
+		mmi.name = "Baeume_" + key
+		add_child(mmi)
+		mms[key] = mm
+	for o in order:
+		var t: Transform3D = groups[o[0]][o[1]]
+		trees.append({"pos": t.origin, "mm": mms[o[0]], "i": o[1], "t": t, "alive": true})
 
-func _tree_multimesh(list: Array, fir: bool) -> MultiMeshInstance3D:
+const TREE_VARIANTS := {"oak": 10, "birch": 4, "fir": 4, "pine": 4, "dead": 2}
+const LEAF_COLS := [Color("3f6b34"), Color("557a35"), Color("6f8a2e"), Color("c9822e"), Color("b4532a")]
+const FIR_COLS := [Color("3f7548"), Color("46804f"), Color("386a41")]   # etwas heller als im Browser, wegen anderer Beleuchtung
+const BIRCH_COLS := [Color("9cbf4a"), Color("d8c050"), Color("b8c84a")]
+
+# Ein Baum-Modell (eine Fläche mit Vertexfarben, kantig schattiert)
+func _tree_mesh(sp: String, vi: int) -> ArrayMesh:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(sp) + vi * 101
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var trunk := CylinderMesh.new()
-	trunk.top_radius = 0.12
-	trunk.bottom_radius = 0.2
-	trunk.height = 1.6
-	trunk.radial_segments = 6
-	st.append_from(trunk, 0, Transform3D(Basis(), Vector3(0, 0.8, 0)))
-	var trunk_mesh := st.commit()
-	var crown_mat := StandardMaterial3D.new()
-	crown_mat.roughness = 0.9
-	var wood := StandardMaterial3D.new()
-	wood.albedo_color = Color(0.36, 0.25, 0.15)
-	var crown: Mesh
-	if fir:
-		var cone := CylinderMesh.new()
-		cone.top_radius = 0.0
-		cone.bottom_radius = 1.3
-		cone.height = 3.6
-		cone.radial_segments = 7
-		crown = cone
-		crown_mat.albedo_color = Color(0.17, 0.34, 0.2)
-	else:
-		var sph := SphereMesh.new()
-		sph.radius = 1.4
-		sph.height = 2.4
-		sph.radial_segments = 8
-		sph.rings = 5
-		crown = sph
-		crown_mat.albedo_color = Color(0.3, 0.5, 0.2)
-	var am := ArrayMesh.new()
-	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, trunk_mesh.surface_get_arrays(0))
-	am.surface_set_material(0, wood)
-	var st2 := SurfaceTool.new()
-	st2.begin(Mesh.PRIMITIVE_TRIANGLES)
-	st2.append_from(crown, 0, Transform3D(Basis(), Vector3(0, 3.0 if fir else 2.6, 0)))
-	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, st2.commit_to_arrays())
-	am.surface_set_material(1, crown_mat)
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.use_colors = true
-	mm.mesh = am
-	mm.instance_count = list.size()
-	var rng := RandomNumberGenerator.new()
-	for i in list.size():
-		mm.set_instance_transform(i, list[i])
-		var tint := rng.randf_range(0.85, 1.15)
-		if not fir and rng.randf() < 0.18:
-			mm.set_instance_color(i, Color(1.9, 1.1, 0.5))   # Herbstfarben wie im Browser-Spiel
-		else:
-			mm.set_instance_color(i, Color(tint, tint, tint))
-	crown_mat.vertex_color_use_as_albedo = true
-	var mmi := MultiMeshInstance3D.new()
-	mmi.multimesh = mm
-	mmi.name = "Nadelbaeume" if fir else "Laubbaeume"
-	return mmi
+	var trunk_col := Color("f2efe6") if sp == "birch" else (Color("7a7064") if sp == "dead" else Color("7a5a3a"))
+	var tsc: Vector3 = {"birch": Vector3(0.65, 2.0, 0.65), "fir": Vector3(1, 1.3, 1), "dead": Vector3(0.9, 1.9, 0.9)}.get(sp, Vector3(1.1, 1.15, 1.1))
+	_add_trunk(st, Transform3D(Basis().scaled(tsc), Vector3.ZERO), trunk_col, sp == "birch", rng)
+	match sp:
+		"fir":
+			var c: Color = FIR_COLS[vi % 3]
+			for k in 6:
+				var u := k / 5.0
+				var r := 1.0 - u * 0.72
+				_add_cone(st, Transform3D(Basis(Vector3.UP, k * 0.9).scaled(Vector3(r, 1.25 - u * 0.3, r)), Vector3(0, 1.5 + u * 3.2, 0)), c * rng.randf_range(0.92, 1.08))
+		"pine":
+			var c: Color = LEAF_COLS[vi % 2]
+			for k in 4:
+				var u := k / 3.0
+				var r := 1.15 - u * 0.55
+				_add_cone(st, Transform3D(Basis(Vector3.UP, k * 0.7).scaled(Vector3(r, 1.05, r)), Vector3(0, 1.6 + u * 1.9, 0)), c * rng.randf_range(0.92, 1.08))
+		"oak", "birch":
+			var c: Color = BIRCH_COLS[vi % 3] if sp == "birch" else LEAF_COLS[vi % 5]
+			for k in 4:
+				var a := k / 4.0 * TAU + rng.randf() * 1.2
+				var rr := 0.0 if k == 0 else 0.45 + rng.randf() * 0.35
+				var p: Vector3
+				var sz: float
+				if sp == "birch":
+					p = Vector3(cos(a) * rr * 0.6, 2.4 + k * 0.42, sin(a) * rr * 0.6)
+					sz = 0.55 + rng.randf() * 0.2
+				else:
+					p = Vector3(cos(a) * rr, 2.0 + (0.55 if k == 0 else rng.randf() * 0.6), sin(a) * rr)
+					sz = 1.0 if k == 0 else 0.7 + rng.randf() * 0.25
+				var bas := Basis.from_euler(Vector3(rng.randf() * 0.5, rng.randf() * 6.0, 0)).scaled(Vector3(sz, sz * (1.35 if sp == "birch" else 0.9), sz))
+				var cc := c.lightened(rng.randf_range(-0.04, 0.04))
+				_add_ico(st, Transform3D(bas, p), cc)
+		"dead":
+			for k in 3:
+				var bas := Basis.from_euler(Vector3(0.9 - k * 0.15, k * 2.1, 0), EULER_ORDER_YXZ).scaled(Vector3(1, 1 - k * 0.2, 1))
+				_add_branch(st, Transform3D(bas, Vector3(0, 1.3 + k * 0.45, 0)))
+	return st.commit()
+
+# Farbverlauf: unten dunkler, oben heller (wie gradGeo im Browser)
+func _grad(c: Color, y01: float, lo: float, hi: float) -> Color:
+	var f := lerpf(lo, hi, clampf(y01, 0.0, 1.0))
+	return Color(c.r * f, c.g * f, c.b * f)
+
+func _tri(st: SurfaceTool, t: Transform3D, a: Vector3, b: Vector3, c: Vector3, ca: Color, cb: Color, cc: Color) -> void:
+	# eigene Vertices je Dreieck -> kantige Low-Poly-Schattierung; Normale zeigt immer nach außen
+	var A := t * a
+	var B := t * b
+	var C := t * c
+	var n := (B - A).cross(C - A).normalized()
+	if n.dot((A + B + C) / 3.0 - t.origin) < 0.0:
+		n = -n
+		var tmp := B
+		B = C
+		C = tmp
+		var tc := cb
+		cb = cc
+		cc = tc
+	st.set_normal(n)
+	st.set_color(ca); st.add_vertex(A)
+	st.set_color(cc); st.add_vertex(C)
+	st.set_color(cb); st.add_vertex(B)
+
+func _add_cone(st: SurfaceTool, t: Transform3D, c: Color) -> void:
+	var n := 7
+	var top := Vector3(0, 0.7, 0)
+	for i in n:
+		var a0 := i * TAU / n
+		var a1 := (i + 1) * TAU / n
+		var p0 := Vector3(cos(a0), -0.7, sin(a0))
+		var p1 := Vector3(cos(a1), -0.7, sin(a1))
+		_tri(st, t, p0, p1, top, _grad(c, 0, 0.55, 1.12), _grad(c, 0, 0.55, 1.12), _grad(c, 1, 0.55, 1.12))
+		_tri(st, t, p1, p0, Vector3(0, -0.7, 0), c * 0.5, c * 0.5, c * 0.5)
+
+const _ICO_V := [Vector3(-1, 1.618, 0), Vector3(1, 1.618, 0), Vector3(-1, -1.618, 0), Vector3(1, -1.618, 0),
+	Vector3(0, -1, 1.618), Vector3(0, 1, 1.618), Vector3(0, -1, -1.618), Vector3(0, 1, -1.618),
+	Vector3(1.618, 0, -1), Vector3(1.618, 0, 1), Vector3(-1.618, 0, -1), Vector3(-1.618, 0, 1)]
+const _ICO_F := [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
+	[3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]]
+
+func _add_ico(st: SurfaceTool, t: Transform3D, c: Color) -> void:
+	for f in _ICO_F:
+		var v: Array = []
+		var cols: Array = []
+		for idx in f:
+			var p: Vector3 = _ICO_V[idx].normalized()
+			v.append(p)
+			cols.append(_grad(c, p.y * 0.5 + 0.5, 0.6, 1.15))
+		_tri(st, t, v[0], v[2], v[1], cols[0], cols[2], cols[1])
+
+func _add_trunk(st: SurfaceTool, t: Transform3D, c: Color, spots: bool, rng: RandomNumberGenerator) -> void:
+	var n := 7
+	var rings := [[0.0, 0.2], [0.43, 0.173], [0.87, 0.147], [1.3, 0.12]]
+	for r in 3:
+		var y0: float = rings[r][0]
+		var y1: float = rings[r + 1][0]
+		for i in n:
+			var a0 := i * TAU / n
+			var a1 := (i + 1) * TAU / n
+			var f0 := 1.5 + 0.35 * sin(a0 * 3.0) if r == 0 else 1.0
+			var f1 := 1.5 + 0.35 * sin(a1 * 3.0) if r == 0 else 1.0
+			var r0: float = rings[r][1]
+			var r1: float = rings[r + 1][1]
+			var A := Vector3(cos(a0) * r0 * f0, y0, sin(a0) * r0 * f0)
+			var B := Vector3(cos(a1) * r0 * f1, y0, sin(a1) * r0 * f1)
+			var C := Vector3(cos(a1) * r1, y1, sin(a1) * r1)
+			var D := Vector3(cos(a0) * r1, y1, sin(a0) * r1)
+			var g := 0.75 + (y0 + y1) * 0.1
+			var col := c * g
+			if spots and y0 > 0.2 and rng.randf() < 0.28:
+				col = c * 0.12
+			col.a = 1.0
+			_tri(st, t, A, D, C, col, col, col)
+			_tri(st, t, A, C, B, col, col, col)
+
+func _add_branch(st: SurfaceTool, t: Transform3D) -> void:
+	var c := Color("6a6258")
+	var n := 5
+	for i in n:
+		var a0 := i * TAU / n
+		var a1 := (i + 1) * TAU / n
+		var A := Vector3(cos(a0) * 0.07, 0, sin(a0) * 0.07)
+		var B := Vector3(cos(a1) * 0.07, 0, sin(a1) * 0.07)
+		var C := Vector3(cos(a1) * 0.03, 1.1, sin(a1) * 0.03)
+		var D := Vector3(cos(a0) * 0.03, 1.1, sin(a0) * 0.03)
+		_tri(st, t, A, D, C, c, c, c)
+		_tri(st, t, A, C, B, c, c, c)
 
 func _build_rocks() -> void:
 	var rng := RandomNumberGenerator.new()
