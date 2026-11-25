@@ -415,3 +415,6 @@ MSG_UPGRADE_NEED	Für den Ausbau brauchst du 2 Dachziegel und 2 Bretter	Upgradin
 MSG_UPGRADED	⬆️ %s ausgebaut – arbeitet jetzt 20 %% schneller	⬆️ %s upgraded – now works 20 %% faster
 ACT_UP	Ausbauen (2 Dachziegel + 2 Bretter, 20 % schneller)	Upgrade (2 roof tiles + 2 planks, 20 % faster)
 NOTE_NO_FOOD	🍞 Kein Brot, Fisch oder Schinken – die Minen stehen still! Baue eine Bäckerei, einen Fischer oder einen Metzger.	🍞 No bread, fish or ham – the mines have stopped! Build a bakery, a fisher or a butcher.
+ORD_POST	Passenden Kämpfer hierher schicken	Send a fitting fighter here
+MSG_NO_FIT	Kein freier Kämpfer passt in diesen Turm	No free fighter fits this tower
+ORD_SLOTS	Plätze: ⚔️ %d · 🏹 %d	Slots: ⚔️ %d · 🏹 %d

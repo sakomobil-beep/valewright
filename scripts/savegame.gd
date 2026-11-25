@@ -23,7 +23,7 @@ func save(slot: String) -> void:
 		if b.get("destroyed", false):
 			continue
 		bl.append({"type": b.type, "pos": _v(b.pos), "rot": snappedf(b.node.rotation.y, 0.001), "build": b.build,
-			"lvl": b.get("lvl", 0), "sat": b.get("sat", 0), "garrison": b.get("garrison", 0), "claimed": b.get("claimed", false), "site_in": b.get("site_in", {}), "site_level": b.get("site_level", 1.0), "in": b.get("in", {}), "out": b.get("out", {}), "orders": b.get("orders", 0), "wo": b.get("wo", {}), "trS": b.get("trS", 0), "trB": b.get("trB", 0), "promo": b.get("promo", 0), "up": b.get("up", 0)})
+			"lvl": b.get("lvl", 0), "sat": b.get("sat", 0), "garrison": main.military.soldiers.filter(func(x): return x.get("home") == b and x.state == "garrison").map(func(x): return [x.kind, x.rank, x.get("militia", false)]) if b.get("owner", 0) == 0 and main.military.is_military(b.type) else b.get("garrison", 0), "claimed": b.get("claimed", false), "site_in": b.get("site_in", {}), "site_level": b.get("site_level", 1.0), "in": b.get("in", {}), "out": b.get("out", {}), "orders": b.get("orders", 0), "wo": b.get("wo", {}), "trS": b.get("trS", 0), "trB": b.get("trB", 0), "promo": b.get("promo", 0), "up": b.get("up", 0)})
 	d.buildings = bl
 	d.bridges = t.bridges.map(func(br): return {"a": _v(br.a), "b": _v(br.b), "y": br.y, "len": br.get("len", 0.0)})
 	var dead: Array = []

@@ -5,7 +5,9 @@ extends Node3D
 const CELL := 4.0
 const START_RADIUS := 30.0
 const CLAIM := {"lager": 30.0, "wachstube": 14.0, "wachturm": 18.0, "wehrturm": 24.0, "burg": 32.0}
-const GARRISON := {"wachstube": 1, "wachturm": 2, "wehrturm": 3, "burg": 5}
+# Plätze je Turm wie POSTS im Browser (Schwert / Bogen getrennt)
+const POSTS := {"wachstube": {"schwert": 2}, "wachturm": {"bogen": 4}, "wehrturm": {"schwert": 3, "bogen": 2}, "burg": {"schwert": 6, "bogen": 4}}
+const GARRISON := {"wachstube": 2, "wachturm": 4, "wehrturm": 5, "burg": 10}
 const OWNER_COL := [Color(0.2, 0.45, 0.95), Color(0.85, 0.15, 0.12), Color(0.95, 0.8, 0.15), Color(0.6, 0.25, 0.75)]
 const AI_NAMES := ["AI_RABENECK", "AI_HOHENSTEIN", "AI_WALDBRUNN"]
 const DIFF := {
@@ -215,13 +217,18 @@ func _man_tower(b: Dictionary) -> void:
 		return
 	if b.garrison + b.get("incoming", 0) >= GARRISON[b.type]:
 		return
-	var s = _free_soldier(0)
+	var s = null
+	for c in soldiers:
+		if c.owner == 0 and c.state == "idle" and slot_free(b, c):
+			s = c
+			break
 	if s == null:
-		# neuer Wächter aus einem Kampfstock
-		if economy.stock.get("kampfstock", 0) > 0:
+		# leerer Turm: Wächter mit Kampfstock (Miliz) wie im Browser
+		if b.garrison + b.get("incoming", 0) == 0 and economy.stock.get("kampfstock", 0) > 0:
 			economy.stock.kampfstock -= 1
 			economy.changed.emit()
-			s = _new_soldier(0, settlers.lager_door(), 1)
+			s = _new_soldier(0, settlers.lager_door(), 0, "schwert")
+			s.militia = true
 		else:
 			b.status = "ST_WAIT_GUARD"
 			get_tree().create_timer(5.0).timeout.connect(func(): _man_tower(b))
@@ -235,8 +242,50 @@ func _man_tower(b: Dictionary) -> void:
 	]
 	get_tree().create_timer(1.0).timeout.connect(func(): _man_tower(b))
 
+# Passt der Kämpfer noch in den Turm? (Miliz nur in leere Türme)
+func slot_free(b: Dictionary, s: Dictionary) -> bool:
+	if not POSTS.has(b.type):
+		return false
+	if b.get("owner", 0) != 0:
+		return int(b.garrison) < GARRISON[b.type]
+	var here: Array = soldiers.filter(func(x): return x != s and x.get("home") == b and x.state == "garrison")
+	if s.get("militia", false):
+		return here.is_empty()
+	var same := here.filter(func(x): return x.get("kind", "schwert") == s.get("kind", "schwert") and not x.get("militia", false)).size()
+	return same < int(POSTS[b.type].get(s.get("kind", "schwert"), 0)) and here.size() < GARRISON[b.type]
+
+# Kämpfer gezielt in einen Turm schicken (wie sendToPost im Browser); holt den stärksten passenden
+func send_to_post(b: Dictionary) -> bool:
+	var best = null
+	for c in soldiers:
+		if c.owner != 0 or not slot_free(b, c) or c.get("home") == b:
+			continue
+		if c.state == "garrison" and c.home and int(c.home.garrison) <= 1:
+			continue
+		if c.state != "idle" and c.state != "garrison":
+			continue
+		if best == null or c.rank > best.rank:
+			best = c
+	if best == null:
+		return false
+	if best.state == "garrison" and best.home:
+		best.home.garrison -= 1
+		settlers_pos(best)
+	best.home = null
+	best.state = "moving"
+	b.incoming = b.get("incoming", 0) + 1
+	best.w.q = [{"go": settlers.door_of(b)}, {"fn": func(): b.incoming = maxi(0, b.get("incoming", 1) - 1)}, {"fn": func(): _enter(best, b)}]
+	return true
+
+func settlers_pos(s: Dictionary) -> void:
+	if s.home:
+		s.w.node.position = settlers.door_of(s.home)
+	s.w.node.visible = true
+	s.w.on_post = false
+	s.spot = -1
+
 func _enter(s: Dictionary, b: Dictionary) -> void:
-	if b.owner != s.owner or (GARRISON.has(b.type) and b.garrison >= GARRISON[b.type]):
+	if b.owner != s.owner or (GARRISON.has(b.type) and not slot_free(b, s)):
 		s.state = "idle" if s.owner == 0 else "returning"
 		s.w.q = [{"go": _home_point(s.owner)}]
 		return
@@ -439,7 +488,7 @@ func _barracks(dt: float) -> void:
 	if _barracks_t >= 20.0:
 		_barracks_t = 0.0
 		for b in economy.buildings:
-			if GARRISON.has(b.type) and b.build >= 1.0 and b.get("owner", 0) == 0 and int(b.garrison) + int(b.get("incoming", 0)) < GARRISON[b.type] and _free_soldier(0) != null:
+			if GARRISON.has(b.type) and b.build >= 1.0 and b.get("owner", 0) == 0 and int(b.garrison) + int(b.get("incoming", 0)) < GARRISON[b.type] and (soldiers.any(func(c): return c.owner == 0 and c.state == "idle" and slot_free(b, c)) or int(b.garrison) == 0):
 				_man_tower(b)
 
 # Bogenschützen stehen sichtbar auf der Turmplattform (wie placeOnPost im Browser)
@@ -793,6 +842,13 @@ func _ai_tick(ai: Dictionary, dt: float) -> void:
 	if ai.t_grow >= D.grow:
 		ai.t_grow = 0.0
 		ai.lager.garrison += 1
+	# Türme nachbesetzen (wie aiFillPosts)
+	if ai.lager.garrison > 3:
+		for b in ai.buildings:
+			if GARRISON.has(b.type) and not b.get("destroyed", false) and int(b.garrison) < GARRISON[b.type]:
+				b.garrison += 1
+				ai.lager.garrison -= 1
+				break
 	if ai.t_expand >= D.expand and ai.lager.garrison > 2:
 		ai.t_expand = 0.0
 		_ai_expand(ai)
@@ -851,14 +907,20 @@ func _process(dt: float) -> void:
 			s.w.q = [{"go": settlers.lager_door() + Vector3(randf_range(-3, 3), 0, randf_range(1, 3))}]
 
 # ---------- Laden ----------
-func load_tower(b: Dictionary, g: int) -> void:
+func load_tower(b: Dictionary, g) -> void:
 	b.owner = 0
 	b.garrison = 0
 	_flag(b.node, OWNER_COL[0], b.type == "burg")
-	for i in g:
-		var s := _new_soldier(0, settlers.door_of(b), 1)
+	var lst: Array = g if g is Array else []
+	if not g is Array:
+		for i in int(g):
+			lst.append(["schwert", 0, i == 0])
+	for e in lst:
+		var s := _new_soldier(0, settlers.door_of(b), int(e[0 + 1]), String(e[0]))
+		s.militia = bool(e[2]) if e.size() > 2 else false
+		s.state = "idle"
 		_enter(s, b)
-	if g < GARRISON[b.type]:
+	if lst.size() < GARRISON[b.type]:
 		_man_tower(b)
 
 func load_ai(a: Dictionary) -> void:

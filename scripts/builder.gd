@@ -133,12 +133,14 @@ func setup_ui(layer: CanvasLayer) -> void:
 	order_box = HBoxContainer.new()
 	order_box.add_theme_constant_override("separation", 4)
 	ivb.add_child(order_box)
-	for o in [["kaserne", "trS", "⚔️ +1"], ["kaserne", "trB", "🏹 +1"], ["kaserne", "promo", "🪙 ⬆"], ["waffenschmied", "schwert", "🗡️ +1"], ["waffenschmied", "schild", "🛡️ +1"], ["wagner", "orders", "🛒 +1"]]:
+	for o in [["kaserne", "trS", "⚔️ +1"], ["kaserne", "trB", "🏹 +1"], ["kaserne", "promo", "🪙 ⬆"], ["waffenschmied", "schwert", "🗡️ +1"], ["waffenschmied", "schild", "🛡️ +1"], ["wagner", "orders", "🛒 +1"], ["*post", "post", "🛡️ ➜ 🏰"]]:
 		var ob := Button.new()
 		ob.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		ob.custom_minimum_size = Vector2(56, 34)
 		ob.text = o[2]
 		ob.set_meta("for", o[0])
+		if o[1] == "post":
+			ob.tooltip_text = "ORD_POST"
 		ob.pressed.connect(func(): _order(o[0], o[1]))
 		order_box.add_child(ob)
 	confirm_box = HBoxContainer.new()
@@ -407,10 +409,11 @@ func _process(_dt: float) -> void:
 		return
 	attack_btn.visible = false
 	act_box.visible = selected != null and selected.type != "bruecke"
-	order_box.visible = selected != null and selected.build >= 1.0 and selected.type in ["kaserne", "waffenschmied", "wagner"]
+	var tower: bool = selected != null and military and military.POSTS.has(selected.type) and selected.get("owner", 0) == 0
+	order_box.visible = selected != null and selected.build >= 1.0 and (selected.type in ["kaserne", "waffenschmied", "wagner"] or tower)
 	if order_box.visible:
 		for ob in order_box.get_children():
-			ob.visible = ob.get_meta("for") == selected.type
+			ob.visible = ob.get_meta("for") == selected.type or (tower and ob.get_meta("for") == "*post")
 	if selected != null and info_panel.visible:
 		act_btns.pause.text = "▶" if selected.get("paused", false) else "⏸"
 		act_btns.prio.modulate = Color(1, 0.85, 0.3) if selected.get("prio", false) else Color(1, 1, 1, 0.6)
@@ -491,6 +494,10 @@ func up_badge(b: Dictionary) -> void:
 	g.add_child(fl)
 
 func _order(t: String, k: String) -> void:
+	if k == "post":
+		if selected != null and military and not military.send_to_post(selected):
+			economy.message.emit(tr("MSG_NO_FIT"))
+		return
 	if selected == null or selected.type != t:
 		return
 	if t == "waffenschmied":
@@ -510,6 +517,13 @@ func _orders_text(b: Dictionary) -> String:
 			return "\n" + tr("ORD_SMITH") % [int(b.get("wo", {}).get("schwert", 0)), int(b.get("wo", {}).get("schild", 0))]
 		"wagner":
 			return "\n" + tr("ORD_WAGNER") % int(b.get("orders", 0))
+	if military and military.POSTS.has(b.type) and b.get("owner", 0) == 0:
+		var t := ""
+		for s in military.soldiers:
+			if s.get("home") == b and s.state == "garrison":
+				t += "\n  %s %s" % ["🏹" if s.kind == "bogen" else ("🏏" if s.get("militia", false) else "⚔️"), tr(military.RANKS[s.kind][s.rank])]
+		var P: Dictionary = military.POSTS[b.type]
+		return "\n" + tr("ORD_SLOTS") % [int(P.get("schwert", 0)), int(P.get("bogen", 0))] + t
 	return ""
 
 func _bufs_text(b: Dictionary) -> String:
@@ -735,7 +749,7 @@ func place_loaded(sv: Dictionary) -> void:
 			rec.flat = terrain.add_flat(p.x, p.z, (float(economy.type_info(t).r) + 0.4) * SCALE, 1.0)
 			n.position.y = rec.flat.y
 		if military and military.is_military(t):
-			military.load_tower(rec, int(sv.get("garrison", 0)))
+			military.load_tower(rec, sv.get("garrison", 0))
 		elif settlers:
 			settlers._on_built(rec)
 	else:
