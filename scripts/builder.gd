@@ -420,6 +420,12 @@ func _demolish(b: Dictionary) -> void:
 	for k in c:
 		economy.add(k, int(c[k]) / 2)
 	b.removed = true
+	if b.has("boat"):
+		var wl = get_parent().get_node_or_null("Tiere")
+		if wl:
+			wl._boats.erase(b.boat)
+		b.boat.node.queue_free()
+		b.erase("boat")
 	if b.get("pile") and is_instance_valid(b.pile):
 		b.pile.queue_free()
 	economy.pending = economy.pending.filter(func(j): return j.b != b)
