@@ -3,6 +3,22 @@ extends Node
 ## Die Daten stehen in res://data/game.json (aus der Browser-Version übernommen).
 
 signal changed
+signal message(text: String)
+signal house_level_changed(b: Dictionary)
+
+# Wohnhäuser: Stufen und Bedürfnisse wie in der Browser-Version
+const HOUSE_LV := [
+	{"needs": ["*food", "wasser"], "tax": 0.0},
+	{"needs": ["*fine", "wasser", "bier"], "tax": 0.0},
+	{"needs": ["*fine", "kaese", "wasser", "bier", "kleidung"], "tax": 0.1},
+	{"needs": ["*fine", "kaese", "kuchen", "wasser", "bier", "kleidung", "met", "kruege", "kerzen"], "tax": 0.2},
+	{"needs": ["*fine", "kaese", "kuchen", "wasser", "bier", "kleidung", "met", "kruege", "kerzen", "schmuck", "wein"], "tax": 0.4},
+]
+const UPCOST := {3: {"ziegel": 2}, 4: {"ziegel": 4, "bretter": 2}}
+const FOODS := ["brot", "fisch", "schinken"]
+const FINE := ["raeucherfisch", "wurst"]
+const HOUSE_TICK := 45.0
+var unl := 0     # Freischalt-Stufe (steigt mit zufriedenen Wohnhäusern)
 
 const BUILD_TIME := 8.0
 const WORK_TIME := 10.0
@@ -77,6 +93,9 @@ func _process(dt: float) -> void:
 			b.build = minf(1.0, b.build + dt / BUILD_TIME)
 			b.node.scale = Vector3(b.s, b.s * (0.15 + 0.85 * b.build), b.s)
 			continue
+		if b.type == "wohnhaus":
+			_house(b, dt)
+			continue
 		if not produces(b.type) or not b.get("worker_inside", false):
 			continue
 		if not b.get("running", false):
@@ -122,3 +141,88 @@ func _finish(b: Dictionary) -> void:
 	var n: int = AMOUNT.get(b.type, {}).get(pick, 1)
 	for i in n:
 		pending.append({"b": b, "item": pick})
+
+# ---------- Freischalten ----------
+func is_unlocked(t: String) -> bool:
+	return int(data.unlock.get(t, 0)) <= unl
+
+# ---------- Wohnhäuser ----------
+func _need_ok(k: String) -> bool:
+	if k == "*food":
+		return FOODS.any(func(f): return stock.get(f, 0) > 0)
+	if k == "*fine":
+		return FINE.any(func(f): return stock.get(f, 0) > 0)
+	return stock.get(k, 0) > 0
+
+func _use(k: String) -> void:
+	var list: Array = FOODS if k == "*food" else (FINE if k == "*fine" else [k])
+	for f in list:
+		if stock.get(f, 0) > 0:
+			stock[f] -= 1
+			return
+
+func need_item(k: String) -> String:
+	return "brot" if k == "*food" else ("raeucherfisch" if k == "*fine" else k)
+
+func _house(b: Dictionary, dt: float) -> void:
+	if not b.has("lvl"):
+		b.lvl = 0
+		b.sat = 0
+		b.bad = 0
+		b.ht = HOUSE_TICK - 5.0
+		b.tax = 0.0
+		b.status = "ST_HOUSE_MISSING"
+		b.miss = []
+	b.ht += dt
+	if b.ht < HOUSE_TICK:
+		return
+	b.ht = 0.0
+	var L: Dictionary = HOUSE_LV[b.lvl]
+	var miss: Array = L.needs.filter(func(k): return not _need_ok(k))
+	for k in L.needs:
+		_use(k)
+	if miss.is_empty():
+		b.sat = mini(3, b.sat + 1)
+		b.bad = 0
+		b.tax += L.tax
+		if b.tax >= 1.0:
+			b.tax -= 1.0
+			stock.muenzen = stock.get("muenzen", 0) + 1
+		b.status = "ST_HOUSE_OK"
+		b.miss = []
+		if b.lvl + 1 > unl:
+			unl = b.lvl + 1
+			message.emit(tr("MSG_UNLOCKED"))
+		# Aufstieg
+		if b.lvl < 4 and b.sat >= 3:
+			var nx: Dictionary = HOUSE_LV[b.lvl + 1]
+			var up: Dictionary = UPCOST.get(b.lvl + 1, {})
+			var ok: bool = nx.needs.all(func(k): return _need_ok(k))
+			for k in up:
+				if stock.get(k, 0) < up[k]:
+					ok = false
+			if ok:
+				for k in up:
+					stock[k] -= up[k]
+				b.lvl += 1
+				b.sat = 0
+				house_level_changed.emit(b)
+				message.emit(tr("MSG_HOUSE_UP") % tr("HOUSE_%d" % b.lvl))
+			else:
+				b.miss = nx.needs.filter(func(k): return not _need_ok(k)).map(func(k): return need_item(k))
+				for k in up:
+					if stock.get(k, 0) < up[k]:
+						b.miss.append(k)
+				if not b.miss.is_empty():
+					b.status = "ST_HOUSE_NEXT"
+	else:
+		b.sat = 0
+		b.bad += 1
+		b.status = "ST_HOUSE_MISSING"
+		b.miss = miss.map(func(k): return need_item(k))
+		if b.bad >= 3 and b.lvl > 0:
+			b.lvl -= 1
+			b.bad = 0
+			house_level_changed.emit(b)
+			message.emit(tr("MSG_HOUSE_DOWN"))
+	changed.emit()

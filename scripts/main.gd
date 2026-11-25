@@ -14,6 +14,7 @@ var builder: Node3D
 var terrain: Node3D
 var fps_label: Label
 var ui_layer: CanvasLayer
+var toast_box: VBoxContainer
 
 func _ready() -> void:
 	_setup_environment()
@@ -176,7 +177,31 @@ func _setup_stock() -> void:
 	stock_label.add_theme_color_override("font_color", Color(0.96, 0.9, 0.78))
 	panel.add_child(stock_label)
 	economy.changed.connect(_update_stock)
+	economy.message.connect(_toast)
 	_update_stock()
+
+func _toast(text: String) -> void:
+	var l := Label.new()
+	l.text = text
+	l.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	l.add_theme_font_size_override("font_size", 22)
+	l.add_theme_color_override("font_color", Color(1, 0.93, 0.7))
+	l.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	l.add_theme_constant_override("outline_size", 8)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	if toast_box == null:
+		toast_box = VBoxContainer.new()
+		toast_box.anchor_left = 0.5
+		toast_box.anchor_right = 0.5
+		toast_box.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		toast_box.offset_top = 110
+		toast_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ui_layer.add_child(toast_box)
+	toast_box.add_child(l)
+	var tw := create_tween()
+	tw.tween_interval(3.5)
+	tw.tween_property(l, "modulate:a", 0.0, 1.0)
+	tw.tween_callback(l.queue_free)
 
 func _update_stock() -> void:
 	var s := ""

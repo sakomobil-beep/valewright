@@ -64,6 +64,7 @@ func setup_ui(layer: CanvasLayer) -> void:
 		cat_row.add_child(cb)
 	_refresh_buttons()
 	economy.changed.connect(_refresh_buttons)
+	economy.house_level_changed.connect(_swap_house)
 	hint = Label.new()
 	hint.anchor_left = 0.5
 	hint.anchor_right = 0.5
@@ -146,6 +147,10 @@ func _open_cat(c: Dictionary) -> void:
 
 func _refresh_buttons() -> void:
 	for t in _buttons:
+		if not economy.is_unlocked(t):
+			_buttons[t].text = "🔒 " + tr(_key(t)) + "\n" + tr("UI_LOCKED_TIER") % tr("HOUSE_%d" % (int(economy.data.unlock[t]) - 1))
+			_buttons[t].modulate = Color(0.6, 0.6, 0.6)
+			continue
 		_buttons[t].text = economy.type_info(t).icon + " " + tr(_key(t)) + "\n" + economy.cost_text(t)
 		_buttons[t].modulate = Color.WHITE if economy.can_afford(t) else Color(1, 0.6, 0.6)
 
@@ -153,8 +158,9 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSLATION_CHANGED and economy:
 		_refresh_buttons()
 
-func model(t: String) -> Node3D:
-	var ps: PackedScene = load("res://models/%s.glb" % t)
+func model(t: String, lvl := 0) -> Node3D:
+	var file := "wohnhaus_%d" % lvl if t == "wohnhaus" else t
+	var ps: PackedScene = load("res://models/%s.glb" % file)
 	var n: Node3D = ps.instantiate()
 	n.scale = Vector3.ONE * SCALE
 	_shadows(n)
@@ -168,6 +174,10 @@ func _shadows(n: Node) -> void:
 
 func start(t: String) -> void:
 	cancel()
+	if not economy.is_unlocked(t):
+		hint.text = tr("UI_LOCKED_TIER") % tr("HOUSE_%d" % (int(economy.data.unlock[t]) - 1))
+		hint.visible = true
+		return
 	if not economy.can_afford(t):
 		hint.text = tr("UI_NOT_ENOUGH")
 		hint.visible = true
@@ -244,6 +254,11 @@ func _process(_dt: float) -> void:
 	if selected != null and info_panel.visible:
 		var b: Dictionary = selected
 		var txt := tr(_key(b.type)) + "\n" + tr(b.status)
+		if b.type == "wohnhaus" and b.has("lvl") and b.build >= 1.0:
+			txt = "%s – %s\n%s" % [tr(_key(b.type)), tr("HOUSE_%d" % b.lvl), tr(b.status)]
+			if not b.miss.is_empty():
+				txt += " " + ", ".join(b.miss.map(func(k): return tr("ITEM_" + String(k).to_upper())))
+			txt += "\n" + tr("UI_SATISFACTION") + " " + "😊".repeat(b.sat) + "·".repeat(3 - b.sat)
 		if b.status == "ST_MISSING":
 			txt += " " + tr("ITEM_" + String(b.missing).to_upper())
 		if b.build < 1.0:
@@ -333,3 +348,12 @@ func confirm() -> void:
 	cancel()
 	if economy.can_afford(t):
 		start(t)    # gleich das nächste Gebäude derselben Art platzieren können
+
+func _swap_house(b: Dictionary) -> void:
+	var n := model("wohnhaus", b.lvl)
+	n.position = b.node.position
+	n.rotation = b.node.rotation
+	n.scale = b.node.scale
+	add_child(n)
+	b.node.queue_free()
+	b.node = n
