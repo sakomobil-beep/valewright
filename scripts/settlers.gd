@@ -544,6 +544,32 @@ func _cart() -> Node3D:
 		wh.rotation.z = PI / 2
 		wh.position = Vector3(sx, 0.25, 0.75)
 		g.add_child(wh)
+	# Esel zieht die Karre
+	var fur := StandardMaterial3D.new()
+	fur.albedo_color = Color(0.48, 0.45, 0.42)
+	var dk := Node3D.new()
+	dk.position = Vector3(0, 0, 1.85)
+	g.add_child(dk)
+	for part in [[Vector3(0.36, 0.36, 0.8), Vector3(0, 0.62, 0)], [Vector3(0.16, 0.36, 0.16), Vector3(0, 0.88, 0.42)], [Vector3(0.18, 0.18, 0.36), Vector3(0, 1.02, 0.6)],
+			[Vector3(0.05, 0.24, 0.05), Vector3(0.06, 1.2, 0.52)], [Vector3(0.05, 0.24, 0.05), Vector3(-0.06, 1.2, 0.52)],
+			[Vector3(0.07, 0.45, 0.07), Vector3(0.12, 0.23, 0.3)], [Vector3(0.07, 0.45, 0.07), Vector3(-0.12, 0.23, 0.3)],
+			[Vector3(0.07, 0.45, 0.07), Vector3(0.12, 0.23, -0.3)], [Vector3(0.07, 0.45, 0.07), Vector3(-0.12, 0.23, -0.3)],
+			[Vector3(0.04, 0.3, 0.04), Vector3(0, 0.6, -0.42)]]:
+		var pm := MeshInstance3D.new()
+		var bx := BoxMesh.new()
+		bx.size = part[0]
+		pm.mesh = bx
+		pm.material_override = fur
+		pm.position = part[1]
+		dk.add_child(pm)
+	# Deichsel
+	var sh := MeshInstance3D.new()
+	var sb := BoxMesh.new()
+	sb.size = Vector3(0.06, 0.06, 1.1)
+	sh.mesh = sb
+	sh.material_override = wood
+	sh.position = Vector3(0, 0.5, 1.4)
+	g.add_child(sh)
 	g.scale = Vector3.ONE / WORKER_SCALE
 	return g
 

@@ -58,16 +58,20 @@ func _spawn_kid(b: Dictionary) -> Dictionary:
 	return k
 
 func _tint(n: Node, c: Color) -> void:
-	# Kinderkleidung: Oberteil einfärben (alle Flächen leicht in Kleidungsfarbe)
+	# Kinderkleidung: alle Teile in Träger-Hemdfarbe (8a5a2a) bunt einfärben
+	var shirt := Color("8a5a2a")
+	var nm := StandardMaterial3D.new()
+	nm.albedo_color = c
 	for m in n.find_children("*", "MeshInstance3D", true, false):
 		var mi: MeshInstance3D = m
-		if mi.get_surface_override_material_count() == 0 or mi.mesh == null:
+		if mi.mesh == null:
 			continue
 		var mat := mi.mesh.surface_get_material(0)
-		if mat is StandardMaterial3D and mi.name.contains("body"):
-			var nm: StandardMaterial3D = mat.duplicate()
-			nm.albedo_color = c
+		if mat is BaseMaterial3D and (mat as BaseMaterial3D).albedo_color.is_equal_approx(shirt.srgb_to_linear()) or (mat is BaseMaterial3D and _close((mat as BaseMaterial3D).albedo_color, shirt)):
 			mi.set_surface_override_material(0, nm)
+
+func _close(a: Color, b: Color) -> bool:
+	return absf(a.r - b.r) < 0.02 and absf(a.g - b.g) < 0.02 and absf(a.b - b.b) < 0.02
 
 # Kinder rennen herum, hüpfen und spielen Fangen um das Haus
 func _kid_play(k: Dictionary, b: Dictionary) -> void:
