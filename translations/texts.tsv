@@ -359,3 +359,18 @@ GRP_HANDWERK	Handwerk	Crafts
 GRP_WAFFEN	Waffen	Weapons
 POP_TIP	👥 Arbeiter · 🧺 Träger · ⚔️ Kämpfer	👥 workers · 🧺 carriers · ⚔️ fighters
 POP_SHORT	⚠️ Träger kommen nicht hinterher (%d Waren warten). Baue Wohnhäuser oder ein Lagerhaus.	⚠️ Carriers can't keep up (%d goods waiting). Build houses or a warehouse.
+UI_BALANCE	Wirtschaftsbilanz (B)	Economy balance (B)
+UI_MILITARY	Militär (M)	Military (M)
+UI_LABELS	Gebäude-Schilder ein/aus (L)	Building labels on/off (L)
+UI_SOUND	Ton an/aus (V)	Sound on/off (V)
+UI_NEWS	Meldungen (N)	Messages (N)
+NEWS_EMPTY	Noch keine Meldungen.	No messages yet.
+BAL_HINT	Durchschnitt je Minute seit Spielbeginn (%d Min.) – oben fehlt am meisten.	Average per minute since the start (%d min) – biggest shortage on top.
+BAL_EMPTY	Noch nichts erzeugt oder verbraucht.	Nothing produced or used yet.
+BAL_PER_MIN	/ Min.	/ min
+MIL_OWN	Kämpfer: %d (bereit: %d) · Militärgebäude: %d · Land: %d %%	Fighters: %d (ready: %d) · Military buildings: %d · Land: %d %%
+MIL_GARRISON	Besatzung	Garrison
+MIL_ENEMIES	Gegner	Rivals
+MIL_NONE	Keine Gegner in diesem Spiel.	No rivals in this game.
+MIL_DEFEATED	💀 besiegt	💀 defeated
+MIL_LAND	Land	Land

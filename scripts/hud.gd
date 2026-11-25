@@ -28,6 +28,12 @@ var _mm_t := 0.0
 var _win: PanelContainer
 var _win_kind := ""
 var _win_t := 0.0
+var _sound_btn: Button
+var _bell: Button
+var news: Array = []          # [Uhrzeit, Text]
+var _unread := 0
+var labels_on := false
+var _game_time := 0.0
 
 func setup(l: CanvasLayer) -> void:
 	layer = l
@@ -53,9 +59,18 @@ func setup(l: CanvasLayer) -> void:
 		_speed_btns.append([b, sp[0]])
 	hb.add_child(VSeparator.new())
 	_icon_btn(hb, "📊", func(): open_window("stats")).tooltip_text = "UI_STATS"
+	_icon_btn(hb, "📈", func(): open_window("balance")).tooltip_text = "UI_BALANCE"
 	_icon_btn(hb, "🔗", func(): open_window("chains")).tooltip_text = "UI_CHAINS"
+	_icon_btn(hb, "⚔️", func(): open_window("military")).tooltip_text = "UI_MILITARY"
 	_icon_btn(hb, "🏪", func(): main.market.open()).tooltip_text = "UI_MARKET"
+	hb.add_child(VSeparator.new())
+	_icon_btn(hb, "🏷️", toggle_labels).tooltip_text = "UI_LABELS"
+	_sound_btn = _icon_btn(hb, "🔊", toggle_sound)
+	_sound_btn.tooltip_text = "UI_SOUND"
+	_bell = _icon_btn(hb, "🔔", func(): open_window("news"))
+	_bell.tooltip_text = "UI_NEWS"
 	_icon_btn(hb, "☰", func(): main.gameui.pause_menu()).tooltip_text = "UI_MENU_BTN"
+	main.economy.message.connect(_log_news)
 	set_speed(1.0)
 	_setup_minimap()
 
@@ -95,9 +110,26 @@ func _unhandled_input(e: InputEvent) -> void:
 				set_speed(2.0)
 			KEY_3:
 				set_speed(4.0)
+			KEY_T:
+				open_window("stats")
+			KEY_B:
+				open_window("balance")
+			KEY_K:
+				open_window("chains")
+			KEY_M:
+				open_window("military")
+			KEY_L:
+				toggle_labels()
+			KEY_V:
+				toggle_sound()
+			KEY_N:
+				open_window("news")
 
 # ---------- Tageszeit ----------
 func _process(dt: float) -> void:
+	_game_time += dt
+	if labels_on and Engine.get_process_frames() % 30 == 0:
+		_update_labels()
 	day_t = fmod(day_t + dt, DAY_SECONDS)
 	var h := day_t / DAY_SECONDS * 24.0
 	clock.text = "%s %02d:%02d" % ["🌙" if h < 6.0 or h >= 20.0 else "☀️", int(h), int(fmod(h, 1.0) * 60.0)]
@@ -244,6 +276,21 @@ func _fill_window() -> void:
 		c.queue_free()
 	var e: Node = main.economy
 	var gold := Color(0.91, 0.77, 0.42)
+	if _win_kind == "balance":
+		_fill_balance(vb, e, gold)
+		return
+	if _win_kind == "military":
+		_fill_military(vb, e, gold)
+		return
+	if _win_kind == "news":
+		_lbl(vb, "🔔 " + tr("UI_NEWS"), 20, gold)
+		if news.is_empty():
+			_lbl(vb, tr("NEWS_EMPTY"), 13)
+		for i in range(news.size() - 1, -1, -1):
+			_lbl(vb, "[color=#c9a24a]%s[/color]  %s" % [news[i][0], news[i][1]], 13)
+		_unread = 0
+		_bell.text = "🔔"
+		return
 	if _win_kind == "stats":
 		_lbl(vb, "📊 " + tr("UI_STATS"), 20, gold)
 		var people: int = main.settlers.workers.size()
@@ -284,3 +331,90 @@ func _fill_window() -> void:
 				if miss.size() and live.size():
 					line += "  · " + tr("ST_MISSING") + " " + ", ".join(miss.map(func(k): return tr("ITEM_" + String(k).to_upper())))
 				_lbl(vb, line, 13, Color(0.75, 0.72, 0.65) if live.is_empty() else Color(0.96, 0.9, 0.78))
+
+
+# ---------- Wirtschaftsbilanz: Erzeugung und Verbrauch je Minute ----------
+func _fill_balance(vb: Control, e: Node, gold: Color) -> void:
+	_lbl(vb, "📈 " + tr("UI_BALANCE"), 20, gold)
+	var mins: float = maxf(1.0, _game_time / 60.0)
+	_lbl(vb, tr("BAL_HINT") % int(mins), 12)
+	var rows: Array = []
+	for k in e.data.items:
+		var made: float = e.stats.prod.get(k, 0) / mins
+		var used: float = e.stats.use.get(k, 0) / mins
+		if made == 0.0 and used == 0.0:
+			continue
+		rows.append([k, made, used, made - used])
+	rows.sort_custom(func(a, b): return a[3] < b[3])
+	if rows.is_empty():
+		_lbl(vb, tr("BAL_EMPTY"), 13)
+	for r in rows:
+		var net: float = r[3]
+		var col := "#9f9" if net > 0.05 else ("#f88" if net < -0.05 else "#ddd")
+		_lbl(vb, "%s %s   [color=#9f9]+%.1f[/color]  [color=#f99]−%.1f[/color]  →  [color=%s][b]%+.1f[/b][/color] %s" % [UiIcons.bb(r[0], 20), tr("ITEM_" + String(r[0]).to_upper()), r[1], r[2], col, net, tr("BAL_PER_MIN")], 13)
+
+# ---------- Militär-Übersicht ----------
+func _fill_military(vb: Control, e: Node, gold: Color) -> void:
+	var m: Node = main.military
+	_lbl(vb, "⚔️ " + tr("UI_MILITARY"), 20, gold)
+	var own: Array = m.soldiers.filter(func(s): return s.owner == 0)
+	var towers: Array = e.buildings.filter(func(b): return m.is_military(b.type) and b.build >= 1.0)
+	_lbl(vb, tr("MIL_OWN") % [own.size(), m.count_available(0), towers.size(), int(m.land_share(0) * 100.0)], 14)
+	for b in towers:
+		_lbl(vb, "  [img=20]res://icons/buildings/%s.png[/img] %s – %s %d" % [b.type, tr("BLD_" + String(b.type).to_upper()), tr("MIL_GARRISON"), int(b.get("garrison", 0))], 13)
+	_lbl(vb, tr("MIL_ENEMIES"), 16, gold)
+	if m.ais.is_empty():
+		_lbl(vb, tr("MIL_NONE"), 13)
+	for ai in m.ais:
+		var st: String = tr("MIL_DEFEATED") if not ai.get("alive", true) else ("🕊️ " + tr("AI_PEACEFUL") if ai.get("peaceful", false) else "⚔️ " + tr("AI_AGGRESSIVE"))
+		var sold: int = m.soldiers.filter(func(s): return s.owner == ai.id).size()
+		_lbl(vb, "[b]%s[/b]\n   %s · %s · %s %d · %s %d · %s %d %%" % [tr(ai.name), tr("DIFF_" + String(ai.diff).to_upper()), st, tr("ST_BUILDINGS"), ai.buildings.size(), tr("ST_SOLDIERS"), sold, tr("MIL_LAND"), int(m.land_share(ai.id) * 100.0)], 13)
+
+# ---------- Meldungen ----------
+func _log_news(text: String) -> void:
+	var h := day_t / DAY_SECONDS * 24.0
+	news.append(["%02d:%02d" % [int(h), int(fmod(h, 1.0) * 60.0)], text])
+	if news.size() > 60:
+		news.pop_front()
+	if _win_kind == "news":
+		_fill_window()
+		return
+	_unread += 1
+	_bell.text = "🔔%d" % _unread
+
+# ---------- Ton an/aus ----------
+func toggle_sound() -> void:
+	var muted := not AudioServer.is_bus_mute(0)
+	AudioServer.set_bus_mute(0, muted)
+	_sound_btn.text = "🔇" if muted else "🔊"
+
+# ---------- Gebäude-Schilder ----------
+func toggle_labels() -> void:
+	labels_on = not labels_on
+	_update_labels()
+
+func _update_labels() -> void:
+	for b in main.economy.buildings:
+		var l = b.get("lbl3d")
+		if b.get("removed", false) or not is_instance_valid(b.node):
+			if l and is_instance_valid(l):
+				l.queue_free()
+			continue
+		if not labels_on:
+			if l and is_instance_valid(l):
+				l.visible = false
+			continue
+		if l == null or not is_instance_valid(l):
+			l = Label3D.new()
+			l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			l.no_depth_test = true
+			l.font_size = 40
+			l.pixel_size = 0.03
+			l.outline_size = 10
+			l.modulate = Color(1, 0.95, 0.8)
+			main.add_child(l)
+			b.lbl3d = l
+		var st: String = b.get("status", "")
+		l.text = tr("BLD_" + String(b.type).to_upper()) + ("\n" + tr(st) if st != "" else "")
+		l.position = b.pos + Vector3(0, 7.5, 0)
+		l.visible = true
