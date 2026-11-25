@@ -245,3 +245,6 @@ G_ENEMIES_LEFT	Verbleibende Gegner: %d	Opponents left: %d
 G_MANOR	Zufriedenes Herrenhaus	Happy manor
 G_LAND	Dein Land	Your land
 MSG_KEEP_PLAYING	Du kannst einfach weiterspielen und deine Siedlung weiter ausbauen.	You can simply keep playing and expand your settlement further.
+AI_AGGRESSIVE	⚔️ greift an	⚔️ attacks
+AI_PEACEFUL	🕊️ friedlich	🕊️ peaceful
+NG_AI_HINT	Friedliche Gegner wachsen und bauen Türme, greifen dich aber nie an. Du kannst sie trotzdem angreifen.	Peaceful opponents grow and build towers but never attack you. You can still attack them.

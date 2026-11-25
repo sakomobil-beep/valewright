@@ -51,10 +51,16 @@ func _ready() -> void:
 	add_child(_border)
 	claims.append({"pos": Vector3.ZERO, "r": START_RADIUS, "owner": 0, "b": null})
 
-func start_ais(count: int, diff: String) -> void:
+func start_ais(count: int, diff: String, list: Array = []) -> void:
 	var spots := _ai_spots(count)
 	for i in spots.size():
-		_spawn_ai(i + 1, spots[i], diff)
+		var d := diff
+		var peaceful := false
+		if i < list.size():
+			d = String(list[i].diff)
+			peaceful = bool(list[i].peaceful)
+		_spawn_ai(i + 1, spots[i], d)
+		ais[-1].peaceful = peaceful
 	recompute()
 
 func _ai_spots(count: int) -> Array:
@@ -476,7 +482,7 @@ func _ai_tick(ai: Dictionary, dt: float) -> void:
 	if ai.t_expand >= D.expand and ai.lager.garrison > 2:
 		ai.t_expand = 0.0
 		_ai_expand(ai)
-	if time > GRACE and ai.t_attack >= D.attack:
+	if time > GRACE and ai.t_attack >= D.attack and not ai.get("peaceful", false):
 		ai.t_attack = 0.0
 		_ai_attack(ai, D.wave)
 
@@ -553,6 +559,7 @@ func load_ai(a: Dictionary) -> void:
 	ai.t_grow = float(a.t_grow)
 	ai.t_expand = float(a.t_expand)
 	ai.t_attack = float(a.t_attack)
+	ai.peaceful = bool(a.get("peaceful", false))
 	for tw in a.towers:
 		var b := _ai_building(ai, "wachturm", Vector3(tw.pos[0], tw.pos[1], tw.pos[2]), int(tw.g))
 		claims.append({"pos": b.pos, "r": CLAIM.wachturm, "owner": id, "b": b})

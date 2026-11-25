@@ -42,7 +42,7 @@ func save(slot: String) -> void:
 	d.deposits = dep
 	d.soldiers = m.soldiers.filter(func(s): return s.owner == 0 and s.state != "garrison").map(func(s): return s.str)
 	d.ais = m.ais.map(func(a): return {"id": a.id, "diff": a.diff, "alive": a.alive, "pos": _v(a.pos),
-		"lager": a.lager.garrison, "t_grow": a.t_grow, "t_expand": a.t_expand, "t_attack": a.t_attack,
+		"lager": a.lager.garrison, "peaceful": a.get("peaceful", false), "t_grow": a.t_grow, "t_expand": a.t_expand, "t_attack": a.t_attack,
 		"towers": a.buildings.filter(func(b): return b.type == "wachturm").map(func(b): return {"pos": _v(b.pos), "g": b.garrison})})
 	var f := FileAccess.open(Session.save_path(slot), FileAccess.WRITE)
 	f.store_string(JSON.stringify(d))

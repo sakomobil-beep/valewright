@@ -96,7 +96,7 @@ func main_menu() -> void:
 
 # ---------- Neues Spiel ----------
 func new_game_menu() -> void:
-	var vb := _window(460)
+	var vb := _window(560)
 	_label(vb, "MENU_NEW", 28, GOLD, true)
 	var c := {"mode": "free", "ais": 1, "diff": "leicht", "seed": randi() % 100000, "mission": 0, "victory": "conquest"}
 	_label(vb, "NG_VICTORY")
@@ -112,14 +112,39 @@ func new_game_menu() -> void:
 	for i in 4:
 		ob.add_item(str(i), i)
 	ob.selected = 1
-	ob.item_selected.connect(func(i): c.ais = i)
 	vb.add_child(ob)
-	_label(vb, "NG_DIFF")
-	var od := OptionButton.new()
-	for k in ["leicht", "mittel", "schwer"]:
-		od.add_item(tr("DIFF_" + k.to_upper()))
-	od.item_selected.connect(func(i): c.diff = ["leicht", "mittel", "schwer"][i])
-	vb.add_child(od)
+	# je Gegner eigene Stärke und eigenes Verhalten
+	c.ai_list = []
+	var rows: Array = []
+	var names := ["AI_RABENECK", "AI_HOHENSTEIN", "AI_WALDBRUNN"]
+	for i in 3:
+		var a := {"diff": "leicht", "peaceful": false}
+		c.ai_list.append(a)
+		var hb := HBoxContainer.new()
+		hb.add_theme_constant_override("separation", 8)
+		var nl := Label.new()
+		nl.text = names[i]
+		nl.custom_minimum_size = Vector2(250, 0)
+		nl.add_theme_color_override("font_color", [Color(1, 0.45, 0.4), Color(1, 0.85, 0.3), Color(0.8, 0.55, 1)][i])
+		hb.add_child(nl)
+		var od := OptionButton.new()
+		for k in ["leicht", "mittel", "schwer"]:
+			od.add_item(tr("DIFF_" + k.to_upper()))
+		od.item_selected.connect(func(j): a.diff = ["leicht", "mittel", "schwer"][j])
+		hb.add_child(od)
+		var pb := OptionButton.new()
+		pb.add_item(tr("AI_AGGRESSIVE"))
+		pb.add_item(tr("AI_PEACEFUL"))
+		pb.item_selected.connect(func(j): a.peaceful = j == 1)
+		hb.add_child(pb)
+		hb.visible = i < 1
+		vb.add_child(hb)
+		rows.append(hb)
+	ob.item_selected.connect(func(i):
+		c.ais = i
+		for k in 3:
+			rows[k].visible = k < i)
+	_label(vb, "NG_AI_HINT", 12)
 	_label(vb, "NG_MAP")
 	var om := OptionButton.new()
 	om.add_item(tr("NG_MAP_RANDOM"))

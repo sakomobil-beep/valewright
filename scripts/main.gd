@@ -93,7 +93,7 @@ func _ready() -> void:
 		savegame.apply(Session.load_data)
 		Session.load_data = null
 	else:
-		military.start_ais(int(Session.cfg.get("ais", 1)), String(Session.cfg.get("diff", "leicht")))
+		military.start_ais(int(Session.cfg.get("ais", 1)), String(Session.cfg.get("diff", "leicht")), Session.cfg.get("ai_list", []))
 		military.recompute()
 		if missions.mission != 0:
 			_toast(tr("MSG_GOALS_RIGHT"))
