@@ -16,7 +16,8 @@ func save(slot: String) -> void:
 	var m: Node3D = main.military
 	var d := {"version": VERSION, "cfg": Session.cfg, "date": Time.get_datetime_string_from_system(false, true),
 		"time": m.time, "stock": e.stock, "unl": e.unl, "mission": main.missions.mission, "step": main.missions.step,
-		"mission_done": main.missions.done, "won": main.missions.won}
+		"mission_done": main.missions.done, "won": main.missions.won,
+		"fog": Marshalls.raw_to_base64(main.fog.explored.compress(FileAccess.COMPRESSION_DEFLATE)), "fog_n": main.fog.explored.size()}
 	var bl: Array = []
 	for b in e.buildings:
 		if b.get("destroyed", false):
@@ -50,6 +51,9 @@ func save(slot: String) -> void:
 		main._toast(tr("MSG_SAVED"))
 
 func apply(d: Dictionary) -> void:
+	if d.has("fog") and int(d.get("fog_n", 0)) == main.fog.explored.size():
+		main.fog.explored = Marshalls.base64_to_raw(d.fog).decompress(int(d.fog_n), FileAccess.COMPRESSION_DEFLATE)
+		main.fog._dirty = true
 	var e: Node = main.economy
 	var t: Node3D = main.terrain
 	var m: Node3D = main.military

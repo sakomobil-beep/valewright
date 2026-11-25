@@ -152,6 +152,8 @@ func _process(dt: float) -> void:
 
 # ---------- Minikarte ----------
 const MM := 170
+var _mm_base: Image
+var _mm_fog_t := 0.0
 func _setup_minimap() -> void:
 	var t: Node3D = main.terrain
 	var img := Image.create(MM, MM, false, Image.FORMAT_RGB8)
@@ -169,6 +171,7 @@ func _setup_minimap() -> void:
 				c = Color(0.55, 0.53, 0.5)
 			c = c.darkened(clampf(-(t.height(x, z) - t.height(x - 2, z - 2)) * 0.08, -0.15, 0.15))
 			img.set_pixel(i, j, c)
+	_mm_base = img
 	var panel := PanelContainer.new()
 	_panel_style(panel, 4)
 	panel.anchor_left = 1.0
@@ -196,7 +199,27 @@ func _to_mm(p: Vector3) -> Vector2:
 	var s: float = main.terrain.SIZE
 	return Vector2((p.x + s * 0.5) / s * MM, (p.z + s * 0.5) / s * MM)
 
+func _mm_fog() -> void:
+	var f = main.get("fog")
+	if f == null or _mm_base == null:
+		return
+	var img: Image = _mm_base.duplicate()
+	var t: Node3D = main.terrain
+	var dark := Color(0.11, 0.13, 0.17)
+	for j in MM:
+		for i in MM:
+			var x: float = (i + 0.5) / MM * t.SIZE - t.SIZE * 0.5
+			var z: float = (j + 0.5) / MM * t.SIZE - t.SIZE * 0.5
+			if not f.is_explored(x, z):
+				img.set_pixel(i, j, img.get_pixel(i, j).lerp(dark, 0.85))
+	(minimap.texture as ImageTexture).update(img)
+
 func _mm_draw() -> void:
+	var f = main.get("fog")
+	_mm_fog_t -= 1.0
+	if _mm_fog_t <= 0.0:
+		_mm_fog_t = 3.0
+		_mm_fog()
 	var m: Node3D = main.military
 	var cols: Array = m.OWNER_COL
 	# Gebiet als feine Punkte
@@ -206,12 +229,16 @@ func _mm_draw() -> void:
 			var o: int = m.owner_grid[j * m.n + i]
 			if o >= 0:
 				var p := Vector2((i + 0.5) / m.n * MM, (j + 0.5) / m.n * MM)
+				if o != 0 and f and not f.is_explored(p.x / MM * main.terrain.SIZE - main.terrain.SIZE * 0.5, p.y / MM * main.terrain.SIZE - main.terrain.SIZE * 0.5):
+					continue
 				_mm_overlay.draw_rect(Rect2(p - Vector2(1, 1), Vector2(2, 2)), Color(cols[o], 0.55))
 	for b in main.economy.buildings:
 		_mm_overlay.draw_rect(Rect2(_to_mm(b.pos) - Vector2(2, 2), Vector2(4, 4)), Color(1, 1, 1))
 	for ai in m.ais:
 		if ai.alive:
 			for b in ai.buildings:
+				if f and not f.is_explored(b.pos.x, b.pos.z):
+					continue
 				_mm_overlay.draw_rect(Rect2(_to_mm(b.pos) - Vector2(2, 2), Vector2(4, 4)), cols[ai.id])
 	_mm_overlay.draw_circle(_to_mm(Vector3.ZERO), 3.5, Color(1, 0.85, 0.3))
 	var rig: Node3D = main.get_node("Kamera")

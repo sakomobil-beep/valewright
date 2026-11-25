@@ -28,6 +28,7 @@ var builder: Node3D
 var terrain: Node3D
 var fps_label: Label
 var rb
+var fog
 var ui_layer: CanvasLayer
 var toast_box: VBoxContainer
 
@@ -35,6 +36,10 @@ func _ready() -> void:
 	_setup_environment()
 	terrain = Terrain.new()
 	terrain.prepare(Session.cfg)
+	fog = preload("res://scripts/fog.gd").new()
+	fog.name = "Nebel"
+	fog.setup(terrain)
+	add_child(fog)
 	terrain.name = "Gelaende"
 	add_child(terrain)
 	_build_lager()
@@ -74,6 +79,8 @@ func _ready() -> void:
 	builder.military = military
 	rb.settlers = settlers
 	rb.military = military
+	fog.settlers = settlers
+	fog.military = military
 	$Tiere.settlers = settlers
 	missions = Missions.new()
 	missions.name = "Missionen"
@@ -94,6 +101,7 @@ func _ready() -> void:
 	if not Session.started:
 		# Hauptmenü: die Welt dient als Kulisse
 		ui_layer.visible = false
+		fog.reveal_all()
 		gameui.apply_settings()
 		gameui.main_menu()
 		return

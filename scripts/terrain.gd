@@ -399,9 +399,9 @@ func _build_rocks() -> void:
 	rock.height = 1.0
 	rock.radial_segments = 6
 	rock.rings = 3
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.55, 0.53, 0.5)
-	mat.roughness = 1.0
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://shaders/fogged.gdshader")
+	mat.set_shader_parameter("albedo", Color(0.55, 0.53, 0.5))
 	rock.material = mat
 	var list: Array = []
 	var half := SIZE * 0.5 - 4.0

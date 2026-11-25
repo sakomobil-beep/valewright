@@ -1,6 +1,8 @@
 shader_type spatial;
 render_mode diffuse_lambert, specular_disabled;
 // Boden: Grundfarbe aus Vertexfarbe + feine Detailvariation, Felsbänder an Hängen
+global uniform sampler2D fog_tex : filter_linear;
+global uniform float fog_size;
 varying vec3 wpos;
 varying vec3 wnorm;
 
@@ -23,6 +25,8 @@ void fragment() {
 	float band = vnoise(vec2(wpos.y * 1.3, wpos.x * 0.05 + wpos.z * 0.05));
 	vec3 rock = pow(mix(vec3(0.40, 0.37, 0.34), vec3(0.56, 0.52, 0.47), band), vec3(2.2)) * (0.85 + 0.3 * vnoise(wpos.xz * 2.5));
 	c = mix(c, rock, smoothstep(0.38, 0.62, steep) * (1.0 - COLOR.a));
+	float e = texture(fog_tex, wpos.xz / fog_size + 0.5).r;
+	c = mix(c * 0.12 + vec3(0.016, 0.019, 0.026) * 0.88, c, e);
 	ALBEDO = c;
 	ROUGHNESS = 0.95;
 }

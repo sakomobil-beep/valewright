@@ -13,7 +13,9 @@ const DIFF := {
 	"mittel": {"start": 3, "grow": 60.0, "expand": 110.0, "attack": 220.0, "wave": 3},
 	"schwer": {"start": 5, "grow": 40.0, "expand": 80.0, "attack": 140.0, "wave": 5},
 }
-const GRACE := 240.0     # so lange greift die KI am Anfang nicht an
+const GRACE := 240.0
+# erster Angriff wie im Browser erst spät: Leicht nach 60 Min., Mittel nach 45 Min., Schwer nach 25 Min. Spielzeit
+const FIRST_ATTACK := {"leicht": 3600.0, "mittel": 2700.0, "schwer": 1500.0}
 
 var terrain: Node3D
 var economy: Node
@@ -40,9 +42,9 @@ func _ready() -> void:
 	mm.use_colors = true
 	var post := BoxMesh.new()
 	post.size = Vector3(0.35, 2.2, 0.35)
-	var mat := StandardMaterial3D.new()
-	mat.vertex_color_use_as_albedo = true
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://shaders/fogged.gdshader")
+	mat.set_shader_parameter("use_instance_color", true)
 	post.material = mat
 	mm.mesh = post
 	_border = MultiMeshInstance3D.new()
@@ -64,14 +66,20 @@ func start_ais(count: int, diff: String, list: Array = []) -> void:
 	recompute()
 
 func _ai_spots(count: int) -> Array:
+	var out: Array = _ai_spots_at(count, 0.78)
+	if out.size() < count:
+		out = _ai_spots_at(count, 0.62)   # Ersatz, falls am Rand kein Platz ist
+	return out
+
+func _ai_spots_at(count: int, base: float) -> Array:
 	var out: Array = []
 	for k in 72:
 		if out.size() >= count:
 			break
 		var ang := k * TAU / 72.0 * 7.0
-		var r: float = (115.0 + (k % 3) * 12.0) * terrain.SIZE / 360.0
+		var r: float = _half * (base + (k % 3) * 0.05)   # weit weg vom Spieler, nahe am Kartenrand
 		var p := Vector3(cos(ang) * r, 0, sin(ang) * r)
-		if absf(p.x) > _half - 30 or absf(p.z) > _half - 30:
+		if absf(p.x) > _half - 18 or absf(p.z) > _half - 18:
 			continue
 		if not _good_spot(p):
 			continue
@@ -482,7 +490,7 @@ func _ai_tick(ai: Dictionary, dt: float) -> void:
 	if ai.t_expand >= D.expand and ai.lager.garrison > 2:
 		ai.t_expand = 0.0
 		_ai_expand(ai)
-	if time > GRACE and ai.t_attack >= D.attack and not ai.get("peaceful", false):
+	if time > FIRST_ATTACK.get(ai.diff, 2700.0) and ai.t_attack >= D.attack and not ai.get("peaceful", false):
 		ai.t_attack = 0.0
 		_ai_attack(ai, D.wave)
 
