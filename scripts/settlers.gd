@@ -7,6 +7,7 @@ const WORKER_SCALE := 1.5
 
 var terrain: Node3D
 var economy: Node
+var military: Node3D
 var workers: Array = []
 var reserved := {}            # Bäume/Felsen, die schon jemand bearbeitet
 var grid := AStarGrid2D.new() # Wegfindung: Wasser, Steilhänge und Gebäude werden umgangen
@@ -127,6 +128,9 @@ func on_building_placed(b: Dictionary) -> void:
 	]
 
 func _on_built(b: Dictionary) -> void:
+	if military and military.is_military(b.type):
+		military.on_player_built(b)
+		return
 	if b.type in ["holzfaeller", "steinmetz", "foerster", "rutengaenger"] or economy.produces(b.type):
 		# Jeder neue Arbeiter braucht Werkzeug
 		if economy.stock.get("werkzeug", 0) < 1:

@@ -7,6 +7,8 @@ const Builder := preload("res://scripts/builder.gd")
 const Economy := preload("res://scripts/economy.gd")
 const Settlers := preload("res://scripts/settlers.gd")
 const Decor := preload("res://scripts/decor.gd")
+const Military := preload("res://scripts/military.gd")
+var military: Node3D
 var settlers: Node3D
 var economy: Node
 var stock_label: Label
@@ -48,6 +50,16 @@ func _ready() -> void:
 	builder.camera = $Kamera/Camera3D
 	add_child(builder)
 	builder.setup_ui(ui_layer)
+	military = Military.new()
+	military.name = "Militaer"
+	military.terrain = terrain
+	military.economy = economy
+	military.settlers = settlers
+	military.builder = builder
+	add_child(military)
+	settlers.military = military
+	builder.military = military
+	military.start_ais(1, "leicht")
 
 func _setup_environment() -> void:
 	var sky_mat := ProceduralSkyMaterial.new()
@@ -141,7 +153,7 @@ func _setup_ui() -> void:
 	title.add_theme_font_size_override("font_size", 20)
 	vb.add_child(title)
 	var info := Label.new()
-	info.text = "UI_STAGE4"
+	info.text = "UI_STAGE5"
 	vb.add_child(info)
 	var ctr := Label.new()
 	ctr.text = "UI_CONTROLS"

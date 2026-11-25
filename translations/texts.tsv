@@ -146,3 +146,20 @@ UI_NEED_DEPOSIT	Hier ist kein gefundenes Vorkommen – erst den Rutengänger suc
 ST_SEARCHING	Sucht nach Bodenschätzen	Searching for deposits
 ST_NOTHING_FOUND	Nichts mehr zu finden	Nothing left to find
 MSG_DEPOSIT	🪄 Vorkommen gefunden: %s	🪄 Deposit found: %s
+UI_STAGE5	Etappe 5: Gebiet, Wachtürme & Kampf	Stage 5: Territory, towers & combat
+AI_RABENECK	Graf von Rabeneck	Count of Rabeneck
+AI_HOHENSTEIN	Fürst von Hohenstein-Mümling	Prince of Hohenstein-Mümling
+AI_WALDBRUNN	Abt von Kloster Waldbrunn	Abbot of Waldbrunn Abbey
+ST_WAIT_GUARD	Wartet auf einen Wächter (braucht Kampfstock 🏏)	Waiting for a guard (needs a fighting staff 🏏)
+ST_GUARDED	Besetzt	Manned
+UI_ATTACK	⚔️ Angreifen (%d Soldaten bereit)	⚔️ Attack (%d soldiers ready)
+UI_NO_SOLDIERS	Keine freien Soldaten – jeder Turm behält einen Wächter	No free soldiers – every tower keeps one guard
+MSG_TERRITORY	🚩 Dein Gebiet ist gewachsen!	🚩 Your territory has grown!
+MSG_SWORDSMAN	⚔️ Ein Schwertkämpfer ist bereit	⚔️ A swordsman is ready
+MSG_ARCHER	🏹 Ein Bogenschütze ist bereit	🏹 An archer is ready
+MSG_CAPTURED	🏳️ Turm erobert!	🏳️ Tower captured!
+MSG_LOST_TOWER	😟 Ein Turm wurde erobert!	😟 A tower has been captured!
+MSG_AI_DEFEATED	🏆 %s ist besiegt!	🏆 %s has been defeated!
+MSG_VICTORY	👑 Sieg! Alle Gegner sind besiegt.	👑 Victory! All enemies are defeated.
+MSG_DEFEAT	💀 Dein Haupthaus ist gefallen – Niederlage.	💀 Your town hall has fallen – defeat.
+MSG_AI_ATTACK	⚔️ %s greift an!	⚔️ %s is attacking!

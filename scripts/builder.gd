@@ -7,6 +7,9 @@ const SCALE := 1.5
 var terrain: Node3D
 var economy: Node
 var settlers: Node3D
+var military: Node3D
+var attack_btn: Button
+var enemy = null
 var _buttons := {}
 var type_row: HBoxContainer
 var _open := ""
@@ -93,9 +96,22 @@ func setup_ui(layer: CanvasLayer) -> void:
 	info_panel.custom_minimum_size = Vector2(260, 0)
 	info_panel.visible = false
 	layer.add_child(info_panel)
+	var ivb := VBoxContainer.new()
+	info_panel.add_child(ivb)
 	info_label = Label.new()
 	info_label.add_theme_color_override("font_color", Color(0.96, 0.9, 0.78))
-	info_panel.add_child(info_label)
+	ivb.add_child(info_label)
+	attack_btn = Button.new()
+	attack_btn.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	attack_btn.visible = false
+	attack_btn.pressed.connect(func():
+		if enemy != null and military:
+			var k: int = military.attack(0, enemy, 999)
+			if k == 0:
+				hint.text = tr("UI_NO_SOLDIERS")
+				hint.visible = true
+			info_panel.visible = false)
+	ivb.add_child(attack_btn)
 	confirm_box = HBoxContainer.new()
 	confirm_box.anchor_left = 0.5
 	confirm_box.anchor_right = 0.5
@@ -213,7 +229,7 @@ func can_place(p: Vector3) -> bool:
 	var info: Dictionary = economy.type_info(placing)
 	if info.get("mine") != null:
 		# Bergwerke nur an einem gefundenen Vorkommen (Rutengänger!)
-		return terrain.deposit_near(p, info.mine, 6.0) != null and _no_overlap(p, r)
+		return terrain.deposit_near(p, info.mine, 6.0) != null and _no_overlap(p, r) and (military == null or military.owner_at(p) == 0)
 	for a in [0.0, PI / 2, PI, PI * 1.5]:
 		var q := p + Vector3(cos(a), 0, sin(a)) * r
 		if terrain.height(q.x, q.z) < terrain.WATER_Y + 0.4:
@@ -226,6 +242,8 @@ func can_place(p: Vector3) -> bool:
 		return false
 	if Vector2(p.x, p.z).length() < 9.5:
 		return false   # Haupthaus
+	if military and military.owner_at(p) != 0:
+		return false   # nur im eigenen Gebiet
 	return _no_overlap(p, r)
 
 func _no_overlap(p: Vector3, r: float) -> bool:
@@ -255,6 +273,13 @@ func ground_point(screen: Vector2):
 	return null
 
 func _process(_dt: float) -> void:
+	if enemy != null and info_panel.visible and military:
+		var e: Dictionary = enemy
+		info_label.text = "%s\n%s\n🛡️ %d" % [tr(e.ai.name) if e.has("ai") else "", tr("BLD_" + String(e.type).to_upper()), e.garrison]
+		attack_btn.text = tr("UI_ATTACK") % military.count_available(0)
+		attack_btn.visible = true
+		return
+	attack_btn.visible = false
 	if selected != null and info_panel.visible:
 		var b: Dictionary = selected
 		var txt := tr(_key(b.type)) + "\n" + tr(b.status)
@@ -272,6 +297,12 @@ func _process(_dt: float) -> void:
 func _select_at(screen: Vector2) -> void:
 	var p = ground_point(screen)
 	selected = null
+	enemy = null
+	if p != null and military:
+		enemy = military.enemy_at(p)
+		if enemy != null:
+			info_panel.visible = true
+			return
 	if p != null:
 		var best := 999.0
 		for b in buildings:
