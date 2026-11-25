@@ -353,7 +353,7 @@ func about_page(in_game: bool) -> void:
 
 # ---------- Einstellungen ----------
 const SETTINGS := "user://settings.cfg"
-var opts := {"volume": 0.8, "shadows": true, "effects": true, "cam_speed": 1.0, "language": ""}
+var opts := {"volume": 0.8, "shadows": true, "effects": true, "cam_speed": 1.0, "language": "", "grass": "hoch"}
 
 func load_settings() -> void:
 	var c := ConfigFile.new()
@@ -377,6 +377,9 @@ func apply_settings() -> void:
 	for we in main.find_children("*", "WorldEnvironment", false, false):
 		we.environment.ssao_enabled = opts.effects
 		we.environment.glow_enabled = opts.effects
+	var gr = main.get_node_or_null("Gras")
+	if gr:
+		gr.set_quality(String(opts.grass))
 	var rig = main.get_node_or_null("Kamera")
 	if rig:
 		rig.pan_speed = 0.9 * opts.cam_speed
@@ -411,6 +414,14 @@ func settings_menu(in_game: bool) -> void:
 	fx.button_pressed = opts.effects
 	fx.toggled.connect(func(v): opts.effects = v; save_settings(); apply_settings())
 	vb.add_child(fx)
+	_label(vb, "SET_GRASS")
+	var go := OptionButton.new()
+	var gk := ["hoch", "mittel", "niedrig", "aus"]
+	for k in gk:
+		go.add_item(tr("SETG_" + k.to_upper()))
+	go.selected = maxi(0, gk.find(String(opts.grass)))
+	go.item_selected.connect(func(i): opts.grass = gk[i]; save_settings(); apply_settings())
+	vb.add_child(go)
 	_label(vb, "SET_LANGUAGE")
 	var hb := HBoxContainer.new()
 	vb.add_child(hb)

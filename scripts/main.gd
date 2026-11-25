@@ -234,6 +234,12 @@ func _setup_stock() -> void:
 	stock_label.add_theme_color_override("font_color", Color(0.96, 0.9, 0.78))
 	panel.add_child(stock_label)
 	economy.changed.connect(_update_stock)
+	var grass := preload("res://scripts/grass.gd").new()
+	grass.name = "Gras"
+	grass.terrain = terrain
+	grass.rig = $Kamera
+	grass.economy = economy
+	add_child(grass)
 	var sfx := preload("res://scripts/sfx.gd").new()
 	sfx.name = "Sfx"
 	add_child(sfx)

@@ -340,3 +340,8 @@ MGV_KNAPP	Knapp	Scarce
 MGV_REICH	Reich	Rich
 MGV_GEMUETLICH	Gemütlich	Relaxed
 MGV_SCHNELL	Schnell	Fast
+SET_GRASS	Gras & Blumen	Grass & flowers
+SETG_HOCH	Viel (schöner)	High (prettier)
+SETG_MITTEL	Mittel	Medium
+SETG_NIEDRIG	Wenig (schneller)	Low (faster)
+SETG_AUS	Aus	Off

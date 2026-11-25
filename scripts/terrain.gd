@@ -11,6 +11,8 @@ var world_seed := 4711
 # Kartengenerator (wie in der Browser-Version)
 var gen := {"size": "mittel", "terrain": "gemischt", "water": "normal", "forest": "normal", "res": "normal"}
 var hill_amp := 6.0
+var hgrid := PackedFloat32Array()   # Höhen des Bodennetzes (schneller Zugriff)
+var gmask := PackedByteArray()      # 1 = hier darf Gras wachsen
 var river_w := 1.0
 var forest_k := 0.05
 var deposits_per_mountain := 8
@@ -111,7 +113,6 @@ func _ready() -> void:
 	_build_ground()
 	_build_water()
 	_build_trees()
-	_build_grass()
 	_build_rocks()
 	_make_deposits()
 
@@ -146,6 +147,9 @@ func _build_ground() -> void:
 		for i in RES + 1:
 			hs[j * (RES + 1) + i] = height(-half + i * step, -half + j * step)
 	var W := RES + 1
+	hgrid = hs
+	gmask = PackedByteArray()
+	gmask.resize(W * W)
 	var hgt := func(i: int, j: int) -> float: return hs[clampi(j, 0, RES) * W + clampi(i, 0, RES)]
 	for j in W:
 		for i in W:
@@ -154,6 +158,7 @@ func _build_ground() -> void:
 			var y: float = hs[j * W + i]
 			var n := Vector3(hgt.call(i - 1, j) - hgt.call(i + 1, j), 2.0 * step, hgt.call(i, j - 1) - hgt.call(i, j + 1)).normalized()
 			st.set_color(_ground_color(x, z, y, 1.0 - n.y))
+			gmask[j * W + i] = 1 if (y > WATER_Y + 0.8 and n.y > 0.8 and mountain(x, z) < 5.0 and Vector2(x, z).length() > 11.0) else 0
 			st.set_normal(n)
 			st.add_vertex(Vector3(x, y, z))
 	for j in RES:
@@ -492,44 +497,24 @@ func reveal_deposit(d: Dictionary) -> void:
 	d.node = g
 
 
-# Grasbüschel und Blumen als MultiMesh – lockern die Wiesen auf
-func _build_grass() -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = world_seed + 21
-	var blade := PrismMesh.new()
-	blade.size = Vector3(0.5, 0.8, 0.1)
-	var mat := StandardMaterial3D.new()
-	mat.vertex_color_use_as_albedo = true
-	mat.roughness = 1.0
-	mat.vertex_color_is_srgb = true
-	blade.material = mat
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.use_colors = true
-	mm.mesh = blade
-	var pts: Array = []
-	var count := int(16000 * (SIZE / 360.0) * (SIZE / 360.0))
-	for k in count:
-		var x := rng.randf_range(-SIZE * 0.48, SIZE * 0.48)
-		var z := rng.randf_range(-SIZE * 0.48, SIZE * 0.48)
-		var h := height(x, z)
-		if h < WATER_Y + 0.8 or mountain(x, z) > 5.0 or Vector2(x, z).length() < 12.0:
-			continue
-		pts.append([x, h, z])
-	mm.instance_count = pts.size()
-	for i in pts.size():
-		var p: Array = pts[i]
-		var sc := rng.randf_range(0.7, 1.4)
-		var t := Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(sc, sc * rng.randf_range(0.8, 1.5), sc)), Vector3(p[0], p[1] + 0.25 * sc, p[2]))
-		mm.set_instance_transform(i, t)
-		var r := rng.randf()
-		var col := Color(0.3, 0.5, 0.18).lerp(Color(0.42, 0.58, 0.22), rng.randf())
-		if r < 0.025: col = Color(0.95, 0.85, 0.3)      # Butterblume
-		elif r < 0.04: col = Color(0.9, 0.5, 0.65)     # Klee
-		elif r < 0.055: col = Color(0.95, 0.95, 0.95)   # Gänseblümchen
-		mm.set_instance_color(i, col)
-	var mi := MultiMeshInstance3D.new()
-	mi.multimesh = mm
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	mi.name = "Gras"
-	add_child(mi)
+# schnelle Höhe aus dem Bodennetz (für Gras)
+func fast_height(x: float, z: float) -> float:
+	var step := SIZE / RES
+	var fx := clampf((x + SIZE * 0.5) / step, 0.0, RES - 0.001)
+	var fz := clampf((z + SIZE * 0.5) / step, 0.0, RES - 0.001)
+	var i := int(fx)
+	var j := int(fz)
+	var u := fx - i
+	var v := fz - j
+	var W := RES + 1
+	var h0: float = lerpf(hgrid[j * W + i], hgrid[j * W + i + 1], u)
+	var h1: float = lerpf(hgrid[(j + 1) * W + i], hgrid[(j + 1) * W + i + 1], u)
+	return lerpf(h0, h1, v)
+
+func grass_ok(x: float, z: float) -> bool:
+	var step := SIZE / RES
+	var i := int(round((x + SIZE * 0.5) / step))
+	var j := int(round((z + SIZE * 0.5) / step))
+	if i < 0 or j < 0 or i > RES or j > RES:
+		return false
+	return gmask[j * (RES + 1) + i] == 1 and absf(x - river_x(z)) > 4.5
