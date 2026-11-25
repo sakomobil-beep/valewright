@@ -92,7 +92,21 @@ func mountain(x: float, z: float) -> float:
 			h += m.h * shape * (0.82 + 0.18 * noise.get_noise_2d(x * 0.9, z * 0.9)) + ridge * ridge * ridge * 7.0 * shape
 	return h
 
+# eingeebnete Bauplätze (wie im Browser): k = 0 Urgelände … 1 ganz eben
+var flats: Array = []
+
 func height(x: float, z: float) -> float:
+	var h := height0(x, z)
+	for f in flats:
+		if f.k <= 0.0:
+			continue
+		var d := Vector2(x - f.x, z - f.z).length()
+		if d > f.r + f.fall:
+			continue
+		h += (f.y - h) * (1.0 - smoothstep(f.r, f.r + f.fall, d)) * f.k
+	return h
+
+func height0(x: float, z: float) -> float:
 	var h := 1.6 + absf(noise.get_noise_2d(x, z)) * hill_amp + detail.get_noise_2d(x, z) * 0.4
 	# Startplatz flach halten
 	var c := Vector2(x, z).length()
@@ -138,43 +152,104 @@ func _ground_color(x: float, z: float, h: float, steep: float) -> Color:
 	c.a = 1.0 if (mh > snow_line and steep < 0.55) else 0.0
 	return c
 
+const CHUNK := 15
+var _chunks := {}
+var _ground_mat: ShaderMaterial
+
 func _build_ground() -> void:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var step := SIZE / RES
 	var half := SIZE * 0.5
-	var hs := PackedFloat32Array()
-	hs.resize((RES + 1) * (RES + 1))
-	for j in RES + 1:
-		for i in RES + 1:
-			hs[j * (RES + 1) + i] = height(-half + i * step, -half + j * step)
 	var W := RES + 1
-	hgrid = hs
+	hgrid = PackedFloat32Array()
+	hgrid.resize(W * W)
 	gmask = PackedByteArray()
 	gmask.resize(W * W)
-	var hgt := func(i: int, j: int) -> float: return hs[clampi(j, 0, RES) * W + clampi(i, 0, RES)]
 	for j in W:
 		for i in W:
+			hgrid[j * W + i] = height(-half + i * step, -half + j * step)
+	_ground_mat = ShaderMaterial.new()
+	_ground_mat.shader = load("res://shaders/ground.gdshader")
+	var nc := int(ceil(float(RES) / CHUNK))
+	for cj in nc:
+		for ci in nc:
+			_build_chunk(ci, cj)
+
+# Ein Geländestück neu aufbauen (nach dem Einebnen eines Bauplatzes)
+func _build_chunk(ci: int, cj: int) -> void:
+	var step := SIZE / RES
+	var half := SIZE * 0.5
+	var W := RES + 1
+	var i0 := ci * CHUNK
+	var j0 := cj * CHUNK
+	var i1 := mini(RES, i0 + CHUNK)
+	var j1 := mini(RES, j0 + CHUNK)
+	var hgt := func(i: int, j: int) -> float: return hgrid[clampi(j, 0, RES) * W + clampi(i, 0, RES)]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var cw := i1 - i0 + 1
+	for j in range(j0, j1 + 1):
+		for i in range(i0, i1 + 1):
 			var x := -half + i * step
 			var z := -half + j * step
-			var y: float = hs[j * W + i]
+			var y: float = hgrid[j * W + i]
 			var n := Vector3(hgt.call(i - 1, j) - hgt.call(i + 1, j), 2.0 * step, hgt.call(i, j - 1) - hgt.call(i, j + 1)).normalized()
 			st.set_color(_ground_color(x, z, y, 1.0 - n.y))
 			gmask[j * W + i] = 1 if (y > WATER_Y + 0.8 and n.y > 0.8 and mountain(x, z) < 5.0 and Vector2(x, z).length() > 11.0) else 0
 			st.set_normal(n)
 			st.add_vertex(Vector3(x, y, z))
-	for j in RES:
-		for i in RES:
-			var a := j * W + i
-			st.add_index(a); st.add_index(a + 1); st.add_index(a + W + 1)
-			st.add_index(a); st.add_index(a + W + 1); st.add_index(a + W)
-	var mat := ShaderMaterial.new()
-	mat.shader = load("res://shaders/ground.gdshader")
-	var mi := MeshInstance3D.new()
+	for j in range(j1 - j0):
+		for i in range(i1 - i0):
+			var a := j * cw + i
+			st.add_index(a); st.add_index(a + 1); st.add_index(a + cw + 1)
+			st.add_index(a); st.add_index(a + cw + 1); st.add_index(a + cw)
+	var key := Vector2i(ci, cj)
+	var mi: MeshInstance3D = _chunks.get(key)
+	if mi == null:
+		mi = MeshInstance3D.new()
+		mi.material_override = _ground_mat
+		mi.name = "Boden_%d_%d" % [ci, cj]
+		add_child(mi)
+		_chunks[key] = mi
 	mi.mesh = st.commit()
-	mi.material_override = mat
-	mi.name = "Boden"
-	add_child(mi)
+
+# Bauplatz anlegen: mittlere Höhe des Platzes wie im Browser
+func add_flat(x: float, z: float, r: float, k: float) -> Dictionary:
+	var sum := 0.0
+	var n := 0
+	for a in 8:
+		for rr in [0.0, r * 0.6, r]:
+			sum += height(x + cos(a) * rr, z + sin(a) * rr)
+			n += 1
+	var f := {"x": x, "z": z, "r": r + 0.6, "fall": 3.75, "y": sum / n, "k": k}
+	flats.append(f)
+	if k > 0.0:
+		update_flat(f)
+	return f
+
+func remove_flat(f: Dictionary) -> void:
+	flats.erase(f)
+	update_flat(f)
+
+# Höhenraster und betroffene Geländestücke neu berechnen
+func update_flat(f: Dictionary) -> void:
+	var step := SIZE / RES
+	var half := SIZE * 0.5
+	var W := RES + 1
+	var R: float = f.r + f.fall + step
+	var i0 := maxi(0, int(floor((f.x - R + half) / step)))
+	var i1 := mini(RES, int(ceil((f.x + R + half) / step)))
+	var j0 := maxi(0, int(floor((f.z - R + half) / step)))
+	var j1 := mini(RES, int(ceil((f.z + R + half) / step)))
+	for j in range(j0, j1 + 1):
+		for i in range(i0, i1 + 1):
+			hgrid[j * W + i] = height(-half + i * step, -half + j * step)
+	var done := {}
+	for j in range(maxi(0, j0 - 1), mini(RES, j1 + 1) + 1, 1):
+		for i in range(maxi(0, i0 - 1), mini(RES, i1 + 1) + 1, 1):
+			var key := Vector2i(mini(i / CHUNK, int(ceil(float(RES) / CHUNK)) - 1), mini(j / CHUNK, int(ceil(float(RES) / CHUNK)) - 1))
+			if not done.has(key):
+				done[key] = true
+				_build_chunk(key.x, key.y)
 
 func _build_water() -> void:
 	var plane := PlaneMesh.new()

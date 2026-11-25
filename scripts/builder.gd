@@ -581,6 +581,10 @@ func place_loaded(sv: Dictionary) -> void:
 		settlers.block_area(p, 2.0 * SCALE)
 	if rec.build >= 1.0:
 		n.scale = Vector3.ONE * SCALE
+		# fertige Gebäude stehen auf eingeebnetem Platz
+		if t != "bruecke":
+			rec.flat = terrain.add_flat(p.x, p.z, (float(economy.type_info(t).r) + 0.4) * SCALE, 1.0)
+			n.position.y = rec.flat.y
 		if military and military.is_military(t):
 			military.load_tower(rec, int(sv.get("garrison", 0)))
 		elif settlers:
@@ -588,6 +592,7 @@ func place_loaded(sv: Dictionary) -> void:
 	else:
 		n.scale = Vector3.ONE * SCALE
 		rec.site_in_load = sv.get("site_in", {})
+		rec.site_level_load = float(sv.get("site_level", 1.0 if rec.site_in_load.size() else 0.0))
 		if settlers:
 			settlers.on_building_placed(rec)
 

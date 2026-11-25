@@ -32,18 +32,45 @@ func start(b: Dictionary, delivered := {}) -> void:
 	var n: Node3D = b.node
 	n.scale = Vector3.ONE * float(b.s)
 	var r: float = float(economy.type_info(b.type).r)
+	# Bauplatz einebnen (Stufe 1) – wie im Browser über eine Höhenfläche
+	var lv0: float = float(b.get("site_level_load", 1.0 if delivered else 0.0))
+	b.flat = terrain.add_flat(b.pos.x, b.pos.z, (r + 0.4) * float(b.s), lv0)
+	n.position.y = b.flat.y
+	b.pos.y = b.flat.y
 	# Modellteile nach Höhe sortieren – sie erscheinen von unten nach oben
+	# Schnittebene: alle Materialien des Modells durch das Baustellen-Material ersetzen
 	var parts: Array = []
+	var clips: Array = []
 	var y0 := 1e9
 	var y1 := -1e9
+	var csh: Shader = load("res://shaders/clip.gdshader")
 	for m in n.find_children("*", "MeshInstance3D", true, false):
 		var mi: MeshInstance3D = m
 		var bb: AABB = mi.global_transform * mi.get_aabb()
-		parts.append([mi, bb.position.y])
 		y0 = minf(y0, bb.position.y)
 		y1 = maxf(y1, bb.end.y)
-		mi.visible = false
+		if mi.mesh == null:
+			continue
+		for si in mi.mesh.get_surface_count():
+			var om = mi.get_active_material(si)
+			parts.append([mi, si, mi.get_surface_override_material(si)])
+			var sm := ShaderMaterial.new()
+			sm.shader = csh
+			if om is BaseMaterial3D:
+				var bm: BaseMaterial3D = om
+				sm.set_shader_parameter("albedo", bm.albedo_color)
+				sm.set_shader_parameter("roughness", bm.roughness)
+				sm.set_shader_parameter("metallic", bm.metallic)
+				sm.set_shader_parameter("use_vcol", bm.vertex_color_use_as_albedo)
+				if bm.albedo_texture:
+					sm.set_shader_parameter("tex", bm.albedo_texture)
+					sm.set_shader_parameter("use_tex", true)
+				if bm.emission_enabled:
+					sm.set_shader_parameter("emission", bm.emission * bm.emission_energy_multiplier)
+			mi.set_surface_override_material(si, sm)
+			clips.append(sm)
 	b.site_parts = parts
+	b.site_clips = clips
 	b.site_y0 = y0
 	b.site_y1 = y1
 	var site := Node3D.new()
@@ -136,7 +163,7 @@ func start(b: Dictionary, delivered := {}) -> void:
 			pile.append({"n": sp, "k": k, "q": q, "of": of})
 			i += 1
 	b.site_pile = pile
-	b.site_level = 0.0 if not delivered else 1.0
+	b.site_level = lv0
 	b.site_builder = null
 	b.site_at = false
 	b.status = "SITE_WAIT_BUILDER"
@@ -208,6 +235,12 @@ func _step(b: Dictionary, dt: float) -> void:
 	if working:
 		if b.site_level < 1.0:
 			b.site_level = minf(1.0, b.site_level + dt / (12.0 * _tf()))
+			b.flat.k = b.site_level
+			b._flat_t = float(b.get("_flat_t", 0.0)) + dt
+			if b._flat_t > 0.3 or b.site_level >= 1.0:
+				b._flat_t = 0.0
+				terrain.update_flat(b.flat)
+				b.node.position.y = b.flat.y
 		else:
 			b.build = minf(frac(b), b.build + dt / ((30.0 + r * 9.0) * _tf()))
 	_visual(b)
@@ -245,9 +278,8 @@ func _visual(b: Dictionary) -> void:
 		b.site_frame[i].visible = p < 0.6 and fp * n > i
 	var k: float = -0.02 if p < 0.35 else (p - 0.35) / 0.65
 	var cut: float = b.site_y0 + (b.site_y1 - b.site_y0) * k + 0.01
-	for e in b.site_parts:
-		if is_instance_valid(e[0]):
-			e[0].visible = e[1] <= cut
+	for sm in b.site_clips:
+		sm.set_shader_parameter("clip_y", cut)
 	var sc: Node3D = b.site_scaf
 	sc.visible = b.site_level >= 1.0
 	sc.scale.y = maxf(0.05, minf(1.0, p * 1.25))
@@ -266,7 +298,9 @@ func _visual(b: Dictionary) -> void:
 func _end(b: Dictionary) -> void:
 	for e in b.get("site_parts", []):
 		if is_instance_valid(e[0]):
-			e[0].visible = true
+			e[0].set_surface_override_material(e[1], e[2])
+	if b.get("flat"):
+		b.flat.k = 1.0
 	if b.get("site") and is_instance_valid(b.site):
 		b.site.queue_free()
 	b.site = null
