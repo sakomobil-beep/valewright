@@ -31,6 +31,7 @@ var selected = null
 var _ghost_ok_mat := StandardMaterial3D.new()
 
 func _ready() -> void:
+	add_to_group("builder")
 	_ghost_ok_mat.albedo_color = Color(0.4, 1.0, 0.4, 0.35)
 	_ghost_ok_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 
@@ -181,7 +182,7 @@ func setup_ui(layer: CanvasLayer) -> void:
 	var rot := Button.new()
 	rot.text = "UI_BUILD_ROTATE"
 	rot.custom_minimum_size = Vector2(120, 40)
-	rot.pressed.connect(func(): ghost_rot += PI / 4; _update_ghost_rot())
+	rot.pressed.connect(func(): rot_ghost(PI / 2))
 	confirm_box.add_child(rot)
 	var no := Button.new()
 	no.text = "UI_BUILD_CANCEL"
@@ -334,6 +335,8 @@ func start(t: String, move := false) -> void:
 		placing = t
 		ghost = model(t, moving.get("lvl", 0))
 		add_child(ghost)
+		ghost.rotation.y = ghost_rot
+		_add_arrow(t)
 		chosen = false
 		hint.text = tr("UI_MOVE_HINT")
 		hint.visible = true
@@ -349,6 +352,9 @@ func start(t: String, move := false) -> void:
 	placing = t
 	ghost = model(t)
 	add_child(ghost)
+	ghost.rotation.y = 0.0 if t == "bruecke" else ghost_rot
+	_tint(ghost, true)
+	_add_arrow(t)
 	chosen = false
 	hint.text = tr("UI_BRIDGE_HINT") if t == "bruecke" else tr("UI_BUILD_HINT")
 	hint.visible = true
@@ -366,8 +372,52 @@ func cancel() -> void:
 		hint.visible = false
 
 func _update_ghost_rot() -> void:
-	if ghost:
-		ghost.rotation.y = ghost_rot
+	pass   # die Drehung läuft weich in _process nach
+
+# Drehen wie im Browser: Mausrad 15°, Q/E 15°, R oder Knopf 90°
+func rot_ghost(d: float) -> void:
+	if placing == "" or placing == "bruecke":
+		return
+	ghost_rot += d
+
+# gelber Pfeil zeigt, wo der Eingang ist (wie im Browser)
+func _door_arrow(t: String) -> Node3D:
+	var pts := PackedVector2Array([Vector2(-0.22, 0), Vector2(0.22, 0), Vector2(0.22, 0.5), Vector2(0.48, 0.5), Vector2(0, 1.05), Vector2(-0.48, 0.5), Vector2(-0.22, 0.5)])
+	var ar := Node3D.new()
+	ar.name = "Pfeil"
+	for layer in [[Color(0.23, 0.15, 0.08, 0.6), 1.25, 0.1, -0.05], [Color(1.0, 0.82, 0.29, 0.95), 1.0, 0.14, 0.0]]:
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var idx := Geometry2D.triangulate_polygon(pts)
+		for i in idx:
+			var v: Vector2 = pts[i] * layer[1]
+			st.add_vertex(Vector3(v.x, 0, v.y))
+		var mi := MeshInstance3D.new()
+		mi.mesh = st.commit()
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		m.no_depth_test = layer[1] == 1.0
+		m.albedo_color = layer[0]
+		mi.material_override = m
+		mi.position = Vector3(0, layer[2], layer[3])
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		ar.add_child(mi)
+	var r: float = float(economy.type_info(t).r)
+	ar.position = Vector3(0, 0.15, r + 0.5)
+	ar.scale = Vector3.ONE * 1.7
+	return ar
+
+func _add_arrow(t: String) -> void:
+	if ghost == null or t == "bruecke":
+		return
+	var ar := _door_arrow(t)
+	ghost.add_child(ar)
+	# Modell ist evtl. skaliert: Pfeil in Weltgröße halten
+	var sc: float = maxf(0.01, ghost.scale.x)
+	ar.scale = Vector3.ONE * 1.7 * SCALE / sc
+	ar.position = Vector3(0, 0.15, (float(economy.type_info(t).r) + 0.5) * SCALE / sc)
 
 func can_place(p: Vector3) -> bool:
 	var r: float = float(economy.data.types[placing].r) * SCALE
@@ -421,6 +471,8 @@ func ground_point(screen: Vector2):
 
 func _process(_dt: float) -> void:
 	_tut_pulse()
+	if ghost and placing != "" and placing != "bruecke":
+		ghost.rotation.y = lerp_angle(ghost.rotation.y, ghost_rot, minf(1.0, _dt * 12.0))
 	if enemy != null and info_panel.visible and military:
 		var e: Dictionary = enemy
 		info_label.text = "%s\n%s\n🛡️ %d" % [tr(e.ai.name) if e.has("ai") else "", tr("BLD_" + String(e.type).to_upper()), e.garrison]
@@ -691,14 +743,19 @@ func _unhandled_input(e: InputEvent) -> void:
 				hint.text = tr("UI_BUILD_BLOCKED")
 	elif e is InputEventKey and e.pressed:
 		if e.keycode == KEY_R:
-			ghost_rot += PI / 4
-			_update_ghost_rot()
+			rot_ghost(PI / 2)
+		elif e.keycode == KEY_Q:
+			rot_ghost(PI / 12)
+		elif e.keycode == KEY_E:
+			rot_ghost(-PI / 12)
 		elif e.keycode == KEY_ESCAPE:
 			cancel()
 		elif e.keycode == KEY_ENTER and chosen:
 			confirm()
 
 func _tint(n: Node, ok: bool) -> void:
+	if n.name == "Pfeil":
+		return
 	if n is GeometryInstance3D:
 		n.transparency = 0.35
 		var m := StandardMaterial3D.new()

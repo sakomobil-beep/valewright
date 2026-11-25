@@ -18,6 +18,13 @@ var terrain: Node3D
 var _touches := {}
 
 func _unhandled_input(e: InputEvent) -> void:
+	# beim Bauen dreht das Mausrad das Gebäude (Umschalt = zoomen), wie im Browser
+	if e is InputEventMouseButton and e.pressed and (e.button_index == MOUSE_BUTTON_WHEEL_UP or e.button_index == MOUSE_BUTTON_WHEEL_DOWN) and not e.shift_pressed:
+		var bld = get_tree().get_first_node_in_group("builder")
+		if bld and bld.placing != "" and bld.placing != "bruecke":
+			bld.rot_ghost((PI / 12) * (1.0 if e.button_index == MOUSE_BUTTON_WHEEL_DOWN else -1.0))
+			get_viewport().set_input_as_handled()
+			return
 	if e is InputEventMouseButton:
 		if e.button_index == MOUSE_BUTTON_LEFT:
 			_drag_pan = e.pressed
