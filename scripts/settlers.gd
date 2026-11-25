@@ -207,7 +207,7 @@ func _next_job(w: Dictionary) -> void:
 				{"go": _beside(tr_.pos, b.pos)},
 				{"face": tr_.pos},
 				{"anim": "chop", "wait": 3.0},
-				{"fn": func(): sfx("chop", -8.0); terrain.fell_tree(tr_); reserved.erase(tr_.pos); _carry(w, "stamm")},
+				{"fn": func(): sfx("chop", -8.0); terrain.fell_tree(tr_, w.node.global_position); reserved.erase(tr_.pos); _carry(w, "stamm")},
 				{"go": door_of(b)},
 				{"fn": func(): _carry(w, null); economy.pending.append({"b": b, "item": "stamm"})},
 				{"wait": 1.5},

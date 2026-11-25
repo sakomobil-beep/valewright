@@ -113,6 +113,8 @@ func _ready() -> void:
 	_build_ground()
 	_build_water()
 	_build_trees()
+	_build_stumps()
+	_build_undergrowth()
 	_build_rocks()
 	_make_deposits()
 
@@ -253,7 +255,7 @@ func _build_trees() -> void:
 
 const TREE_VARIANTS := {"oak": 10, "birch": 4, "fir": 4, "pine": 4, "dead": 2}
 const LEAF_COLS := [Color("3f6b34"), Color("557a35"), Color("6f8a2e"), Color("c9822e"), Color("b4532a")]
-const FIR_COLS := [Color("3f7548"), Color("46804f"), Color("386a41")]   # etwas heller als im Browser, wegen anderer Beleuchtung
+const FIR_COLS := [Color("4f8a58"), Color("579460"), Color("477f50")]   # etwas heller als im Browser, wegen anderer Beleuchtung
 const BIRCH_COLS := [Color("9cbf4a"), Color("d8c050"), Color("b8c84a")]
 
 # Ein Baum-Modell (eine Fläche mit Vertexfarben, kantig schattiert)
@@ -438,14 +440,141 @@ func nearest_tree(p: Vector3, r: float, alive := true):
 			best = t
 	return best
 
-func fell_tree(t: Dictionary) -> void:
+func fell_tree(t: Dictionary, from = null, instant := false) -> void:
 	t.alive = false
-	t.mm.set_instance_transform(t.i, Transform3D(Basis().scaled(Vector3.ONE * 0.001), t.pos))
+	_show_stump(t, true)
+	if instant:
+		t.mm.set_instance_transform(t.i, Transform3D(Basis().scaled(Vector3.ONE * 0.001), t.pos))
+		return
+	# Baum kippt vom Holzfäller weg um (wie im Browser) und verschwindet dann
+	var away := Vector3(0, 0, 1)
+	if from is Vector3:
+		away = (t.pos - from)
+		away.y = 0
+		away = away.normalized() if away.length() > 0.01 else Vector3(0, 0, 1)
+	var axis := Vector3.UP.cross(away).normalized()
+	var base: Basis = t.t.basis
+	var tw := create_tween()
+	tw.tween_method(func(k: float):
+		var ang := k * k * 1.5
+		t.mm.set_instance_transform(t.i, Transform3D(Basis(axis, ang) * base, t.pos)), 0.0, 1.0, 1.6)
+	tw.tween_interval(0.6)
+	tw.tween_method(func(k: float):
+		t.mm.set_instance_transform(t.i, Transform3D((Basis(axis, 1.5) * base).scaled(Vector3.ONE * maxf(1.0 - k, 0.001)), t.pos)), 0.0, 1.0, 0.5)
 
 func plant_tree(t: Dictionary) -> void:
 	t.alive = true
+	_show_stump(t, false)
 	var tw := create_tween()
 	tw.tween_method(func(k): t.mm.set_instance_transform(t.i, Transform3D(t.t.basis.scaled(Vector3.ONE * maxf(k, 0.001)), t.pos)), 0.05, 1.0, 20.0)
+
+# ---------- Baumstümpfe ----------
+var stump_mm: MultiMesh
+var _stump_next := 0
+
+func _build_stumps() -> void:
+	var cm := CylinderMesh.new()
+	cm.top_radius = 0.2
+	cm.bottom_radius = 0.26
+	cm.height = 0.3
+	cm.radial_segments = 7
+	cm.rings = 0
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.54, 0.42, 0.28)
+	mat.roughness = 1.0
+	cm.material = mat
+	stump_mm = MultiMesh.new()
+	stump_mm.transform_format = MultiMesh.TRANSFORM_3D
+	stump_mm.mesh = cm
+	stump_mm.instance_count = 2000
+	for i in 2000:
+		stump_mm.set_instance_transform(i, Transform3D(Basis().scaled(Vector3.ONE * 0.001), Vector3(0, -50, 0)))
+	var mi := MultiMeshInstance3D.new()
+	mi.multimesh = stump_mm
+	mi.name = "Stuempfe"
+	add_child(mi)
+
+func _show_stump(t: Dictionary, on: bool) -> void:
+	if not stump_mm:
+		return
+	if on:
+		if not t.has("stump"):
+			t.stump = _stump_next % 2000
+			_stump_next += 1
+		var s: float = t.t.basis.get_scale().x
+		stump_mm.set_instance_transform(t.stump, Transform3D(Basis(Vector3.UP, t.pos.x).scaled(Vector3.ONE * s), t.pos + Vector3(0, 0.15 * s, 0)))
+	elif t.has("stump"):
+		stump_mm.set_instance_transform(t.stump, Transform3D(Basis().scaled(Vector3.ONE * 0.001), Vector3(0, -50, 0)))
+		t.erase("stump")
+
+# ---------- Unterholz: Büsche & Farne (wie im Browser) ----------
+func _build_undergrowth() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = world_seed + 77
+	var bush: Array = []
+	var fern: Array = []
+	for t in trees:
+		if rng.randf() > 0.55:
+			continue
+		for k in rng.randi_range(1, 2):
+			var a := rng.randf() * TAU
+			var r := rng.randf_range(1.2, 3.5)
+			var x: float = t.pos.x + cos(a) * r
+			var z: float = t.pos.z + sin(a) * r
+			if not _free_spot(x, z):
+				continue
+			var sc := rng.randf_range(0.7, 1.3)
+			var tr := Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(sc, sc * rng.randf_range(0.8, 1.2), sc)), Vector3(x, height(x, z) - 0.05, z))
+			if rng.randf() < 0.45:
+				bush.append(tr)
+			else:
+				fern.append(tr)
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://shaders/tree.gdshader")
+	# Busch: Ikosaeder mit Farbverlauf
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_add_ico(st, Transform3D(Basis().scaled(Vector3.ONE * 0.55), Vector3(0, 0.35, 0)), Color("4a7a3a"))
+	var bm := st.commit()
+	bm.surface_set_material(0, mat)
+	# Farn: 6 Wedel aus je 4 Dreiecken
+	var st2 := SurfaceTool.new()
+	st2.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var fc := Color("5f8f3e")
+	for k in 6:
+		var a := k / 6.0 * TAU
+		var c := cos(a)
+		var sn := sin(a)
+		var w := 0.09
+		var A := Vector3(-sn * w, 0.02, c * w)
+		var B := Vector3(sn * w, 0.02, -c * w)
+		var C := Vector3(c * 0.55, 0.38, sn * 0.55)
+		var D := Vector3(c * 0.95, 0.12, sn * 0.95)
+		for tri in [[A, B, C], [C, B, D]]:
+			for v in tri:
+				st2.set_normal(Vector3.UP)
+				st2.set_color(fc * (1.05 if v.y > 0.2 else 0.55))
+				st2.add_vertex(v)
+	var fm := st2.commit()
+	var fmat := ShaderMaterial.new()
+	fmat.shader = mat.shader
+	fmat.render_priority = 0
+	fm.surface_set_material(0, fmat)
+	for pair in [[bm, bush, "Buesche"], [fm, fern, "Farne"]]:
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_colors = true
+		mm.mesh = pair[0]
+		var list: Array = pair[1]
+		mm.instance_count = list.size()
+		for i in list.size():
+			mm.set_instance_transform(i, list[i])
+			var tint := rng.randf_range(0.85, 1.15)
+			mm.set_instance_color(i, Color(tint, tint * rng.randf_range(0.95, 1.05), tint))
+		var mi := MultiMeshInstance3D.new()
+		mi.multimesh = mm
+		mi.name = pair[2]
+		add_child(mi)
 
 func nearest_rock(p: Vector3, r: float):
 	var best = null

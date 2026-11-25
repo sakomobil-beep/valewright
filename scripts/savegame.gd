@@ -59,7 +59,7 @@ func apply(d: Dictionary) -> void:
 	e.unl = int(d.unl)
 	m.time = float(d.time)
 	for i in d.trees_dead:
-		t.fell_tree(t.trees[int(i)])
+		t.fell_tree(t.trees[int(i)], null, true)
 	for r in d.rocks:
 		var k: Dictionary = t.rocks[int(r[0])]
 		k.left = int(r[1]) + 1
