@@ -272,8 +272,10 @@ func _next_job(w: Dictionary) -> void:
 				{"fn": func(): _next_job(w)},
 			]
 		_:
-			w.node.visible = false      # arbeitet drinnen (Säge, Backofen, Esse …)
+			# arbeitet sichtbar am Arbeitsplatz vor dem Haus (wie im Browser), sonst drinnen
 			b.worker_inside = true
+			w.inside_b = b
+			w.node.visible = false
 
 # Nur nicht reservierte Ziele nehmen (sonst laufen zwei Holzfäller zum selben Baum)
 func _free(first, list: Array, _is_tree: bool):
@@ -322,6 +324,16 @@ func _carry(w: Dictionary, item) -> void:
 		bx.size = Vector3(0.8, 0.1, 0.3)
 		m.mesh = bx
 		mat.albedo_color = Color(0.75, 0.55, 0.32)
+	elif UiIcons.item_tex(String(item)) != null:
+		var sp := Sprite3D.new()
+		sp.texture = UiIcons.item_tex(String(item))
+		sp.pixel_size = 0.0055
+		sp.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+		sp.position = Vector3(0, 1.3, 0.25)
+		w.node.add_child(sp)
+		w.carry = sp
+		m.free()
+		return
 	else:
 		var s := SphereMesh.new()
 		s.radius = 0.17
@@ -374,6 +386,8 @@ func _process(dt: float) -> void:
 		if w.get("dead", false):
 			workers.erase(w)
 			continue
+		if w.get("inside_b") != null and w.q.is_empty():
+			_seq_next(w)
 		_step(w, dt)
 		_animate(w, dt)
 
@@ -382,6 +396,18 @@ func _step(w: Dictionary, dt: float) -> void:
 	if w.q.is_empty():
 		return
 	var s: Dictionary = w.q[0]
+	if s.has("walk"):
+		# kurzer, direkter Weg am eigenen Gebäude (ohne Wegsuche)
+		var wn: Node3D = w.node
+		var wd := Vector3(s.walk.x - wn.position.x, 0, s.walk.z - wn.position.z)
+		if wd.length() < 0.08:
+			w.q.pop_front()
+			return
+		wn.position += wd.normalized() * minf(wd.length(), SPEED * 0.8 * dt)
+		wn.position.y = terrain.walk_height(wn.position.x, wn.position.z)
+		wn.rotation.y = lerp_angle(wn.rotation.y, atan2(wd.x, wd.z), minf(1.0, dt * 10.0))
+		w.anim = "walk"
+		return
 	if s.has("go"):
 		var n: Node3D = w.node
 		if not s.has("path"):
@@ -439,6 +465,22 @@ func _animate(w: Dictionary, dt: float) -> void:
 			lr.rotation.x = 0.0
 			ar.rotation.x = -1.4 + sin(t * 7.0) * 1.1
 			al.rotation.x = -0.4
+		"saw":
+			ll.rotation.x = 0.0
+			lr.rotation.x = 0.0
+			ar.rotation.x = -1.2 + sin(t * 9.0) * 0.35
+			al.rotation.x = -1.2 + sin(t * 9.0) * 0.35
+		"push", "carve":
+			ll.rotation.x = 0.0
+			lr.rotation.x = 0.0
+			var f := 6.0 if w.anim == "push" else 10.0
+			ar.rotation.x = -1.0 + sin(t * f) * 0.3
+			al.rotation.x = -1.0 + sin(t * f + (0.0 if w.anim == "push" else 1.5)) * 0.3
+		"stoke":
+			ll.rotation.x = 0.2
+			lr.rotation.x = -0.1
+			ar.rotation.x = -0.6 + sin(t * 3.0) * 0.6
+			al.rotation.x = -0.6 + sin(t * 3.0) * 0.6
 		"plant":
 			ll.rotation.x = 0.3
 			lr.rotation.x = -0.2
@@ -528,3 +570,108 @@ func _update_piles() -> void:
 		pile.visible = true
 		for i in 8:
 			pile.get_child(i).visible = i < n
+
+
+# ---------- Arbeitsabläufe im Freien (aus der Browser-Version: SEQ / WORKSPOT) ----------
+static var _ws_data: Dictionary = {}
+
+func _ws() -> Dictionary:
+	if _ws_data.is_empty():
+		var f := FileAccess.open("res://data/workseq.json", FileAccess.READ)
+		_ws_data = JSON.parse_string(f.get_as_text())
+	return _ws_data
+
+func _seq_for(t: String) -> Array:
+	var d := _ws()
+	if d.SEQ.has(t):
+		return d.SEQ[t]
+	if not d.WORKSPOT.has(t):
+		return []
+	var ws: Array = d.WORKSPOT[t]
+	var ins: Array = economy.inputs(t)
+	var first = String(ins[0]).split("|")[0] if ins.size() else null
+	var steps: Array = []
+	if first:
+		steps.append({"p": [-0.5, 1.5], "l": [-0.5, 0.5], "a": "push", "t": 0.12, "h": first})
+	steps.append({"p": [ws[0], ws[1]], "l": [ws[2], ws[3]], "a": ws[4], "t": 0.6, "h": ws[5] if ws[5] != null else first})
+	steps.append({"p": [ws[0], ws[1]], "l": [ws[2], ws[3]], "a": "push" if ws[4] == "carve" else "carve", "t": 0.16, "h": null})
+	steps.append({"p": [0.4, 1.5], "l": [0.4, 0.5], "a": "push", "t": 0.12, "h": "OUT"})
+	return steps
+
+func _local(b: Dictionary, q: Array) -> Vector3:
+	var p: Vector3 = b.pos + (Vector3(float(q[0]), 0, float(q[1])) * float(b.get("s", 1.5))).rotated(Vector3.UP, b.node.rotation.y)
+	p.y = terrain.walk_height(p.x, p.z)
+	return p
+
+func _seq_next(w: Dictionary) -> void:
+	var b: Dictionary = w.inside_b
+	if b.get("removed", false) or w.get("home") == null:
+		w.inside_b = null
+		return
+	var steps := _seq_for(b.type)
+	var working: bool = b.get("running", false) and not b.get("paused", false)
+	if steps.is_empty() or not working:
+		if w.node.visible:
+			w.q = [{"walk": door_of(b)}, {"fn": func(): w.node.visible = false; _carry(w, null)}]
+		else:
+			w.q = [{"wait": 0.5}]
+		return
+	if not w.node.visible:
+		w.node.position = door_of(b)
+		w.node.visible = true
+	var tot := 0.0
+	for st in steps:
+		tot += float(st.get("t", 0.2))
+	var outs: Array = economy.outputs(b.type)
+	var out = outs[0] if outs.size() else null
+	var ins: Array = economy.inputs(b.type)
+	var first = String(ins[0]).split("|")[0] if ins.size() else null
+	var q: Array = []
+	for st in steps:
+		var dur: float = maxf(0.4, economy.WORK_TIME * 0.8 * float(st.get("t", 0.2)) / tot)
+		var h = st.get("h")
+		if h == "IN": h = first
+		elif h == "OUT": h = out
+		var look := _local(b, st.l)
+		var anim: String = {"hammer": "chop", "dig": "plant", "saw": "saw", "carve": "carve", "push": "push", "stoke": "stoke", "chop": "chop", "shoot": "push"}.get(String(st.get("a", "")), "push")
+		q.append({"walk": _local(b, st.p)})
+		q.append({"face": look})
+		q.append({"fn": func(): _carry(w, h); _show_prop(b, st, out)})
+		q.append({"anim": anim, "wait": dur})
+	q.append({"fn": func(): _carry(w, null); _clear_props(b)})
+	w.q = q
+
+# kleine Waren-Bilder auf Tisch/Werkbank (show/hide aus dem Browser)
+func _show_prop(b: Dictionary, st: Dictionary, out) -> void:
+	if not b.has("props"):
+		b.props = {}
+	if st.has("hide") and b.props.has(st.hide):
+		b.props[st.hide].queue_free()
+		b.props.erase(st.hide)
+	if st.has("show"):
+		var sh: Array = st.show
+		var k: String = String(sh[1])
+		if k == "OUT" and out != null:
+			k = out
+		if b.props.has(sh[0]):
+			b.props[sh[0]].queue_free()
+		var tex := UiIcons.item_tex(k)
+		if tex == null:
+			return
+		var sp := Sprite3D.new()
+		sp.texture = tex
+		sp.pixel_size = 0.004 * float(sh[5] if sh.size() > 5 else 1.0)
+		sp.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+		sp.position = Vector3(float(sh[2]), float(sh[3]) + 0.15, float(sh[4]))
+		b.node.add_child(sp)
+		b.props[sh[0]] = sp
+
+func _clear_props(b: Dictionary) -> void:
+	if not b.has("props"):
+		return
+	for id in b.props.keys():
+		if String(id).ends_with("1"):
+			continue
+		if is_instance_valid(b.props[id]):
+			b.props[id].queue_free()
+		b.props.erase(id)
