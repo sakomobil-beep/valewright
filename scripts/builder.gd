@@ -35,15 +35,24 @@ func _ready() -> void:
 	_ghost_ok_mat.albedo_color = Color(0.4, 1.0, 0.4, 0.35)
 	_ghost_ok_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 
+var _wood_helper: Node
+var build_bar: PanelContainer
+var place_panel: PanelContainer
+var _ok_btn: Button
+var _rot_btn: Button
+
+# kleiner Holzrahmen (gleiche Holzart wie die Menüfenster)
+func small_wood() -> StyleBox:
+	if _wood_helper == null:
+		_wood_helper = load("res://scripts/gameui.gd").new()
+	var sb: StyleBoxTexture = _wood_helper._wood_frame(12)
+	sb.set_content_margin_all(18)
+	return sb
+
 func setup_ui(layer: CanvasLayer) -> void:
 	var bar := PanelContainer.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.165, 0.114, 0.07, 0.9)
-	sb.border_color = Color(0.79, 0.64, 0.29)
-	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(12)
-	sb.set_content_margin_all(8)
-	bar.add_theme_stylebox_override("panel", sb)
+	build_bar = bar
+	bar.add_theme_stylebox_override("panel", small_wood())
 	bar.anchor_left = 0.5
 	bar.anchor_right = 0.5
 	bar.anchor_top = 1.0
@@ -165,21 +174,48 @@ func setup_ui(layer: CanvasLayer) -> void:
 			ob.tooltip_text = "ORD_POST"
 		ob.pressed.connect(func(): _order(o[0], o[1]))
 		order_box.add_child(ob)
+	# eigenes Bau-Fenster: Hinweis oben, darunter Bauen / Drehen / Abbrechen
+	place_panel = PanelContainer.new()
+	place_panel.add_theme_stylebox_override("panel", small_wood())
+	place_panel.anchor_left = 0.5
+	place_panel.anchor_right = 0.5
+	place_panel.anchor_top = 1.0
+	place_panel.anchor_bottom = 1.0
+	place_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	place_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	place_panel.offset_bottom = -16
+	place_panel.visible = false
+	layer.add_child(place_panel)
+	var pv := VBoxContainer.new()
+	pv.add_theme_constant_override("separation", 8)
+	place_panel.add_child(pv)
+	hint.get_parent().remove_child(hint)
+	pv.add_child(hint)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.custom_minimum_size = Vector2(420, 0)
 	confirm_box = HBoxContainer.new()
-	confirm_box.anchor_left = 0.5
-	confirm_box.anchor_right = 0.5
-	confirm_box.anchor_top = 1.0
-	confirm_box.anchor_bottom = 1.0
-	confirm_box.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	confirm_box.offset_top = -160
+	confirm_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	confirm_box.add_theme_constant_override("separation", 10)
 	confirm_box.visible = false
-	layer.add_child(confirm_box)
+	pv.add_child(confirm_box)
 	var ok := Button.new()
+	_ok_btn = ok
+	var gs := StyleBoxFlat.new()
+	gs.bg_color = Color(0.6, 0.42, 0.13)
+	gs.border_color = Color(0.95, 0.8, 0.45)
+	gs.set_border_width_all(2)
+	gs.set_corner_radius_all(8)
+	ok.add_theme_stylebox_override("normal", gs)
+	var gh: StyleBoxFlat = gs.duplicate()
+	gh.bg_color = Color(0.72, 0.52, 0.17)
+	ok.add_theme_stylebox_override("hover", gh)
 	ok.text = "UI_BUILD_CONFIRM"
 	ok.custom_minimum_size = Vector2(140, 40)
 	ok.pressed.connect(confirm)
 	confirm_box.add_child(ok)
 	var rot := Button.new()
+	_rot_btn = rot
 	rot.text = "UI_BUILD_ROTATE"
 	rot.custom_minimum_size = Vector2(120, 40)
 	rot.pressed.connect(func(): rot_ghost(PI / 2))
@@ -471,6 +507,16 @@ func ground_point(screen: Vector2):
 
 func _process(_dt: float) -> void:
 	_tut_pulse()
+	# beim Bauen: Baumenü zu, eigenes Bau-Fenster auf (wie im Browser)
+	var in_place := placing != ""
+	if build_bar:
+		build_bar.visible = not in_place
+		confirm_box.visible = in_place
+		_ok_btn.visible = chosen
+		_rot_btn.visible = placing != "bruecke"
+		if in_place:
+			hint.visible = not chosen
+		place_panel.visible = hint.visible or confirm_box.visible
 	if ghost and placing != "" and placing != "bruecke":
 		ghost.rotation.y = lerp_angle(ghost.rotation.y, ghost_rot, minf(1.0, _dt * 12.0))
 	if enemy != null and info_panel.visible and military:

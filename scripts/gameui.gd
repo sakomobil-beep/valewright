@@ -17,11 +17,11 @@ func _style(c: Control, alpha := 0.94) -> void:
 	c.add_theme_stylebox_override("panel", sb)
 
 # ---------- Holzrahmen (prozedural, 9-Slice) und moderne Bedienelemente ----------
-var _wood_tex: ImageTexture
-func _wood_frame() -> StyleBoxTexture:
+var _wood_texs := {}
+func _wood_frame(B := 26) -> StyleBoxTexture:
+	var _wood_tex: ImageTexture = _wood_texs.get(B)
 	if _wood_tex == null:
-		var n := 192
-		var B := 26
+		var n := B * 7
 		var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 		var rng := RandomNumberGenerator.new()
 		rng.seed = 77
@@ -50,17 +50,20 @@ func _wood_frame() -> StyleBoxTexture:
 					var v: float = 0.035 * noise.get_noise_2d(x * 0.6, y * 0.6)
 					img.set_pixel(x, y, Color(0.13 + v, 0.095 + v, 0.06 + v, 0.95))
 		# Eisennägel in den Ecken
-		for c in [Vector2i(13, 13), Vector2i(n - 14, 13), Vector2i(13, n - 14), Vector2i(n - 14, n - 14)]:
-			for yy in range(-4, 5):
-				for xx in range(-4, 5):
+		var h: int = B / 2
+		var nr: int = maxi(2, B / 6)
+		for c in [Vector2i(h, h), Vector2i(n - 1 - h, h), Vector2i(h, n - 1 - h), Vector2i(n - 1 - h, n - 1 - h)]:
+			for yy in range(-nr, nr + 1):
+				for xx in range(-nr, nr + 1):
 					var r := Vector2(xx, yy).length()
-					if r <= 4.2:
+					if r <= nr + 0.2:
 						img.set_pixel(c.x + xx, c.y + yy, Color(0.22, 0.22, 0.24).lerp(Color(0.62, 0.6, 0.58), clampf(1.0 - (Vector2(xx + 1.5, yy + 1.5).length() / 5.0), 0, 1)))
 		_wood_tex = ImageTexture.create_from_image(img)
+		_wood_texs[B] = _wood_tex
 	var sb := StyleBoxTexture.new()
 	sb.texture = _wood_tex
-	sb.set_texture_margin_all(32)
-	sb.set_content_margin_all(40)
+	sb.set_texture_margin_all(B + 6)
+	sb.set_content_margin_all(B + 14)
 	return sb
 
 func _modern_theme() -> Theme:

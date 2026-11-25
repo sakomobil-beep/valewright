@@ -25,6 +25,13 @@ func _unhandled_input(e: InputEvent) -> void:
 			bld.rot_ghost((PI / 12) * (1.0 if e.button_index == MOUSE_BUTTON_WHEEL_DOWN else -1.0))
 			get_viewport().set_input_as_handled()
 			return
+	# Rechtsklick beim Bauen: Gebäude abwählen, Baumenü kommt zurück
+	if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_RIGHT:
+		var bl = get_tree().get_first_node_in_group("builder")
+		if bl and bl.placing != "":
+			bl.cancel()
+			get_viewport().set_input_as_handled()
+			return
 	if e is InputEventMouseButton:
 		if e.button_index == MOUSE_BUTTON_LEFT:
 			_drag_pan = e.pressed

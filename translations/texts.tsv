@@ -7,7 +7,7 @@ UI_LANGUAGE	Sprache	Language
 GAME_SUBTITLE	Baue. Wirtschafte. Herrsche.	Build. Trade. Rule.
 BLD_LAGER	Haupthaus	Town Hall
 UI_STAGE2	Etappe 2: Bauen (Gebäude unten wählen)	Stage 2: Building (pick a building below)
-UI_BUILD_HINT	Klicke auf einen freien Platz · Mausrad oder Q/E = drehen, R = 90° · der gelbe Pfeil zeigt den Eingang · Esc = abbrechen	Click a free spot · mouse wheel or Q/E = rotate, R = 90° · the yellow arrow marks the entrance · Esc = cancel
+UI_BUILD_HINT	Klicke auf einen freien Platz · Mausrad oder Q/E = drehen, R = 90° · der gelbe Pfeil zeigt den Eingang · Rechtsklick oder Esc = abbrechen	Click a free spot · mouse wheel or Q/E = rotate, R = 90° · the yellow arrow marks the entrance · right-click or Esc = cancel
 UI_BUILD_CHOSEN	Platz gewählt – jetzt bestätigen	Spot chosen – now confirm
 UI_BUILD_BLOCKED	Hier kann nicht gebaut werden	You cannot build here
 UI_BUILD_CONFIRM	✔ Bauen	✔ Build
