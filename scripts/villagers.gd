@@ -13,6 +13,7 @@ func _houses() -> Array:
 	return economy.buildings.filter(func(b): return b.type == "wohnhaus" and b.build >= 1.0 and not b.get("removed", false))
 
 func _is_day() -> bool:
+	return true   # es ist immer Tag
 	if hud == null:
 		hud = get_parent().get("hud")
 	if hud == null:

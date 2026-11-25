@@ -18,7 +18,7 @@ const CHAINS := [
 
 var main: Node3D
 var layer: CanvasLayer
-var clock: Label
+var _sun_set := false
 var speed := 1.0
 var _speed_btns := []
 var day_t := DAY_SECONDS * (8.0 / 24.0)    # Start um 08:00
@@ -48,12 +48,6 @@ func setup(l: CanvasLayer) -> void:
 	var hb := HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 4)
 	bar.add_child(hb)
-	clock = Label.new()
-	clock.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-	clock.add_theme_font_size_override("font_size", 18)
-	clock.add_theme_color_override("font_color", Color(0.96, 0.9, 0.78))
-	clock.custom_minimum_size = Vector2(88, 0)
-	hb.add_child(clock)
 	for sp in [[0.0, "⏸"], [1.0, "▶"], [2.0, "⏩"], [4.0, "⏭"]]:
 		var b := _icon_btn(hb, sp[1], func(): set_speed(sp[0]))
 		_speed_btns.append([b, sp[0]])
@@ -124,15 +118,12 @@ func _process(dt: float) -> void:
 	_game_time += dt
 	if labels_on and Engine.get_process_frames() % 30 == 0:
 		_update_labels()
-	day_t = fmod(day_t + dt, DAY_SECONDS)
-	var h := day_t / DAY_SECONDS * 24.0
-	clock.text = "%s %02d:%02d" % ["🌙" if h < 6.0 or h >= 20.0 else "☀️", int(h), int(fmod(h, 1.0) * 60.0)]
-	var sun: DirectionalLight3D = main.get_node("Sonne")
-	# Sonne wandert von Osten (6 Uhr) nach Westen (20 Uhr); nachts bleibt es gedämpft hell
-	var k := clampf((h - 6.0) / 14.0, 0.0, 1.0)
-	sun.rotation_degrees = Vector3(-15.0 - sin(k * PI) * 55.0, -90.0 + k * 180.0, 0)
-	var light := clampf(sin(k * PI) * 1.6, 0.0, 1.0) if h >= 6.0 and h < 20.0 else 0.0
-	sun.light_energy = 0.35 + light * 0.95
+	# keine Tageszeit: immer heller Tag, die Sonne steht fest
+	if not _sun_set:
+		_sun_set = true
+		var sun: DirectionalLight3D = main.get_node("Sonne")
+		sun.rotation_degrees = Vector3(-55.0, -30.0, 0)
+		sun.light_energy = 1.3
 	sun.light_color = Color(1.0, 0.75, 0.55).lerp(Color(1.0, 0.96, 0.88), light)
 	_mm_t += dt
 	if _mm_t > 0.5:
@@ -402,8 +393,8 @@ func _fill_military(vb: Control, e: Node, gold: Color) -> void:
 
 # ---------- Meldungen ----------
 func _log_news(text: String) -> void:
-	var h := day_t / DAY_SECONDS * 24.0
-	news.append(["%02d:%02d" % [int(h), int(fmod(h, 1.0) * 60.0)], text])
+	# Meldungen mit Spielzeit seit Start (Minuten:Sekunden), keine Uhrzeit
+	news.append(["%d:%02d" % [int(_game_time / 60.0), int(fmod(_game_time, 60.0))], text])
 	if news.size() > 60:
 		news.pop_front()
 	if _win_kind == "news":
