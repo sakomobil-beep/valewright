@@ -169,6 +169,8 @@ func new_game_menu() -> void:
 		["res", "MG_RES", ["knapp", "normal", "reich"], 1],
 		["start", "MG_START", ["wenig", "normal", "viel"], 1],
 		["tempo", "MG_TEMPO", ["gemuetlich", "normal", "schnell"], 1],
+		["modus", "MG_MODUS", ["kampf", "frieden"], 0],
+		["unlock", "MG_UNLOCK", ["schritt", "alle"], 0],
 	]
 	for o in opts:
 		var key: String = o[0]

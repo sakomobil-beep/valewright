@@ -612,6 +612,9 @@ func attack(owner: int, target: Dictionary, count: int) -> int:
 	return _attack_list(target, available(owner).slice(0, count))
 
 func _attack_list(target: Dictionary, list: Array) -> int:
+	if peace():
+		economy.message.emit(tr("MSG_PEACE"))
+		return 0
 	if int(target.get("owner", 0)) > 0 and list.size():
 		ais[int(target.owner) - 1].angry = true   # angegriffene KI schlägt eher zurück
 	# Formation: Schwertkämpfer vorne, Bogenschützen dahinter
@@ -944,7 +947,12 @@ func _ai_send(ai: Dictionary, target: Dictionary, n: int) -> void:
 	economy.message.emit(tr("MSG_AI_ATTACK") % tr(ai.name))
 
 # Angriffslogik je Schwierigkeit wie aiWar im Browser
+func peace() -> bool:
+	return String(Session.cfg.get("modus", "kampf")) == "frieden"
+
 func _ai_attack(ai: Dictionary, _wave: int) -> void:
+	if peace():
+		return
 	var avail: int = int(ai.lager.garrison) - 1
 	for b in ai.buildings:
 		if GARRISON.has(b.type):

@@ -430,9 +430,11 @@ func _process(_dt: float) -> void:
 			if _att_for != e:
 				att_sl[kk].value = mini(av[kk], 5)
 		_att_for = e
-		att_box.visible = true
+		att_box.visible = not military.peace()
 		attack_btn.text = tr("UI_ATTACK") % int(att_sl.S.value + att_sl.B.value)
-		attack_btn.visible = true
+		attack_btn.visible = not military.peace()
+		if military.peace():
+			info_label.text += "\n" + tr("MSG_PEACE")
 		order_box.visible = false
 		return
 	attack_btn.visible = false

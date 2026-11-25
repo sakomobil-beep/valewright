@@ -420,3 +420,10 @@ MSG_NO_FIT	Kein freier Kämpfer passt in diesen Turm	No free fighter fits this t
 ORD_SLOTS	Plätze: ⚔️ %d · 🏹 %d	Slots: ⚔️ %d · 🏹 %d
 MARKET_BARTER	Tauschen (Ware gegen Ware)	Barter (goods for goods)
 MARKET_SWAP	Tauschen	Swap
+MG_MODUS	🎮 Spielart	🎮 Game type
+MGV_KAMPF	⚔️ Mit Kämpfen	⚔️ With battles
+MGV_FRIEDEN	🕊️ Friedlich siedeln	🕊️ Peaceful settling
+MG_UNLOCK	🔓 Gebäude	🔓 Buildings
+MGV_SCHRITT	Nach und nach freischalten	Unlock step by step
+MGV_ALLE	Alles von Anfang an	Everything from the start
+MSG_PEACE	🕊️ Friedliches Spiel – keine Kämpfe	🕊️ Peaceful game – no battles

@@ -384,6 +384,8 @@ func _fill_balance(vb: Control, e: Node, gold: Color) -> void:
 func _fill_military(vb: Control, e: Node, gold: Color) -> void:
 	var m: Node = main.military
 	_lbl(vb, "⚔️ " + tr("UI_MILITARY"), 20, gold)
+	if m.peace():
+		_lbl(vb, tr("MSG_PEACE"), 14)
 	var own: Array = m.soldiers.filter(func(s): return s.owner == 0)
 	var towers: Array = e.buildings.filter(func(b): return m.is_military(b.type) and b.build >= 1.0)
 	_lbl(vb, tr("MIL_OWN") % [own.size(), m.count_available(0), towers.size(), int(m.land_share(0) * 100.0)], 14)

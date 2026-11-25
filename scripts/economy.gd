@@ -462,6 +462,8 @@ func house_wants(b: Dictionary) -> Array:
 
 # ---------- Freischalten ----------
 func is_unlocked(t: String) -> bool:
+	if String(Session.cfg.get("unlock", "normal")) == "alle":
+		return true
 	return int(data.unlock.get(t, 0)) <= unl
 
 func need_item(k: String) -> String:
