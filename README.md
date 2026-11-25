@@ -15,7 +15,7 @@ Dies ist die **Godot-4-Version** (Godot 4.7.2). Die bisherige Browser-Version li
 3. ✅ Siedler: Bauarbeiter, Holzfäller, Steinmetz, Förster, Sägewerker, Träger · Wegfindung um Wasser, Steilhänge und Gebäude · mehr Träger bei Wachstum
 4. ✅ Alle 50 Gebäude, 43 Waren, alle Warenketten, Baumenü nach Kategorien, Wohnhäuser mit 5 Stufen + Bedürfnissen + Steuern, Freischalten Brücke über Fluss und Seen, Werkzeug für neue Arbeiter Felder wachsen sichtbar, Tiere bei den Zuchten, Emoji-Schrift für die Web-Version, Rutengänger findet Bodenschätze, Bergwerke nur an gefundenen Vorkommen
 5. ✅ Gebiet mit Grenzpfählen, Wachstube/Wachturm/Wehrturm/Burg mit Wächtern (Kampfstock), Kaserne (Schwertkämpfer/Bogenschützen), Angreifen, Erobern, KI-Gegner (wachsen, bauen Türme, greifen an), Sieg/Niederlage
-6. ✅ Hauptmenü, Neues Spiel (Gegner, Schwierigkeit, Karte), Speichern/Laden (3 Plätze + automatisch), Pausenmenü, Tutorial, Kampagne „Die Chronik von Valewright – Buch I“ mit 4 Kapiteln
+6. ✅ Hauptmenü, Neues Spiel (Spielziel: Eroberung/Wirtschaftssieg/Gebietssieg/Endlosspiel, Gegner, Schwierigkeit, Karte; nach dem Sieg weiterspielen), Speichern/Laden (3 Plätze + automatisch), Pausenmenü, Tutorial, Kampagne „Die Chronik von Valewright – Buch I“ mit 4 Kapiteln
 7. ⏳ Grafik-Feinschliff, Geräusche, Windows-Version
 
 ## Sprachen

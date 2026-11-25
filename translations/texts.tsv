@@ -232,3 +232,16 @@ SLOT_N	Spielstand %d	Save %d
 SLOT_EMPTY	leer	empty
 MSG_SAVED	💾 Gespeichert	💾 Saved
 MSG_GOALS_RIGHT	🎯 Deine Ziele siehst du rechts.	🎯 Your goals are shown on the right.
+NG_VICTORY	Spielziel	Victory condition
+VIC_CONQUEST	⚔️ Eroberung	⚔️ Conquest
+VIC_ECONOMY	🪙 Wirtschaftssieg	🪙 Economic victory
+VIC_TERRITORY	🚩 Gebietssieg	🚩 Territorial victory
+VIC_ENDLESS	♾️ Endlosspiel	♾️ Endless game
+VICD_CONQUEST	Besiege alle Gegner, indem du ihre Haupthäuser eroberst.	Defeat all opponents by capturing their town halls.
+VICD_ECONOMY	Bringe ein Wohnhaus zum zufriedenen Herrenhaus und sammle 300 Münzen.	Raise a house to a happy manor and collect 300 coins.
+VICD_TERRITORY	Beherrsche 60 % des bebaubaren Landes.	Control 60% of the buildable land.
+VICD_ENDLESS	Kein Spielende – baue in Ruhe, so lange du willst. Gegner können trotzdem besiegt werden.	No ending – build at your own pace for as long as you like. Opponents can still be defeated.
+G_ENEMIES_LEFT	Verbleibende Gegner: %d	Opponents left: %d
+G_MANOR	Zufriedenes Herrenhaus	Happy manor
+G_LAND	Dein Land	Your land
+MSG_KEEP_PLAYING	Du kannst einfach weiterspielen und deine Siedlung weiter ausbauen.	You can simply keep playing and expand your settlement further.

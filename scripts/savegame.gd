@@ -16,7 +16,7 @@ func save(slot: String) -> void:
 	var m: Node3D = main.military
 	var d := {"version": VERSION, "cfg": Session.cfg, "date": Time.get_datetime_string_from_system(false, true),
 		"time": m.time, "stock": e.stock, "unl": e.unl, "mission": main.missions.mission, "step": main.missions.step,
-		"mission_done": main.missions.done}
+		"mission_done": main.missions.done, "won": main.missions.won}
 	var bl: Array = []
 	for b in e.buildings:
 		if b.get("destroyed", false):
@@ -78,4 +78,5 @@ func apply(d: Dictionary) -> void:
 	main.missions.mission = int(d.get("mission", 0))
 	main.missions.step = int(d.get("step", 0))
 	main.missions.done = bool(d.get("mission_done", false))
+	main.missions.won = bool(d.get("won", false))
 	e.changed.emit()

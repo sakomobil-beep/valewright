@@ -10,6 +10,7 @@ var step := 0               # Tutorial-Schritt
 var panel: PanelContainer
 var label: Label
 var _t := 0.0
+var won := false
 
 const CHAPTERS := [
 	{"id": 1, "key": "CH1", "icon": "🏡", "cfg": {"ais": 0, "diff": "leicht", "seed": 4711}},
@@ -90,7 +91,7 @@ func setup(layer: CanvasLayer) -> void:
 	panel.offset_right = -14
 	panel.offset_top = 150
 	panel.custom_minimum_size = Vector2(300, 0)
-	panel.visible = mission != 0
+	panel.visible = mission != 0 or _victory() != "endless"
 	layer.add_child(panel)
 	label = Label.new()
 	label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
@@ -99,13 +100,45 @@ func setup(layer: CanvasLayer) -> void:
 	label.add_theme_color_override("font_color", Color(0.96, 0.9, 0.78))
 	panel.add_child(label)
 
+func _victory() -> String:
+	return String(Session.cfg.get("victory", "conquest"))
+
+# Freies Spiel: Fortschritt zum gewählten Spielziel
+func _free_game() -> void:
+	var v := _victory()
+	var e: Node = main.economy
+	var m: Node3D = main.military
+	var txt := "🎯 " + tr("VIC_" + v.to_upper()) + "\n"
+	var ok := false
+	match v:
+		"conquest":
+			var alive: int = m.ais.filter(func(a): return a.alive).size()
+			txt += "\n" + tr("G_ENEMIES_LEFT") % alive
+		"economy":
+			var c: int = mini(e.stock.get("muenzen", 0), 300)
+			txt += "\n%s %s  %d / 1\n🪙 %s  %d / 300" % ["✅" if e.unl >= 5 else "🌳", tr("G_MANOR"), 1 if e.unl >= 5 else 0, tr("G_COINS") % 300, c]
+			ok = e.unl >= 5 and c >= 300
+		"territory":
+			var share: float = m.land_share(0)
+			txt += "\n🚩 %s  %d %% / 60 %%" % [tr("G_LAND"), int(share * 100.0)]
+			ok = share >= 0.6
+	if won:
+		txt += "\n\n" + tr("MSG_VICTORY")
+	label.text = txt
+	if ok and not won:
+		main.gameui.game_end(true)
+
 func _process(dt: float) -> void:
-	if mission == 0 or label == null:
+	if label == null:
 		return
 	_t += dt
 	if _t < 0.5:
 		return
 	_t = 0.0
+	if mission == 0:
+		if _victory() != "endless":
+			_free_game()
+		return
 	if mission == -1:
 		_tutorial()
 		return

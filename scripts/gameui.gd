@@ -98,7 +98,15 @@ func main_menu() -> void:
 func new_game_menu() -> void:
 	var vb := _window(460)
 	_label(vb, "MENU_NEW", 28, GOLD, true)
-	var c := {"mode": "free", "ais": 1, "diff": "leicht", "seed": randi() % 100000, "mission": 0}
+	var c := {"mode": "free", "ais": 1, "diff": "leicht", "seed": randi() % 100000, "mission": 0, "victory": "conquest"}
+	_label(vb, "NG_VICTORY")
+	var ov := OptionButton.new()
+	var vkeys := ["conquest", "economy", "territory", "endless"]
+	for k in vkeys:
+		ov.add_item(tr("VIC_" + k.to_upper()))
+	vb.add_child(ov)
+	var vdesc := _label(vb, tr("VICD_CONQUEST"), 13)
+	ov.item_selected.connect(func(i): c.victory = vkeys[i]; vdesc.text = tr("VICD_" + String(vkeys[i]).to_upper()))
 	_label(vb, "NG_AIS")
 	var ob := OptionButton.new()
 	for i in 4:
@@ -211,9 +219,16 @@ func chapter_won(id: int) -> void:
 func game_end(won: bool) -> void:
 	if won and main.missions.mission > 0:
 		return   # Kapitel melden sich selbst über ihre Ziele
+	if won and String(Session.cfg.get("victory", "conquest")) == "endless":
+		return   # Endlosspiel: kein Siegfenster, einfach weiter
+	if won and main.missions.won:
+		return
+	if won:
+		main.missions.won = true
 	var vb := _window(460)
 	_label(vb, "👑" if won else "💀", 48, GOLD, true)
 	_label(vb, "MSG_VICTORY" if won else "MSG_DEFEAT", 22, GOLD, true)
 	if won:
+		_label(vb, "MSG_KEEP_PLAYING", 15, TEXT, true)
 		_button(vb, "CH_KEEP", close)
 	_button(vb, "MENU_MAIN", Session.to_menu)
