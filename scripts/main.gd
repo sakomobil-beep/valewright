@@ -220,6 +220,8 @@ func _setup_stock() -> void:
 	add_child(effects)
 	var sfx := preload("res://scripts/sfx.gd").new()
 	sfx.name = "Sfx"
+	sfx.terrain = terrain
+	sfx.rig = $Kamera
 	add_child(sfx)
 	economy.message.connect(_toast)
 	_update_stock()

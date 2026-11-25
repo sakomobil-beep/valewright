@@ -31,7 +31,20 @@ func _ready() -> void:
 	bm.material = sp
 	_spark_mesh = bm
 
+var _spins: Array = []   # [Knoten, Art, Gebäude]
+
 func _process(dt: float) -> void:
+	# drehende Teile wie im Browser: Windrad (spin2), Töpferscheibe/Presse (spin3), Räder (spin3x)
+	for e in _spins:
+		var n: Node3D = e[0]
+		if not is_instance_valid(n):
+			continue
+		var b: Dictionary = e[2]
+		var w: bool = b.get("running", false) and not b.get("paused", false)
+		match e[1]:
+			"spin2": n.rotate_object_local(Vector3(0, 0, 1), -dt * (4.0 if w else 0.6))
+			"spin3": n.rotate_object_local(Vector3(0, 1, 0), -dt * (1.2 if w else 0.15))
+			"spin3x": if w: n.rotate_object_local(Vector3(1, 0, 0), -dt * 5.0)
 	_t -= dt
 	if _t > 0.0 or not economy:
 		return
@@ -39,6 +52,12 @@ func _process(dt: float) -> void:
 	for b in economy.buildings:
 		if b.get("removed", false) or not is_instance_valid(b.node):
 			continue
+		if not b.has("spin_done") and b.build >= 1.0:
+			b.spin_done = true
+			for k in ["spin2", "spin3", "spin3x"]:
+				var sn: Node = b.node.find_child(k, true, false)
+				if sn:
+					_spins.append([sn, k, b])
 		var f: Dictionary = FX.get(b.type, {})
 		if f.is_empty():
 			continue
