@@ -245,7 +245,7 @@ func _open_cat(c: Dictionary) -> void:
 		n += 1
 		type_row.add_child(_card(t))
 	# Karten wie im Browser: Bild, Name, Kosten, Rezept – scrollbar, falls zu viele
-	type_scroll.custom_minimum_size = Vector2(mini(n * 126, int(get_viewport().get_visible_rect().size.x) - 60), 182)
+	type_scroll.custom_minimum_size = Vector2(mini(n * 126, int(get_viewport().get_visible_rect().size.x) - 60), 140)
 	type_scroll.visible = true
 	_refresh_buttons()
 
@@ -265,7 +265,7 @@ func _card(t: String) -> Button:
 	var b := Button.new()
 	b.set_meta("t", t)
 	b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-	b.custom_minimum_size = Vector2(120, 172)
+	b.custom_minimum_size = Vector2(120, 130)
 	b.pressed.connect(func(): if economy.is_unlocked(t): start(t))
 	var vb := VBoxContainer.new()
 	vb.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -302,7 +302,8 @@ func _card(t: String) -> Button:
 	rc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rc.add_theme_font_size_override("normal_font_size", 11)
 	rc.text = "[center]" + _recipe(t) + "[/center]"
-	vb.add_child(rc)
+	# Rezept steht nicht mehr auf der Karte – nur Bild, Name und Baumaterial
+	rc.queue_free()
 	var lock := Label.new()
 	lock.name = "Lock"
 	lock.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
