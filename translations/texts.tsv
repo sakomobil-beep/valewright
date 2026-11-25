@@ -5,7 +5,7 @@ UI_CONTROLS	Linke Maus ziehen = verschieben · Rechte Maus = drehen\nMausrad = z
 UI_FPS	%d FPS	%d FPS
 UI_LANGUAGE	Sprache	Language
 GAME_SUBTITLE	Baue. Wirtschafte. Herrsche.	Build. Trade. Rule.
-BLD_LAGER	Haupthaus	Town Hall
+BLD_LAGER	Lagerhaus	Storehouse
 UI_STAGE2	Etappe 2: Bauen (Gebäude unten wählen)	Stage 2: Building (pick a building below)
 UI_BUILD_HINT	Klicke auf einen freien Platz · Mausrad oder Q/E = drehen, R = 90° · der gelbe Pfeil zeigt den Eingang · Rechtsklick oder Esc = abbrechen	Click a free spot · mouse wheel or Q/E = rotate, R = 90° · the yellow arrow marks the entrance · right-click or Esc = cancel
 UI_BUILD_CHOSEN	Platz gewählt – jetzt bestätigen	Spot chosen – now confirm
@@ -436,3 +436,4 @@ ST_PLANT	Pflanzt neuen Baum	Planting a new tree
 ST_DRAW_WATER	Schöpft Wasser	Drawing water
 INFO_FIELDS	Felder: %d · reif: %d · wachsend: %d	Fields: %d · ripe: %d · growing: %d
 NG_LEGEND	🟡 Dein Startplatz · 🌲 Wald · ⛰️ Berge · 💧 Wasser	🟡 Your start · 🌲 Forest · ⛰️ Mountains · 💧 Water
+BLD_HAUPTHAUS	Haupthaus	Town Hall

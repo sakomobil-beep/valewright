@@ -142,7 +142,7 @@ func start(b: Dictionary, delivered := {}) -> void:
 	b.site_scaf = scaf
 	b.site_levels = levels
 	# Baumaterial-Stapel neben der Baustelle
-	var cost: Dictionary = economy.type_info(b.type).cost
+	var cost: Dictionary = b.get("cost_at", economy.type_info(b.type).cost)
 	b.site_need = {}
 	for k in cost:
 		b.site_need[k] = int(cost[k])

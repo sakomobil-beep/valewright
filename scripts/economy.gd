@@ -51,8 +51,15 @@ func type_info(t: String) -> Dictionary:
 func icon(item: String) -> String:
 	return data.items[item].icon if data.items.has(item) else ""
 
+# Kosten wie costOf im Browser: jedes weitere Lagerhaus braucht 3 Dachziegel, sobald der Töpfer freigeschaltet ist
+func cost_of(t: String) -> Dictionary:
+	var c: Dictionary = data.types[t].cost.duplicate()
+	if t == "lager" and buildings.any(func(b): return b.type == "lager" and not b.get("removed", false) and b.get("owner", 0) == 0) and is_unlocked("toepfer"):
+		c["ziegel"] = 3
+	return c
+
 func can_afford(t: String) -> bool:
-	var c: Dictionary = data.types[t].cost
+	var c: Dictionary = cost_of(t)
 	var o := site_outstanding()
 	for k in c:
 		if int(stock.get(k, 0)) - int(o.get(k, 0)) < int(c[k]):

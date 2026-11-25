@@ -290,7 +290,11 @@ func _card(t: String) -> Button:
 	nm.add_theme_color_override("font_color", Color(1, 0.93, 0.75))
 	nm.clip_text = true
 	vb.add_child(nm)
-	vb.add_child(UiIcons.cost_row(economy.type_info(t).cost, 18))
+	var crow := CenterContainer.new()
+	crow.name = "Cost"
+	crow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	crow.add_child(UiIcons.cost_row(economy.type_info(t).cost, 18))
+	vb.add_child(crow)
 	var rc := RichTextLabel.new()
 	rc.bbcode_enabled = true
 	rc.fit_content = true
@@ -306,6 +310,7 @@ func _card(t: String) -> Button:
 	lock.add_theme_font_size_override("font_size", 11)
 	lock.add_theme_color_override("font_color", Color(1, 0.9, 0.7))
 	lock.position = Vector2(6, 6)
+	lock.resized.connect(func(): lock.visible = lock.text != "")
 	lock.size = Vector2(108, 0)
 	var lsb := StyleBoxFlat.new()
 	lsb.bg_color = Color(0.1, 0.07, 0.04, 0.85)
@@ -335,9 +340,18 @@ func _refresh_buttons() -> void:
 		var lock: Label = b.get_node("Lock")
 		if not economy.is_unlocked(t):
 			lock.text = "🔒\n" + tr("LOCK_%d" % (int(economy.data.unlock[t]) - 1))
+			lock.visible = true
 			b.modulate = Color(0.55, 0.55, 0.55)
 			continue
 		lock.text = ""
+		lock.visible = false
+		if t == "lager":
+			var cr = b.find_child("Cost", true, false)
+			if cr:
+				for ch in cr.get_children():
+					cr.remove_child(ch)
+					ch.queue_free()
+				cr.add_child(UiIcons.cost_row(economy.cost_of(t), 18))
 		b.modulate = Color.WHITE if economy.can_afford(t) else Color(1, 0.65, 0.65)
 
 func _notification(what: int) -> void:
@@ -552,7 +566,7 @@ func _process(_dt: float) -> void:
 		act_btns.up.visible = selected.build >= 1.0 and selected.get("worker") != null and economy.is_unlocked("toepfer")
 		act_btns.up.disabled = selected.get("up", 0) > 0
 		var b: Dictionary = selected
-		var txt := tr(_key(b.type)) + "\n" + tr(b.status)
+		var txt := (tr("BLD_HAUPTHAUS") if b.type == "lager" and b == economy.buildings[0] else tr(_key(b.type))) + "\n" + tr(b.status)
 		if b.type == "wohnhaus" and b.has("lvl") and b.build >= 1.0:
 			txt = "%s – %s\n%s" % [tr(_key(b.type)), tr("HOUSE_%d" % b.lvl), tr(b.status)]
 			if not b.miss.is_empty():
@@ -950,6 +964,7 @@ func confirm() -> void:
 	n.scale = Vector3.ONE * SCALE   # Baustelle: Teile erscheinen von unten nach oben (construction.gd)
 	var rec := {"type": placing, "pos": p, "node": n, "build": 0.0, "s": SCALE, "t": 0.0, "status": "ST_BUILDING"}
 	buildings.append(rec)
+	rec["cost_at"] = economy.cost_of(placing)
 	economy.buildings.append(rec)
 	terrain.clear_stumps(p, float(economy.type_info(placing).r) * SCALE + 1.2)
 	if settlers:
