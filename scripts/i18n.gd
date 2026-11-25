@@ -8,6 +8,13 @@ var languages: PackedStringArray = []
 
 func _ready() -> void:
 	_load()
+	# Emoji-Schrift als Ersatz, damit 🪵🍞 usw. auch in der Web-Version erscheinen
+	var emoji: Font = load("res://fonts/emoji.ttf")
+	var base: Font = ThemeDB.fallback_font
+	if emoji and base:
+		var fb := base.fallbacks.duplicate()
+		fb.append(emoji)
+		base.fallbacks = fb
 	var cfg := ConfigFile.new()
 	var lang := ""
 	if cfg.load(SETTINGS) == OK:

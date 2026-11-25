@@ -6,6 +6,7 @@ const CameraRig := preload("res://scripts/camera_rig.gd")
 const Builder := preload("res://scripts/builder.gd")
 const Economy := preload("res://scripts/economy.gd")
 const Settlers := preload("res://scripts/settlers.gd")
+const Decor := preload("res://scripts/decor.gd")
 var settlers: Node3D
 var economy: Node
 var stock_label: Label
@@ -34,6 +35,11 @@ func _ready() -> void:
 	settlers.terrain = terrain
 	settlers.economy = economy
 	add_child(settlers)
+	var decor := Decor.new()
+	decor.name = "Leben"
+	decor.terrain = terrain
+	decor.economy = economy
+	add_child(decor)
 	builder = Builder.new()
 	builder.settlers = settlers
 	builder.economy = economy
