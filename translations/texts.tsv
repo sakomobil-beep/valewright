@@ -152,7 +152,7 @@ AI_HOHENSTEIN	Fürst von Hohenstein-Mümling	Prince of Hohenstein-Mümling
 AI_WALDBRUNN	Abt von Kloster Waldbrunn	Abbot of Waldbrunn Abbey
 ST_WAIT_GUARD	Wartet auf einen Wächter (braucht Kampfstock 🏏)	Waiting for a guard (needs a fighting staff 🏏)
 ST_GUARDED	Besetzt	Manned
-UI_ATTACK	⚔️ Angreifen (%d Soldaten bereit)	⚔️ Attack (%d soldiers ready)
+UI_ATTACK	⚔️ Angreifen mit %d Kämpfern	⚔️ Attack with %d fighters
 UI_NO_SOLDIERS	Keine freien Soldaten – jeder Turm behält einen Wächter	No free soldiers – every tower keeps one guard
 MSG_TERRITORY	🚩 Dein Gebiet ist gewachsen!	🚩 Your territory has grown!
 MSG_SWORDSMAN	⚔️ Ein Schwertkämpfer ist bereit	⚔️ A swordsman is ready

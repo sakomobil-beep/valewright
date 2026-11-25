@@ -578,8 +578,21 @@ func available(owner: int) -> Array:
 				spare[key] = left - 1
 	return out
 
+func avail_kinds(owner: int) -> Dictionary:
+	var av := available(owner)
+	return {"S": av.filter(func(x): return x.get("kind", "schwert") != "bogen").size(), "B": av.filter(func(x): return x.get("kind", "") == "bogen").size()}
+
+# Angriff mit gewählter Zahl Schwertkämpfer und Bogenschützen (wie im Browser), stärkste zuerst
+func attack_mix(target: Dictionary, n_s: int, n_b: int) -> int:
+	var av := available(0)
+	av.sort_custom(func(a, c): return a.rank > c.rank)
+	var pick: Array = av.filter(func(x): return x.get("kind", "schwert") != "bogen").slice(0, n_s) + av.filter(func(x): return x.get("kind", "") == "bogen").slice(0, n_b)
+	return _attack_list(target, pick)
+
 func attack(owner: int, target: Dictionary, count: int) -> int:
-	var list: Array = available(owner).slice(0, count)
+	return _attack_list(target, available(owner).slice(0, count))
+
+func _attack_list(target: Dictionary, list: Array) -> int:
 	# Formation: Schwertkämpfer vorne, Bogenschützen dahinter
 	list.sort_custom(func(a, c): return a.get("kind", "schwert") == "schwert" and c.get("kind", "schwert") == "bogen")
 	var i := 0

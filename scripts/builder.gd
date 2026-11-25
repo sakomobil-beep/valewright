@@ -108,9 +108,30 @@ func setup_ui(layer: CanvasLayer) -> void:
 	attack_btn = Button.new()
 	attack_btn.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	attack_btn.visible = false
+	# Schieberegler: wie viele Schwertkämpfer / Bogenschützen angreifen
+	att_box = VBoxContainer.new()
+	att_box.visible = false
+	ivb.add_child(att_box)
+	for kk in ["S", "B"]:
+		var hb := HBoxContainer.new()
+		var lb := Label.new()
+		lb.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		lb.text = "⚔️" if kk == "S" else "🏹"
+		hb.add_child(lb)
+		var sl := HSlider.new()
+		sl.custom_minimum_size = Vector2(150, 24)
+		sl.step = 1
+		hb.add_child(sl)
+		var vl := Label.new()
+		vl.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		vl.custom_minimum_size = Vector2(28, 0)
+		hb.add_child(vl)
+		sl.value_changed.connect(func(v): vl.text = str(int(v)))
+		att_box.add_child(hb)
+		att_sl[kk] = sl
 	attack_btn.pressed.connect(func():
 		if enemy != null and military:
-			var k: int = military.attack(0, enemy, 999)
+			var k: int = military.attack_mix(enemy, int(att_sl.S.value), int(att_sl.B.value))
 			if k == 0:
 				hint.text = tr("UI_NO_SOLDIERS")
 				hint.visible = true
@@ -403,11 +424,20 @@ func _process(_dt: float) -> void:
 	if enemy != null and info_panel.visible and military:
 		var e: Dictionary = enemy
 		info_label.text = "%s\n%s\n🛡️ %d" % [tr(e.ai.name) if e.has("ai") else "", tr("BLD_" + String(e.type).to_upper()), e.garrison]
-		attack_btn.text = tr("UI_ATTACK") % military.count_available(0)
+		var av: Dictionary = military.avail_kinds(0)
+		for kk in ["S", "B"]:
+			att_sl[kk].max_value = av[kk]
+			if _att_for != e:
+				att_sl[kk].value = mini(av[kk], 5)
+		_att_for = e
+		att_box.visible = true
+		attack_btn.text = tr("UI_ATTACK") % int(att_sl.S.value + att_sl.B.value)
 		attack_btn.visible = true
 		order_box.visible = false
 		return
 	attack_btn.visible = false
+	att_box.visible = false
+	_att_for = null
 	act_box.visible = selected != null and selected.type != "bruecke"
 	var tower: bool = selected != null and military and military.POSTS.has(selected.type) and selected.get("owner", 0) == 0
 	order_box.visible = selected != null and selected.build >= 1.0 and (selected.type in ["kaserne", "waffenschmied", "wagner"] or tower)
@@ -436,6 +466,9 @@ func _process(_dt: float) -> void:
 		info_label.text = txt
 
 var order_box: HBoxContainer
+var att_box: VBoxContainer
+var att_sl := {}
+var _att_for = null
 
 # Ausbau wie im Browser: 2 Dachziegel + 2 Bretter, danach 20 % schneller, goldene Fahne auf dem Dach
 func upgrade(b: Dictionary) -> void:
