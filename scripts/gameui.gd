@@ -149,11 +149,59 @@ func new_game_menu() -> void:
 			rows[k].visible = k < i)
 	_label(vb, "NG_AI_HINT", 12)
 	_label(vb, "NG_MAP")
-	var om := OptionButton.new()
-	om.add_item(tr("NG_MAP_RANDOM"))
-	om.add_item(tr("NG_MAP_CLASSIC"))
-	om.item_selected.connect(func(i): c.seed = randi() % 100000 if i == 0 else 4711)
-	vb.add_child(om)
+	var mh := HBoxContainer.new()
+	mh.add_theme_constant_override("separation", 12)
+	vb.add_child(mh)
+	var g := GridContainer.new()
+	g.columns = 2
+	g.add_theme_constant_override("h_separation", 8)
+	mh.add_child(g)
+	var prev := TextureRect.new()
+	prev.custom_minimum_size = Vector2(150, 150)
+	prev.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	mh.add_child(prev)
+	var redraw := func(): prev.texture = _map_preview(c)
+	var opts := [
+		["size", "MG_SIZE", ["klein", "mittel", "gross"], 1],
+		["terrain", "MG_TERRAIN", ["flach", "huegel", "gebirge", "gemischt"], 3],
+		["water", "MG_WATER", ["wenig", "normal", "viel"], 1],
+		["forest", "MG_FOREST", ["licht", "normal", "dicht"], 1],
+		["res", "MG_RES", ["knapp", "normal", "reich"], 1],
+		["start", "MG_START", ["wenig", "normal", "viel"], 1],
+		["tempo", "MG_TEMPO", ["gemuetlich", "normal", "schnell"], 1],
+	]
+	for o in opts:
+		var key: String = o[0]
+		var vals: Array = o[2]
+		c[key] = vals[o[3]]
+		var l := Label.new()
+		l.text = tr(o[1])
+		g.add_child(l)
+		var ob2 := OptionButton.new()
+		for v in vals:
+			ob2.add_item(tr("MGV_" + String(v).to_upper()))
+		ob2.selected = o[3]
+		ob2.item_selected.connect(func(i): c[key] = vals[i]; redraw.call())
+		g.add_child(ob2)
+	var sl := Label.new()
+	sl.text = tr("MG_SEED")
+	g.add_child(sl)
+	var sh := HBoxContainer.new()
+	var sp := SpinBox.new()
+	sp.max_value = 99999
+	sp.value = c.seed
+	sp.value_changed.connect(func(v): c.seed = int(v); redraw.call())
+	sh.add_child(sp)
+	var rb := Button.new()
+	rb.text = "🎲"
+	rb.pressed.connect(func(): sp.value = randi() % 100000)
+	sh.add_child(rb)
+	var cb := Button.new()
+	cb.text = tr("NG_MAP_CLASSIC")
+	cb.pressed.connect(func(): sp.value = 4711)
+	sh.add_child(cb)
+	g.add_child(sh)
+	redraw.call()
 	vb.add_child(HSeparator.new())
 	_button(vb, "NG_START", func(): Session.new_game(c))
 	_button(vb, "UI_BACK", main_menu)
@@ -374,3 +422,24 @@ func settings_menu(in_game: bool) -> void:
 		hb.add_child(b)
 	_label(vb, "SET_KEYS", 12)
 	_button(vb, "UI_BACK", pause_menu if in_game else main_menu)
+
+
+# Vorschaubild der Karte (Höhen, Wasser, Berge)
+func _map_preview(c: Dictionary) -> ImageTexture:
+	var t = load("res://scripts/terrain.gd").new()
+	t.prepare(c)
+	var n := 100
+	var img := Image.create(n, n, false, Image.FORMAT_RGB8)
+	for j in n:
+		for i in n:
+			var x: float = (i + 0.5) / n * t.SIZE - t.SIZE * 0.5
+			var z: float = (j + 0.5) / n * t.SIZE - t.SIZE * 0.5
+			var h: float = t.height(x, z)
+			var col: Color
+			if h < t.WATER_Y + 0.2: col = Color(0.2, 0.42, 0.7)
+			elif h > 14.0: col = Color(0.85, 0.85, 0.82)
+			elif h > 7.0: col = Color(0.5, 0.45, 0.38)
+			else: col = Color(0.32, 0.55, 0.25).lerp(Color(0.5, 0.62, 0.3), clampf(h / 7.0, 0, 1))
+			img.set_pixel(i, j, col)
+	t.free()
+	return ImageTexture.create_from_image(img)

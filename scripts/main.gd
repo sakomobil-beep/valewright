@@ -33,7 +33,7 @@ var toast_box: VBoxContainer
 func _ready() -> void:
 	_setup_environment()
 	terrain = Terrain.new()
-	terrain.world_seed = int(Session.cfg.get("seed", 4711))
+	terrain.prepare(Session.cfg)
 	terrain.name = "Gelaende"
 	add_child(terrain)
 	_build_lager()

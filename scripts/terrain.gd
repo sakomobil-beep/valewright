@@ -2,12 +2,18 @@ extends Node3D
 ## Gelände von Valewright: Hügel, Berge, ein Fluss, Seen und Wald.
 ## Etappe 1 des Umzugs aus der Browser-Version.
 
-const SIZE := 360.0          # Kantenlänge der Karte (Meter)
-const RES := 180             # Gitterzellen pro Kante
+var SIZE := 360.0            # Kantenlänge der Karte (Meter) – Kartengenerator: 260 / 360 / 480
+var RES := 180               # Gitterzellen pro Kante
 const RIVER_X := 34.0        # mittlere Lage des Flusses
 const WATER_Y := -0.6        # Wasserspiegel
 
 var world_seed := 4711
+# Kartengenerator (wie in der Browser-Version)
+var gen := {"size": "mittel", "terrain": "gemischt", "water": "normal", "forest": "normal", "res": "normal"}
+var hill_amp := 6.0
+var river_w := 1.0
+var forest_k := 0.05
+var deposits_per_mountain := 8
 var noise := FastNoiseLite.new()
 var detail := FastNoiseLite.new()
 var mountains: Array = []
@@ -20,20 +26,54 @@ var deposits: Array = []  # {pos, kind, found, node}
 const DEPOSIT_KINDS := ["stein", "kohle", "eisenerz", "gold"]
 
 func _init() -> void:
-	noise.seed = 4711
 	noise.frequency = 0.008
 	noise.fractal_octaves = 4
-	detail.seed = 99
 	detail.frequency = 0.05
-	mountains = [
-		{"p": Vector2(-95, -80), "r": 42.0, "h": 26.0},
-		{"p": Vector2(110, 95), "r": 34.0, "h": 20.0},
-		{"p": Vector2(-120, 110), "r": 28.0, "h": 15.0},
-	]
-	lakes = [
-		{"p": Vector2(-55, 60), "r": 16.0},
-		{"p": Vector2(85, -70), "r": 12.0},
-	]
+
+# Karte aus Kartennummer und Einstellungen erzeugen
+func prepare(cfg: Dictionary) -> void:
+	for k in gen:
+		gen[k] = String(cfg.get(k, gen[k]))
+	world_seed = int(cfg.get("seed", 4711))
+	noise.seed = world_seed
+	detail.seed = world_seed + 88
+	SIZE = {"klein": 260.0, "mittel": 360.0, "gross": 480.0}.get(gen.size, 360.0)
+	RES = int(SIZE / 2.0)
+	var sc := SIZE / 360.0
+	hill_amp = {"flach": 2.0, "huegel": 9.0, "gebirge": 7.0, "gemischt": 6.0}.get(gen.terrain, 6.0)
+	river_w = {"wenig": 0.75, "normal": 1.0, "viel": 1.3}.get(gen.water, 1.0)
+	forest_k = {"licht": 0.3, "normal": 0.05, "dicht": -0.15}.get(gen.forest, 0.05)
+	deposits_per_mountain = {"knapp": 4, "normal": 8, "reich": 12}.get(gen.res, 8)
+	var classic: bool = world_seed == 4711 and gen.size == "mittel" and gen.terrain == "gemischt" and gen.water == "normal"
+	if classic:
+		mountains = [
+			{"p": Vector2(-95, -80), "r": 42.0, "h": 26.0},
+			{"p": Vector2(110, 95), "r": 34.0, "h": 20.0},
+			{"p": Vector2(-120, 110), "r": 28.0, "h": 15.0},
+		]
+		lakes = [{"p": Vector2(-55, 60), "r": 16.0}, {"p": Vector2(85, -70), "r": 12.0}]
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = world_seed * 7 + 13
+	var nm: int = {"flach": 1, "huegel": 2, "gebirge": 5, "gemischt": 3}.get(gen.terrain, 3)
+	mountains = []
+	for i in nm:
+		for tries in 50:
+			var p := Vector2(rng.randf_range(-0.4, 0.4), rng.randf_range(-0.4, 0.4)) * SIZE
+			if p.length() < 70.0 * sc or mountains.any(func(m): return m.p.distance_to(p) < 80.0 * sc):
+				continue
+			var big := 1.25 if gen.terrain == "gebirge" else 1.0
+			mountains.append({"p": p, "r": rng.randf_range(26.0, 42.0) * sc * big, "h": rng.randf_range(14.0, 26.0) * big})
+			break
+	var nl: int = {"wenig": 0, "normal": 2, "viel": 4}.get(gen.water, 2)
+	lakes = []
+	for i in nl:
+		for tries in 50:
+			var p := Vector2(rng.randf_range(-0.38, 0.38), rng.randf_range(-0.38, 0.38)) * SIZE
+			if p.length() < 50.0 * sc or mountains.any(func(m): return m.p.distance_to(p) < m.r * 1.8 + 20.0):
+				continue
+			lakes.append({"p": p, "r": rng.randf_range(10.0, 17.0) * sc})
+			break
 
 func river_x(z: float) -> float:
 	return RIVER_X + sin(z * 0.018) * 22.0 + sin(z * 0.047) * 7.0
@@ -49,14 +89,14 @@ func mountain(x: float, z: float) -> float:
 	return h
 
 func height(x: float, z: float) -> float:
-	var h := 1.6 + absf(noise.get_noise_2d(x, z)) * 6.0 + detail.get_noise_2d(x, z) * 0.4
+	var h := 1.6 + absf(noise.get_noise_2d(x, z)) * hill_amp + detail.get_noise_2d(x, z) * 0.4
 	# Startplatz flach halten
 	var c := Vector2(x, z).length()
 	if c < 30.0:
 		h = lerp(1.6, h, smoothstep(14.0, 30.0, c))
 	h += mountain(x, z)
 	# Fluss sanft eingraben (keine steilen Ufer)
-	var dr := absf(x - river_x(z))
+	var dr := absf(x - river_x(z)) / river_w
 	if dr < 16.0:
 		h = lerp(-2.2, h, smoothstep(3.0, 16.0, dr))
 	for l in lakes:
@@ -66,8 +106,6 @@ func height(x: float, z: float) -> float:
 	return h
 
 func _ready() -> void:
-	noise.seed = world_seed
-	detail.seed = world_seed + 88
 	_build_ground()
 	_build_water()
 	_build_trees()
@@ -154,11 +192,11 @@ func _build_trees() -> void:
 	var leaf_pos: Array = []
 	var fir_pos: Array = []
 	var half := SIZE * 0.5 - 4.0
-	for k in 9000:
+	for k in int(9000 * (SIZE / 360.0) * (SIZE / 360.0)):
 		var x := rng.randf_range(-half, half)
 		var z := rng.randf_range(-half, half)
 		var dens := noise.get_noise_2d(x * 3.0 + 50.0, z * 3.0 - 20.0)
-		if dens < 0.05 or not _free_spot(x, z):
+		if dens < forest_k or not _free_spot(x, z):
 			continue
 		var t := Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.65, 1.1)), Vector3(x, height(x, z) - 0.1, z))
 		if mountain(x, z) > 2.0 or rng.randf() < 0.35:
@@ -405,7 +443,7 @@ func _make_deposits() -> void:
 	rng.seed = 314
 	for m in mountains:
 		var kinds: Array = DEPOSIT_KINDS.duplicate()
-		for k in 8:
+		for k in deposits_per_mountain:
 			var ang := rng.randf() * TAU
 			var r: float = rng.randf_range(0.35, 0.95) * m.r
 			var x: float = m.p.x + cos(ang) * r

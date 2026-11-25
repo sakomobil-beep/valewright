@@ -316,3 +316,27 @@ ACT_DEMOLISH	Abreißen (die Hälfte des Materials kommt zurück)	Demolish (half 
 ST_PAUSED	Pausiert ⏸	Paused ⏸
 UI_MOVE_HINT	Neuen Platz wählen, dann bestätigen	Choose a new spot, then confirm
 MSG_MOVED	↔️ Gebäude umgesetzt	↔️ Building moved
+MG_SIZE	Größe	Size
+MG_TERRAIN	Gelände	Terrain
+MG_WATER	Wasser	Water
+MG_FOREST	Wald	Forest
+MG_RES	Rohstoffe	Resources
+MG_START	Startmaterial	Starting goods
+MG_TEMPO	Tempo	Pace
+MG_SEED	Kartennummer	Map number
+MGV_KLEIN	Klein	Small
+MGV_MITTEL	Mittel	Medium
+MGV_GROSS	Groß	Large
+MGV_FLACH	Flach	Flat
+MGV_HUEGEL	Hügelig	Hilly
+MGV_GEBIRGE	Gebirge	Mountains
+MGV_GEMISCHT	Gemischt	Mixed
+MGV_WENIG	Wenig	Little
+MGV_NORMAL	Normal	Normal
+MGV_VIEL	Viel	Plenty
+MGV_LICHT	Licht	Sparse
+MGV_DICHT	Dicht	Dense
+MGV_KNAPP	Knapp	Scarce
+MGV_REICH	Reich	Rich
+MGV_GEMUETLICH	Gemütlich	Relaxed
+MGV_SCHNELL	Schnell	Fast

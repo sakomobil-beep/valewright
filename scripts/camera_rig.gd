@@ -59,7 +59,7 @@ func _move(v: Vector2) -> void:
 	var right := Vector3(cos(yaw), 0, -sin(yaw))
 	var fwd := Vector3(-sin(yaw), 0, -cos(yaw))
 	target += right * v.x - fwd * v.y
-	var lim := 170.0
+	var lim: float = terrain.SIZE * 0.5 - 10.0 if terrain else 170.0
 	target.x = clampf(target.x, -lim, lim)
 	target.z = clampf(target.z, -lim, lim)
 

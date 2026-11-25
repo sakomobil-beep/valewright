@@ -20,8 +20,8 @@ const FINE := ["raeucherfisch", "wurst"]
 const HOUSE_TICK := 45.0
 var unl := 0     # Freischalt-Stufe (steigt mit zufriedenen Wohnhäusern)
 
-const BUILD_TIME := 8.0
-const WORK_TIME := 10.0
+var BUILD_TIME := 8.0
+var WORK_TIME := 10.0
 # Diese Berufe arbeiten draußen in der Welt (siehe settlers.gd)
 const FIELD_WORKERS := ["holzfaeller", "steinmetz", "foerster", "rutengaenger"]
 # Diese Gebäude produzieren (noch) keine Waren
@@ -40,7 +40,10 @@ func _init() -> void:
 	var f := FileAccess.open("res://data/game.json", FileAccess.READ)
 	data = JSON.parse_string(f.get_as_text())
 	for k in data.items:
-		stock[k] = int(data.start.get(k, 0))
+		stock[k] = int(round(int(data.start.get(k, 0)) * {"wenig": 0.5, "normal": 1.0, "viel": 2.0}.get(String(Session.cfg.get("start", "normal")), 1.0)))
+	var tk: float = {"gemuetlich": 1.4, "normal": 1.0, "schnell": 0.7}.get(String(Session.cfg.get("tempo", "normal")), 1.0)
+	WORK_TIME = 10.0 * tk
+	BUILD_TIME = 8.0 * tk
 
 func type_info(t: String) -> Dictionary:
 	return data.types[t]

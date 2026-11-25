@@ -69,7 +69,7 @@ func _ai_spots(count: int) -> Array:
 		if out.size() >= count:
 			break
 		var ang := k * TAU / 72.0 * 7.0
-		var r := 115.0 + (k % 3) * 12.0
+		var r: float = (115.0 + (k % 3) * 12.0) * terrain.SIZE / 360.0
 		var p := Vector3(cos(ang) * r, 0, sin(ang) * r)
 		if absf(p.x) > _half - 30 or absf(p.z) > _half - 30:
 			continue
