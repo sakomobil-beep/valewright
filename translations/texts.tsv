@@ -522,3 +522,9 @@ MLW_NO_TOWERS	Noch keine Türme – Wachstube und Wachturm erweitern dein Gebiet
 MLW_ANGRY	zornig	angry
 MLW_SEND	➜ Kämpfer schicken	➜ Send fighter
 MLW_OWN_TOWERS	Deine Türme	Your towers
+POP_SETTLERS	Siedler	Settlers
+POP_CARRIERS	Träger	Carriers
+POP_SOLDIERS	Soldaten	Soldiers
+RES_PER_MIN	%s pro Min.	%s per min
+RES_WARN_RED	⚠ Eine Ware fehlt – Gebäude warten darauf!	⚠ A good is missing – buildings are waiting for it!
+RES_WARN_YELLOW	Eine Ware wird knapp.	A good is running low.
