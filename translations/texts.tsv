@@ -411,3 +411,7 @@ MIL_FIGHTERS	Kämpfer: %d · Gesamtstärke %d	Fighters: %d · total strength %d
 MIL_STRENGTH	Stärke	Strength
 MIL_HUNGRY	hungrig	hungry
 MIL_RANKS_HELP	Ränge\n⚔️ %s\n🏹 %s\nBis Rang 3 durch Übung (wenn eine Kaserne steht), darüber nur mit 🪙 Münzen. Jeder Kämpfer isst etwa alle 2 Minuten.	Ranks\n⚔️ %s\n🏹 %s\nUp to rank 3 through drill (with a barracks), above only with 🪙 coins. Each fighter eats about every 2 minutes.
+MSG_UPGRADE_NEED	Für den Ausbau brauchst du 2 Dachziegel und 2 Bretter	Upgrading needs 2 roof tiles and 2 planks
+MSG_UPGRADED	⬆️ %s ausgebaut – arbeitet jetzt 20 %% schneller	⬆️ %s upgraded – now works 20 %% faster
+ACT_UP	Ausbauen (2 Dachziegel + 2 Bretter, 20 % schneller)	Upgrade (2 roof tiles + 2 planks, 20 % faster)
+NOTE_NO_FOOD	🍞 Kein Brot, Fisch oder Schinken – die Minen stehen still! Baue eine Bäckerei, einen Fischer oder einen Metzger.	🍞 No bread, fish or ham – the mines have stopped! Build a bakery, a fisher or a butcher.

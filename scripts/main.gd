@@ -302,4 +302,10 @@ func _process(dt: float) -> void:
 	if _autosave > 180.0:
 		_autosave = 0.0
 		savegame.save("auto")
+		var tex := get_viewport().get_texture()
+		if tex and DisplayServer.get_name() != "headless":
+			var im := tex.get_image()
+			if im and not im.is_empty():
+				im.resize(192, 108, Image.INTERPOLATE_BILINEAR)
+				im.save_png(Session.save_path("auto").replace(".json", ".png"))
 	fps_label.text = tr("UI_FPS") % Engine.get_frames_per_second()

@@ -247,7 +247,20 @@ func load_menu(in_game: bool) -> void:
 		var txt := "%s – %s" % [name, tr("SLOT_EMPTY") if info == null else String(info.get("date", ""))]
 		var b := _button(vb, txt, func(): Session.load_game(slot), false)
 		b.disabled = info == null
+		_thumb(b, slot)
 	_button(vb, "UI_BACK", pause_menu if in_game else main_menu)
+
+# kleines Vorschaubild des Spielstands auf dem Knopf
+func _thumb(b: Button, slot: String) -> void:
+	var f := Session.save_path(slot).replace(".json", ".png")
+	if not FileAccess.file_exists(f) or Session.slot_info(slot) == null:
+		return
+	var im := Image.load_from_file(f)
+	if im == null or im.is_empty():
+		return
+	im.resize(128, 72, Image.INTERPOLATE_BILINEAR)
+	b.icon = ImageTexture.create_from_image(im)
+	b.custom_minimum_size.y = maxf(b.custom_minimum_size.y, 84)
 
 func save_menu() -> void:
 	var vb := _window(480)
@@ -255,11 +268,24 @@ func save_menu() -> void:
 	for slot in ["1", "2", "3"]:
 		var info = Session.slot_info(slot)
 		var txt := "%s – %s" % [tr("SLOT_N") % int(slot), tr("SLOT_EMPTY") if info == null else String(info.get("date", ""))]
-		_button(vb, txt, func(): main.savegame.save(slot); close(); get_tree().paused = false, false)
+		var sb := _button(vb, txt, func():
+			main.savegame.save(slot)
+			if shot:
+				shot.save_png(Session.save_path(slot).replace(".json", ".png"))
+			close()
+			get_tree().paused = false, false)
+		_thumb(sb, slot)
 	_button(vb, "UI_BACK", pause_menu)
 
 # ---------- Pause ----------
+var shot: Image = null   # Bild der Spielszene für die Vorschau im Speicherstand
+
 func pause_menu() -> void:
+	if not get_tree().paused and DisplayServer.get_name() != "headless" and get_viewport().get_texture():
+		var im := get_viewport().get_texture().get_image()
+		if im and not im.is_empty():
+			im.resize(192, 108, Image.INTERPOLATE_BILINEAR)
+			shot = im
 	get_tree().paused = true
 	var vb := _window(400)
 	_label(vb, "MENU_PAUSE", 28, GOLD, true)

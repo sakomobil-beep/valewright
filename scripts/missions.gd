@@ -132,6 +132,8 @@ func _process(dt: float) -> void:
 	if label == null:
 		return
 	_t += dt
+	if mission == -1 and _arrow and _arrow.visible:
+		_tut_arrow(_arrow_at)
 	if _t < 0.5:
 		return
 	_t = 0.0
@@ -157,9 +159,66 @@ func _process(dt: float) -> void:
 		Session.chapter_done(mission)
 		finished.emit(mission)
 
+# was im jeweiligen Schritt gebaut werden soll (Karte leuchtet) und wohin der 3D-Pfeil zeigt
+const TUT_BUILD := ["holzfaeller", "saegewerk", "steinmetz", "brunnen", "wohnhaus", "wachturm", ""]
+var _arrow: Node3D
+var _arrow_at = null
+
+func _tut_target(i: int):
+	var e: Node = main.economy
+	var t: String = TUT_BUILD[i]
+	if i == 3 and e.buildings.any(func(b): return b.type == "brunnen" and b.build >= 1.0):
+		t = "bauernhof"
+	main.builder.tut_hl = "" if e.buildings.any(func(b): return b.type == t) else t
+	# Pfeil: auf die neue Baustelle, sonst auf die Felsen (Steinmetz), sonst aufs Lager
+	for b in e.buildings:
+		if b.type == t and b.build < 1.0:
+			return b.pos + Vector3(0, 4.5, 0)
+	if t == "steinmetz":
+		var rk = main.terrain.nearest_rock(main.settlers.lager_door(), 60.0)
+		if rk:
+			return rk.pos + Vector3(0, 3.5, 0)
+	if i == 0:
+		return main.settlers.lager_door() + Vector3(0, 12.0, -2.0)
+	return null
+
+func _tut_arrow(at) -> void:
+	if _arrow == null:
+		_arrow = Node3D.new()
+		var m := StandardMaterial3D.new()
+		m.albedo_color = Color(1.0, 0.82, 0.29)
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		var cone := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.7
+		cm.bottom_radius = 0.0
+		cm.height = 1.4
+		cm.radial_segments = 4
+		cone.mesh = cm
+		cone.material_override = m
+		_arrow.add_child(cone)
+		var stem := MeshInstance3D.new()
+		var sm := CylinderMesh.new()
+		sm.top_radius = 0.22
+		sm.bottom_radius = 0.22
+		sm.height = 1.2
+		stem.mesh = sm
+		stem.material_override = m
+		stem.position.y = 1.2
+		_arrow.add_child(stem)
+		_arrow.scale = Vector3.ONE * 1.8
+		main.add_child(_arrow)
+	_arrow.visible = at != null
+	if at != null:
+		var t := Time.get_ticks_msec() / 1000.0
+		_arrow.position = at + Vector3(0, sin(t * 4.0) * 0.35, 0)
+		_arrow.rotation.y = t * 1.5
+
 func _tutorial() -> void:
 	var steps := tutorial_steps()
 	while step < steps.size() - 1 and steps[step][1].call():
 		step += 1
 		main._toast("✅ " + tr("TUT_DONE"))
+	_arrow_at = _tut_target(step)
+	_tut_arrow(_arrow_at)
 	label.text = "🎓 %s  %d / %d\n\n%s" % [tr("UI_TUTORIAL"), step + 1, steps.size(), tr(steps[step][0])]

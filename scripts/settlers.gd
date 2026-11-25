@@ -266,25 +266,52 @@ func _next_job(w: Dictionary) -> void:
 				{"fn": func(): _next_job(w)},
 			]
 		"rutengaenger":
+			# wie im Browser: sucht zufällig unerforschte Bergstellen ab (Umkreis 40)
+			if not b.has("searched"):
+				b.searched = []
+			var fog = get_parent().get_node_or_null("Nebel")
 			var best = null
-			var bd := 45.0
-			for d in terrain.deposits:
-				if d.found or reserved.has(d.pos):
+			var bd := 1e9
+			for k in 60:
+				var ang := randf() * TAU
+				var rr := 6.0 + randf() * 40.0
+				var x: float = b.pos.x + cos(ang) * rr
+				var z: float = b.pos.z + sin(ang) * rr
+				if terrain.mountain(x, z) < 2.5 or (fog and not fog.is_explored(x, z)):
 					continue
-				var dist := Vector2(d.pos.x - b.pos.x, d.pos.z - b.pos.z).length()
-				if dist < bd:
-					bd = dist
-					best = d
+				if b.searched.any(func(q): return Vector2(q.x - x, q.y - z).length() < 5.0):
+					continue
+				var near := 0.0
+				for d in terrain.deposits:
+					if not d.found and Vector2(d.pos.x - x, d.pos.z - z).length() < 12.0:
+						near = -15.0
+						break
+				if rr + near < bd:
+					bd = rr + near
+					best = Vector2(x, z)
 			if best == null:
 				b.status = "ST_NOTHING_FOUND"
 				w.q = [{"wait": 10.0}, {"fn": func(): _next_job(w)}]
 				return
+			b.searched.append(best)
+			if b.searched.size() > 80:
+				b.searched.pop_front()
+			var pt := Vector3(best.x, terrain.height(best.x, best.y), best.y)
 			b.status = "ST_SEARCHING"
-			reserved[best.pos] = true
 			w.q = [
-				{"go": best.pos},
-				{"anim": "plant", "wait": 4.0},
-				{"fn": func(): terrain.reveal_deposit(best); reserved.erase(best.pos); economy.message.emit(tr("MSG_DEPOSIT") % tr("ITEM_" + ("GOLDERZ" if best.kind == "gold" else String(best.kind).to_upper())))},
+				{"go": pt},
+				{"anim": "carve", "wait": 4.0},
+				{"fn": func():
+					var hit = null
+					for d in terrain.deposits:
+						if not d.found and Vector2(d.pos.x - pt.x, d.pos.z - pt.z).length() < 6.5:
+							hit = d
+							break
+					if hit:
+						terrain.reveal_deposit(hit)
+						economy.message.emit(tr("MSG_DEPOSIT") % tr("ITEM_" + ("GOLDERZ" if hit.kind == "gold" else String(hit.kind).to_upper())))
+					else:
+						mark_empty(pt)},
 				{"go": door_of(b)},
 				{"wait": 3.0},
 				{"fn": func(): _next_job(w)},
@@ -294,6 +321,45 @@ func _next_job(w: Dictionary) -> void:
 			b.worker_inside = true
 			w.inside_b = b
 			w.node.visible = false
+
+# Schild „hier ist nichts“ (rotes X auf Holztafel) – verschwindet nach 90 s, wie markEmpty im Browser
+func mark_empty(p: Vector3) -> void:
+	var g := Node3D.new()
+	get_parent().add_child(g)
+	g.position = p
+	var wood := StandardMaterial3D.new()
+	wood.albedo_color = Color("5a3e22")
+	var post := MeshInstance3D.new()
+	var pb := BoxMesh.new()
+	pb.size = Vector3(0.06, 0.9, 0.06)
+	post.mesh = pb
+	post.material_override = wood
+	post.position.y = 0.45
+	g.add_child(post)
+	var board := MeshInstance3D.new()
+	var bb := BoxMesh.new()
+	bb.size = Vector3(0.62, 0.46, 0.05)
+	board.mesh = bb
+	var bm := StandardMaterial3D.new()
+	bm.albedo_color = Color("c08a52")
+	board.material_override = bm
+	board.position.y = 1.1
+	board.rotation.x = -0.55
+	g.add_child(board)
+	var red := StandardMaterial3D.new()
+	red.albedo_color = Color("b03020")
+	red.emission_enabled = true
+	red.emission = Color("b03020") * 0.4
+	for sgn in [1.0, -1.0]:
+		var bar := MeshInstance3D.new()
+		var xb := BoxMesh.new()
+		xb.size = Vector3(0.5, 0.07, 0.02)
+		bar.mesh = xb
+		bar.material_override = red
+		bar.position = Vector3(0, 0, 0.035)
+		bar.rotation.z = 0.68 * sgn
+		board.add_child(bar)
+	get_tree().create_timer(90.0).timeout.connect(g.queue_free)
 
 # Nur nicht reservierte Ziele nehmen (sonst laufen zwei Holzfäller zum selben Baum)
 func _free(first, list: Array, _is_tree: bool):

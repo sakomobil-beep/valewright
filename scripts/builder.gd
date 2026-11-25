@@ -69,7 +69,9 @@ func setup_ui(layer: CanvasLayer) -> void:
 		cb.text = c.icon + " " + tr(c.key)
 		cb.custom_minimum_size = Vector2(118, 40)
 		cb.pressed.connect(func(): _open_cat(c))
+		cb.set_meta("types", c.types)
 		cat_row.add_child(cb)
+		_cat_btns.append(cb)
 	_refresh_buttons()
 	economy.changed.connect(_refresh_buttons)
 	economy.house_level_changed.connect(_swap_house)
@@ -118,7 +120,7 @@ func setup_ui(layer: CanvasLayer) -> void:
 	act_box = HBoxContainer.new()
 	act_box.add_theme_constant_override("separation", 4)
 	ivb.add_child(act_box)
-	for a in [["pause", "⏸"], ["prio", "⭐"], ["move", "↔️"], ["demolish", "🗑️"]]:
+	for a in [["pause", "⏸"], ["prio", "⭐"], ["up", "⬆️"], ["move", "↔️"], ["demolish", "🗑️"]]:
 		var b := Button.new()
 		b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		b.custom_minimum_size = Vector2(44, 34)
@@ -187,8 +189,21 @@ func _open_cat(c: Dictionary) -> void:
 	type_scroll.visible = true
 	_refresh_buttons()
 
+# Tutorial: Kategorie und Karte des nächsten Gebäudes leuchten golden (wie tutHL im Browser)
+var tut_hl := ""
+var _cat_btns: Array = []
+func _tut_pulse() -> void:
+	var k := 0.65 + 0.35 * sin(Time.get_ticks_msec() / 160.0)
+	var on := Color(1.0, 0.85 + 0.15 * k, 0.35 + 0.4 * k) * Color(1.3, 1.3, 1.3)
+	for cb in _cat_btns:
+		cb.modulate = on if tut_hl != "" and tut_hl in cb.get_meta("types") else Color.WHITE
+	for ch in type_row.get_children():
+		if ch.has_meta("t"):
+			ch.modulate = on if ch.get_meta("t") == tut_hl else (Color.WHITE if economy.is_unlocked(ch.get_meta("t")) else ch.modulate)
+
 func _card(t: String) -> Button:
 	var b := Button.new()
+	b.set_meta("t", t)
 	b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	b.custom_minimum_size = Vector2(120, 172)
 	b.pressed.connect(func(): if economy.is_unlocked(t): start(t))
@@ -382,6 +397,7 @@ func ground_point(screen: Vector2):
 	return null
 
 func _process(_dt: float) -> void:
+	_tut_pulse()
 	if enemy != null and info_panel.visible and military:
 		var e: Dictionary = enemy
 		info_label.text = "%s\n%s\n🛡️ %d" % [tr(e.ai.name) if e.has("ai") else "", tr("BLD_" + String(e.type).to_upper()), e.garrison]
@@ -399,6 +415,8 @@ func _process(_dt: float) -> void:
 		act_btns.pause.text = "▶" if selected.get("paused", false) else "⏸"
 		act_btns.prio.modulate = Color(1, 0.85, 0.3) if selected.get("prio", false) else Color(1, 1, 1, 0.6)
 		act_btns.prio.text = "⭐"
+		act_btns.up.visible = selected.build >= 1.0 and selected.get("worker") != null and economy.is_unlocked("toepfer")
+		act_btns.up.disabled = selected.get("up", 0) > 0
 		var b: Dictionary = selected
 		var txt := tr(_key(b.type)) + "\n" + tr(b.status)
 		if b.type == "wohnhaus" and b.has("lvl") and b.build >= 1.0:
@@ -415,6 +433,62 @@ func _process(_dt: float) -> void:
 		info_label.text = txt
 
 var order_box: HBoxContainer
+
+# Ausbau wie im Browser: 2 Dachziegel + 2 Bretter, danach 20 % schneller, goldene Fahne auf dem Dach
+func upgrade(b: Dictionary) -> void:
+	if b.get("up", 0) > 0:
+		return
+	if int(economy.stock.get("ziegel", 0)) < 2 or int(economy.stock.get("bretter", 0)) < 2:
+		economy.message.emit(tr("MSG_UPGRADE_NEED"))
+		return
+	economy.stock.ziegel -= 2
+	economy.stock.bretter -= 2
+	economy.note("use", "ziegel", 2)
+	economy.note("use", "bretter", 2)
+	b.up = 1
+	up_badge(b)
+	economy.changed.emit()
+	economy.message.emit(tr("MSG_UPGRADED") % tr(_key(b.type)))
+
+func up_badge(b: Dictionary) -> void:
+	if not is_instance_valid(b.get("node")) or b.node.get_node_or_null("Ausbau"):
+		return
+	var top := 0.0
+	for mi in b.node.find_children("*", "MeshInstance3D", true, false):
+		var bx: AABB = mi.get_aabb()
+		top = maxf(top, (mi.global_transform * bx).end.y - b.node.global_position.y)
+	var g := Node3D.new()
+	g.name = "Ausbau"
+	b.node.add_child(g)
+	g.global_position = b.node.global_position + Vector3(0, top + 0.05, 0)
+	g.scale = Vector3.ONE * 1.6 / maxf(0.01, b.node.scale.x)
+	var iron := StandardMaterial3D.new()
+	iron.albedo_color = Color(0.25, 0.25, 0.27)
+	iron.metallic = 0.7
+	var pole := MeshInstance3D.new()
+	var cy := CylinderMesh.new()
+	cy.top_radius = 0.025
+	cy.bottom_radius = 0.025
+	cy.height = 0.8
+	pole.mesh = cy
+	pole.material_override = iron
+	pole.position.y = 0.4
+	g.add_child(pole)
+	var fl := MeshInstance3D.new()
+	var cn := CylinderMesh.new()
+	cn.top_radius = 0.0
+	cn.bottom_radius = 0.22
+	cn.height = 0.5
+	cn.radial_segments = 3
+	fl.mesh = cn
+	var gm := StandardMaterial3D.new()
+	gm.albedo_color = Color("d9a23a")
+	gm.metallic = 0.5
+	gm.roughness = 0.4
+	fl.material_override = gm
+	fl.rotation.z = -PI / 2
+	fl.position = Vector3(0.26, 0.68, 0)
+	g.add_child(fl)
 
 func _order(t: String, k: String) -> void:
 	if selected == null or selected.type != t:
@@ -459,6 +533,8 @@ func _action(a: String) -> void:
 			b.paused = not b.get("paused", false)
 			if b.paused:
 				b.status = "ST_PAUSED"
+		"up":
+			upgrade(b)
 		"prio":
 			b.prio = not b.get("prio", false)
 		"demolish":
@@ -647,6 +723,9 @@ func place_loaded(sv: Dictionary) -> void:
 	for kk in ["orders", "trS", "trB", "promo"]:
 		rec[kk] = int(sv.get(kk, 0))
 	rec.wo = sv.get("wo", {}).duplicate()
+	rec.up = int(sv.get("up", 0))
+	if rec.up > 0:
+		up_badge.call_deferred(rec)
 	if settlers:
 		settlers.block_area(p, settlers.foot(t))
 	if rec.build >= 1.0:

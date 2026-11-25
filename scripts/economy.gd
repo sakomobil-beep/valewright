@@ -236,7 +236,24 @@ func site_outstanding() -> Dictionary:
 			o[k] = int(o.get(k, 0)) + maxi(0, int(b.site_need[k]) - int(b.site_in.get(k, 0)) - int(b.site_inc.get(k, 0)))
 	return o
 
+var _food_note := false
+var _chk_t := 0.0
+# Hinweise bei Problemen (wie checkProblems im Browser)
+func _check_problems(dt: float) -> void:
+	_chk_t += dt
+	if _chk_t < 3.0:
+		return
+	_chk_t = 0.0
+	var mine := buildings.any(func(b): return b.type in MINES and b.build >= 1.0 and not b.get("removed", false))
+	var low: bool = mine and FOODS.all(func(f): return int(stock.get(f, 0)) <= 0) and not buildings.any(func(b): return b.type in MINES and MINEFOOD.any(func(f): return int(b.get("in", {}).get(f, 0)) > 0))
+	if low and not _food_note:
+		_food_note = true
+		message.emit(tr("NOTE_NO_FOOD"))
+	if not low:
+		_food_note = false
+
 func _process(dt: float) -> void:
+	_check_problems(dt)
 	for b in buildings:
 		if b.build < 1.0 or b.get("removed", false):
 			continue
@@ -363,7 +380,7 @@ func _produce(b: Dictionary, dt: float) -> void:
 		b.cur = r
 		b.running = true
 		b.t = 0.0
-		b.dur = float(r[3]) * 2.5 * tf()
+		b.dur = float(r[3]) * 2.5 * tf() * (0.8 if b.get("up", 0) > 0 else 1.0)
 		b.status = "ST_WORKING"
 		changed.emit()
 		return
