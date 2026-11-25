@@ -127,6 +127,18 @@ func setup_ui(layer: CanvasLayer) -> void:
 		b.pressed.connect(func(): _action(a[0]))
 		act_box.add_child(b)
 		act_btns[a[0]] = b
+	# Aufträge (Kaserne, Waffenschmied, Wagner) wie im Browser
+	order_box = HBoxContainer.new()
+	order_box.add_theme_constant_override("separation", 4)
+	ivb.add_child(order_box)
+	for o in [["kaserne", "trS", "⚔️ +1"], ["kaserne", "trB", "🏹 +1"], ["kaserne", "promo", "🪙 ⬆"], ["waffenschmied", "schwert", "🗡️ +1"], ["waffenschmied", "schild", "🛡️ +1"], ["wagner", "orders", "🛒 +1"]]:
+		var ob := Button.new()
+		ob.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		ob.custom_minimum_size = Vector2(56, 34)
+		ob.text = o[2]
+		ob.set_meta("for", o[0])
+		ob.pressed.connect(func(): _order(o[0], o[1]))
+		order_box.add_child(ob)
 	confirm_box = HBoxContainer.new()
 	confirm_box.anchor_left = 0.5
 	confirm_box.anchor_right = 0.5
@@ -375,9 +387,14 @@ func _process(_dt: float) -> void:
 		info_label.text = "%s\n%s\n🛡️ %d" % [tr(e.ai.name) if e.has("ai") else "", tr("BLD_" + String(e.type).to_upper()), e.garrison]
 		attack_btn.text = tr("UI_ATTACK") % military.count_available(0)
 		attack_btn.visible = true
+		order_box.visible = false
 		return
 	attack_btn.visible = false
 	act_box.visible = selected != null and selected.type != "bruecke"
+	order_box.visible = selected != null and selected.build >= 1.0 and selected.type in ["kaserne", "waffenschmied", "wagner"]
+	if order_box.visible:
+		for ob in order_box.get_children():
+			ob.visible = ob.get_meta("for") == selected.type
 	if selected != null and info_panel.visible:
 		act_btns.pause.text = "▶" if selected.get("paused", false) else "⏸"
 		act_btns.prio.modulate = Color(1, 0.85, 0.3) if selected.get("prio", false) else Color(1, 1, 1, 0.6)
@@ -393,7 +410,45 @@ func _process(_dt: float) -> void:
 			txt += " " + tr("ITEM_" + String(b.missing).to_upper())
 		if b.build < 1.0:
 			txt += "  %d %%" % int(b.build * 100.0)
+		else:
+			txt += _orders_text(b) + _bufs_text(b)
 		info_label.text = txt
+
+var order_box: HBoxContainer
+
+func _order(t: String, k: String) -> void:
+	if selected == null or selected.type != t:
+		return
+	if t == "waffenschmied":
+		if not selected.has("wo"):
+			selected.wo = {}
+		selected.wo[k] = int(selected.wo.get(k, 0)) + 1
+	else:
+		selected[k] = int(selected.get(k, 0)) + 1
+	if settlers:
+		settlers.sfx("place")
+
+func _orders_text(b: Dictionary) -> String:
+	match String(b.type):
+		"kaserne":
+			return "\n" + tr("ORD_BARRACKS") % [int(b.get("trS", 0)), int(b.get("trB", 0)), int(b.get("promo", 0))]
+		"waffenschmied":
+			return "\n" + tr("ORD_SMITH") % [int(b.get("wo", {}).get("schwert", 0)), int(b.get("wo", {}).get("schild", 0))]
+		"wagner":
+			return "\n" + tr("ORD_WAGNER") % int(b.get("orders", 0))
+	return ""
+
+func _bufs_text(b: Dictionary) -> String:
+	var t := ""
+	for pair in [["in", "📥"], ["out", "📤"]]:
+		var box: Dictionary = b.get(pair[0], {})
+		var parts: Array = []
+		for k in box:
+			if int(box[k]) > 0:
+				parts.append("%s %d" % [tr("ITEM_" + String(k).to_upper()), int(box[k])])
+		if parts.size():
+			t += "\n%s %s" % [pair[1], ", ".join(parts)]
+	return t
 
 func _action(a: String) -> void:
 	if selected == null:

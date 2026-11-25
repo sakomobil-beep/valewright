@@ -389,3 +389,25 @@ ST_ENOUGH	Genug auf Vorrat (6 Bögen, 30 Pfeile)	Enough in stock (6 bows, 30 arr
 ST_GOLD_EMPTY	⚠️ Die Goldader ist erschöpft – suche eine neue	⚠️ The gold vein is exhausted – find a new one
 ST_OUT_FULL	Ausgang voll – Träger holen ab	Output full – carriers are coming
 ST_WAIT_ORDER	Wartet auf Auftrag – Gebäude antippen	Waiting for an order – tap the building
+ST_TRAIN_SWORD	Bildet einen Schwertkämpfer aus	Training a swordsman
+ST_TRAIN_BOW	Bildet einen Bogenschützen aus	Training an archer
+ST_PROMOTE	Befördert einen Kämpfer	Promoting a fighter
+ST_WAIT_GEAR	Wartet auf Ausrüstung oder Münzen	Waiting for gear or coins
+ST_BARRACKS_READY	Bereit – Aufträge unten antippen	Ready – tap the orders below
+MSG_RANK_UP	Durch Übung aufgestiegen: %s	Promoted through drill: %s
+MSG_PROMOTED	Beförderung! Neuer Rang: %s 🪙	Promotion! New rank: %s 🪙
+ORD_BARRACKS	Aufträge: ⚔️ %d · 🏹 %d · 🪙 %d	Orders: ⚔️ %d · 🏹 %d · 🪙 %d
+ORD_SMITH	Aufträge: 🗡️ %d · 🛡️ %d	Orders: 🗡️ %d · 🛡️ %d
+ORD_WAGNER	Aufträge: 🛒 %d Karren	Orders: 🛒 %d carts
+RANK_WAECHTER	Wächter	Guard
+RANK_LANDSKNECHT	Landsknecht	Footman
+RANK_WAFFENKNECHT	Waffenknecht	Man-at-arms
+RANK_RITTER	Ritter	Knight
+RANK_BURGMANN	Burgmann	Castellan
+RANK_JAEGER	Jäger	Hunter
+RANK_SCHUETZE	Schütze	Marksman
+RANK_MEISTERSCHUETZE	Meisterschütze	Master archer
+MIL_FIGHTERS	Kämpfer: %d · Gesamtstärke %d	Fighters: %d · total strength %d
+MIL_STRENGTH	Stärke	Strength
+MIL_HUNGRY	hungrig	hungry
+MIL_RANKS_HELP	Ränge\n⚔️ %s\n🏹 %s\nBis Rang 3 durch Übung (wenn eine Kaserne steht), darüber nur mit 🪙 Münzen. Jeder Kämpfer isst etwa alle 2 Minuten.	Ranks\n⚔️ %s\n🏹 %s\nUp to rank 3 through drill (with a barracks), above only with 🪙 coins. Each fighter eats about every 2 minutes.

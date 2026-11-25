@@ -663,6 +663,13 @@ func _animate(w: Dictionary, dt: float) -> void:
 			var f := 6.0 if w.anim == "push" else 10.0
 			ar.rotation.x = -1.0 + sin(t * f) * 0.3
 			al.rotation.x = -1.0 + sin(t * f + (0.0 if w.anim == "push" else 1.5)) * 0.3
+		"shoot":
+			# Bogen spannen: linker Arm gestreckt, rechter zieht die Sehne und lässt los
+			ll.rotation.x = 0.15
+			lr.rotation.x = -0.15
+			al.rotation.x = -1.5
+			var ph := fmod(t, 2.5) / 2.5
+			ar.rotation.x = -1.5 + (0.0 if ph > 0.85 else ph * 0.5)
 		"stoke":
 			ll.rotation.x = 0.2
 			lr.rotation.x = -0.1
@@ -843,7 +850,7 @@ func _seq_next(w: Dictionary) -> void:
 		if h == "IN": h = first
 		elif h == "OUT": h = out
 		var look := _local(b, st.l)
-		var anim: String = {"hammer": "chop", "dig": "plant", "saw": "saw", "carve": "carve", "push": "push", "stoke": "stoke", "chop": "chop", "shoot": "push"}.get(String(st.get("a", "")), "push")
+		var anim: String = {"hammer": "chop", "dig": "plant", "saw": "saw", "carve": "carve", "push": "push", "stoke": "stoke", "chop": "chop", "shoot": "shoot"}.get(String(st.get("a", "")), "push")
 		q.append({"walk": _local(b, st.p)})
 		q.append({"face": look})
 		q.append({"fn": func(): _carry(w, h); _show_prop(b, st, out)})

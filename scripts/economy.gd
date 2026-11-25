@@ -144,7 +144,7 @@ func _have(b: Dictionary, k: String) -> int:
 	return int(b["in"].get(k, 0)) + int(b.inc.get(k, 0))
 
 func is_active(b: Dictionary) -> bool:
-	return b.build >= 1.0 and not b.get("removed", false) and not b.get("paused", false) and b.get("worker") != null
+	return b.build >= 1.0 and not b.get("removed", false) and not b.get("paused", false) and (b.get("worker") != null or b.type == "kaserne")
 
 # Was braucht das Gebäude noch? [[ware, anzahl], …]  (wie wantsOf im Browser)
 func wants_of(b: Dictionary) -> Array:

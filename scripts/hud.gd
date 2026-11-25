@@ -389,6 +389,13 @@ func _fill_military(vb: Control, e: Node, gold: Color) -> void:
 	_lbl(vb, tr("MIL_OWN") % [own.size(), m.count_available(0), towers.size(), int(m.land_share(0) * 100.0)], 14)
 	for b in towers:
 		_lbl(vb, "  [img=20]res://icons/buildings/%s.png[/img] %s – %s %d" % [b.type, tr("BLD_" + String(b.type).to_upper()), tr("MIL_GARRISON"), int(b.get("garrison", 0))], 13)
+	var tot := 0.0
+	for s in own:
+		tot += m.strength(s)
+	_lbl(vb, tr("MIL_FIGHTERS") % [own.size(), int(tot)], 16, gold)
+	for s in own:
+		_lbl(vb, "  %s [b]%s[/b] · %s %d%s" % ["🏹" if s.kind == "bogen" else "⚔️", tr(m.RANKS[s.kind][s.rank]), tr("MIL_STRENGTH"), int(m.strength(s)), (" · [color=#ff8a6a]" + tr("MIL_HUNGRY") + "[/color]") if s.get("hungry", false) else ""], 13)
+	_lbl(vb, tr("MIL_RANKS_HELP") % [" → ".join(m.RANKS.schwert.map(func(k): return tr(k))), " → ".join(m.RANKS.bogen.map(func(k): return tr(k)))], 12)
 	_lbl(vb, tr("MIL_ENEMIES"), 16, gold)
 	if m.ais.is_empty():
 		_lbl(vb, tr("MIL_NONE"), 13)

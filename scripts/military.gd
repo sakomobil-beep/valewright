@@ -251,13 +251,96 @@ func _enter(s: Dictionary, b: Dictionary) -> void:
 		recompute()
 		economy.message.emit(tr("MSG_TERRITORY"))
 
-func _new_soldier(owner: int, at: Vector3, strength: int) -> Dictionary:
-	var w: Dictionary = settlers.spawn("waechter", at)
+# Ränge wie im Browser
+const RANKS := {"schwert": ["RANK_WAECHTER", "RANK_LANDSKNECHT", "RANK_WAFFENKNECHT", "RANK_RITTER", "RANK_BURGMANN"], "bogen": ["RANK_JAEGER", "RANK_SCHUETZE", "RANK_MEISTERSCHUETZE"]}
+
+func max_rank(kind: String) -> int:
+	return RANKS[kind].size() - 1
+
+func promo_cost(s: Dictionary) -> int:
+	return 3 if s.rank >= 3 else (2 if s.rank >= 2 else 1)
+
+# Stärke: Schwert 10, Bogen 8, je Rang +60 %, hungrig die Hälfte (für Zweikämpfe /10)
+func strength(s: Dictionary) -> float:
+	return roundf((8.0 if s.kind == "bogen" else 10.0) * (1.0 + s.rank * 0.6) * (0.5 if s.get("hungry", false) else 1.0))
+
+func _new_soldier(owner: int, at: Vector3, strength_or_rank: int, kind := "") -> Dictionary:
+	# alte Spielstände: 1 = Kampfstock-Wächter, 2 = Schwertkämpfer, 3 = Bogenschütze
+	if kind == "":
+		kind = "bogen" if strength_or_rank == 3 else "schwert"
+		strength_or_rank = 0 if strength_or_rank <= 2 else 0
+	var model := "waechter"
+	if kind == "bogen" and ResourceLoader.exists("res://models/w_bogenschuetze.glb"):
+		model = "bogenschuetze"
+	elif kind == "schwert" and strength_or_rank > 0 and ResourceLoader.exists("res://models/w_schwertkaempfer.glb"):
+		model = "schwertkaempfer"
+	var w: Dictionary = settlers.spawn(model, at)
 	w.role = "soldat"
 	_sash(w.node, OWNER_COL[owner])
-	var s := {"w": w, "owner": owner, "str": strength, "home": null, "state": "idle"}
+	var s := {"w": w, "owner": owner, "kind": kind, "rank": strength_or_rank, "xp": 0.0, "food": 1.0, "home": null, "state": "idle"}
+	s.str = strength(s) / 10.0
 	soldiers.append(s)
+	dress_rank(s)
 	return s
+
+# Rüstung, Umhang, Helmspitze und Rangstreifen (wie dressRank im Browser)
+func dress_rank(s: Dictionary) -> void:
+	var node: Node3D = s.w.node
+	var old = node.get_node_or_null("Rang")
+	if old:
+		old.free()
+	s.str = strength(s) / 10.0
+	var g := Node3D.new()
+	g.name = "Rang"
+	node.add_child(g)
+	var cols := [null, Color("8a6a45"), Color("9aa0aa"), Color("b8bec8"), Color("d8dce4")]
+	var r: int = mini(2, s.rank) if s.kind == "bogen" else s.rank
+	var gold := StandardMaterial3D.new()
+	gold.albedo_color = Color(0.95, 0.78, 0.3)
+	gold.metallic = 0.6
+	if cols[r] != null:
+		var a := MeshInstance3D.new()
+		var cy := CylinderMesh.new()
+		cy.top_radius = 0.17
+		cy.bottom_radius = 0.21
+		cy.height = 0.38
+		a.mesh = cy
+		var am := StandardMaterial3D.new()
+		am.albedo_color = cols[r]
+		am.metallic = 0.5 if r >= 2 else 0.0
+		am.roughness = 0.45
+		a.material_override = am
+		a.position = Vector3(0, 0.68, 0)
+		g.add_child(a)
+	if s.rank >= 3 or (s.kind == "bogen" and s.rank >= 2):
+		var c := MeshInstance3D.new()
+		var bx := BoxMesh.new()
+		bx.size = Vector3(0.38, 0.55, 0.03)
+		c.mesh = bx
+		var cm := StandardMaterial3D.new()
+		cm.albedo_color = OWNER_COL[s.owner]
+		c.material_override = cm
+		c.position = Vector3(0, 0.6, -0.2)
+		c.rotation.x = 0.12
+		g.add_child(c)
+	if s.rank >= 4:
+		var t := MeshInstance3D.new()
+		var cn := CylinderMesh.new()
+		cn.top_radius = 0.0
+		cn.bottom_radius = 0.06
+		cn.height = 0.16
+		t.mesh = cn
+		t.material_override = gold
+		t.position = Vector3(0, 1.35, 0)
+		g.add_child(t)
+	for i in s.rank + 1:
+		var st := MeshInstance3D.new()
+		var sb := BoxMesh.new()
+		sb.size = Vector3(0.06, 0.02, 0.02)
+		st.mesh = sb
+		st.material_override = gold
+		st.position = Vector3(0.12, 0.55 + i * 0.05, 0.19)
+		g.add_child(st)
 
 func _sash(node: Node3D, col: Color) -> void:
 	var m := MeshInstance3D.new()
@@ -276,30 +359,116 @@ func _free_soldier(owner: int):
 			return s
 	return null
 
-# Kaserne: bildet stärkere Kämpfer aus
+# Kaserne (wie im Browser): Aufträge Schwertkämpfer / Bogenschütze / Beförderung,
+# Material bringen die Träger ins Eingangslager. Dazu Sold (Essen) und Übung.
 var _barracks_t := 0.0
 func _barracks(dt: float) -> void:
-	_barracks_t += dt
-	if _barracks_t < 20.0:
-		return
-	_barracks_t = 0.0
+	var tf: float = economy.tf()
 	for b in economy.buildings:
-		if b.type != "kaserne" or b.build < 1.0:
+		if b.type != "kaserne" or b.build < 1.0 or b.get("removed", false):
 			continue
-		var st: Dictionary = economy.stock
-		if st.get("schwert", 0) > 0 and st.get("schild", 0) > 0 and st.get("muenzen", 0) > 0:
-			st.schwert -= 1
-			st.schild -= 1
-			st.muenzen -= 1
-			_new_soldier(0, settlers.door_of(b), 2)
+		economy.bufs(b)
+		if b.get("paused", false):
+			continue
+		if b.get("train_t", 0.0) > 0.0:
+			b.train_t -= dt
+			if b.train_t <= 0.0:
+				_train_done(b)
+			continue
+		if int(b.get("trS", 0)) > 0 and economy.has_in(b, {"schwert": 1, "schild": 1}):
+			economy.take_in(b, {"schwert": 1, "schild": 1})
+			b.trS -= 1
+			b.train = "schwert"
+			b.train_t = 6.0 * 2.5 * tf
+			b.status = "ST_TRAIN_SWORD"
+			b.running = true
+		elif int(b.get("trB", 0)) > 0 and economy.has_in(b, {"bogen": 1, "pfeile": 5}):
+			economy.take_in(b, {"bogen": 1, "pfeile": 5})
+			b.trB -= 1
+			b.train = "bogen"
+			b.train_t = 6.0 * 2.5 * tf
+			b.status = "ST_TRAIN_BOW"
+			b.running = true
+		else:
+			var cand = _promo_cand()
+			if int(b.get("promo", 0)) > 0 and cand != null and economy.has_in(b, {"muenzen": promo_cost(cand)}):
+				economy.take_in(b, {"muenzen": promo_cost(cand)})
+				b.promo -= 1
+				b.train = "promo"
+				b.cand = cand
+				b.train_t = 3.0 * 2.5 * tf
+				b.status = "ST_PROMOTE"
+				b.running = true
+			else:
+				b.running = false
+				b.status = "ST_WAIT_GEAR" if (int(b.get("trS", 0)) + int(b.get("trB", 0)) + int(b.get("promo", 0))) > 0 else "ST_BARRACKS_READY"
+	# Sold, Übung, automatisch Posten besetzen
+	for s in soldiers:
+		if s.owner != 0:
+			continue
+		s.food = float(s.get("food", 1.0)) - dt / (120.0 * tf)
+		if s.food <= 0.0:
+			var best := ""
+			for f in economy.FOODS:
+				if int(economy.stock.get(f, 0)) > 0 and (best == "" or int(economy.stock[f]) > int(economy.stock[best])):
+					best = f
+			if best != "":
+				economy.stock[best] -= 1
+				economy.note("use", best, 1)
+				s.food = 1.0
+				if s.get("hungry", false):
+					s.hungry = false
+					dress_rank(s)
+			else:
+				s.food = 0.0
+				if not s.get("hungry", false):
+					s.hungry = true
+					dress_rank(s)
+		if s.state == "idle" and s.rank < mini(2, max_rank(s.kind)) and _kaserne() != null:
+			s.xp = float(s.get("xp", 0.0)) + dt / (300.0 * tf)
+			if s.xp >= 1.0:
+				s.xp = 0.0
+				s.rank += 1
+				dress_rank(s)
+				economy.message.emit(tr("MSG_RANK_UP") % tr(RANKS[s.kind][s.rank]))
+	_barracks_t += dt
+	if _barracks_t >= 20.0:
+		_barracks_t = 0.0
+		for b in economy.buildings:
+			if GARRISON.has(b.type) and b.build >= 1.0 and b.get("owner", 0) == 0 and int(b.garrison) + int(b.get("incoming", 0)) < GARRISON[b.type] and _free_soldier(0) != null:
+				_man_tower(b)
+
+func _kaserne():
+	for b in economy.buildings:
+		if b.type == "kaserne" and b.build >= 1.0 and not b.get("removed", false):
+			return b
+	return null
+
+func _promo_cand():
+	var best = null
+	for s in soldiers:
+		if s.owner == 0 and s.rank < max_rank(s.kind) and (best == null or s.rank < best.rank):
+			best = s
+	return best
+
+func _train_done(b: Dictionary) -> void:
+	b.running = false
+	match String(b.get("train", "")):
+		"schwert":
+			_new_soldier(0, settlers.door_of(b), 0, "schwert")
 			economy.message.emit(tr("MSG_SWORDSMAN"))
-		elif st.get("bogen", 0) > 0 and st.get("pfeile", 0) >= 5 and st.get("muenzen", 0) > 0:
-			st.bogen -= 1
-			st.pfeile -= 5
-			st.muenzen -= 1
-			_new_soldier(0, settlers.door_of(b), 3)
+		"bogen":
+			_new_soldier(0, settlers.door_of(b), 0, "bogen")
 			economy.message.emit(tr("MSG_ARCHER"))
-		economy.changed.emit()
+		"promo":
+			var c = b.get("cand")
+			if c != null and soldiers.has(c) and c.rank < max_rank(c.kind):
+				c.rank += 1
+				c.xp = 0.0
+				dress_rank(c)
+				economy.message.emit(tr("MSG_PROMOTED") % tr(RANKS[c.kind][c.rank]))
+			b.erase("cand")
+	economy.changed.emit()
 
 # ---------- Angriff ----------
 func enemy_at(p: Vector3):
@@ -326,9 +495,14 @@ func available(owner: int) -> Array:
 
 func attack(owner: int, target: Dictionary, count: int) -> int:
 	var list: Array = available(owner).slice(0, count)
+	# Formation: Schwertkämpfer vorne, Bogenschützen dahinter
+	list.sort_custom(func(a, c): return a.get("kind", "schwert") == "schwert" and c.get("kind", "schwert") == "bogen")
+	var i := 0
 	for s in list:
 		if s.state == "garrison" and s.home:
 			s.home.garrison -= 1
+		s.slot = i
+		i += 1
 		_send(s, target)
 	return list.size()
 
@@ -341,10 +515,21 @@ func _send(s: Dictionary, target: Dictionary) -> void:
 	s.w.node.visible = true
 	s.state = "attack"
 	s.target = target
+	# Aufstellung vor dem Ziel: Reihen zu 4, Bogenschützen 4 m weiter hinten
+	var d: Vector3 = _door(target)
+	var away: Vector3 = (d - target.pos)
+	away.y = 0.0
+	away = away.normalized() if away.length() > 0.01 else Vector3(0, 0, 1)
+	var side := away.cross(Vector3.UP)
+	var k: int = int(s.get("slot", 0))
+	var back: float = (k / 4) * 1.1 + (4.0 if s.get("kind", "schwert") == "bogen" else 0.0)
+	var spot: Vector3 = d + away * back + side * ((k % 4) - 1.5) * 1.0
+	spot.y = terrain.height(spot.x, spot.z)
 	s.w.q = [
-		{"go": _door(target)},
+		{"go": spot},
+		{"face": target.pos},
 		{"fn": func(): s.state = "arrived"},
-		{"anim": "chop", "until": func(): return s.state != "arrived"},
+		{"anim": "shoot" if s.get("kind", "") == "bogen" else "chop", "until": func(): return s.state != "arrived"},
 	]
 
 func _door(b: Dictionary) -> Vector3:
@@ -367,7 +552,11 @@ func _fight(dt: float) -> void:
 		if s.fight_t < 2.5:
 			continue
 		s.fight_t = 0.0
+		if s.get("kind", "") == "bogen":
+			_arrow(s.w.node.position + Vector3(0, 1.0, 0), b.pos + Vector3(randf_range(-1, 1), 1.5, randf_range(-1, 1)))
 		if b.garrison <= 0:
+			if s.get("kind", "") == "bogen" and soldiers.any(func(o): return o.state == "arrived" and o.target == b and o.get("kind", "") != "bogen"):
+				continue   # einnehmen müssen die Schwertkämpfer
 			_capture(b, s)
 			continue
 		# Zweikampf: Verteidiger hat einen kleinen Vorteil
@@ -385,7 +574,7 @@ func _best_defender(b: Dictionary) -> float:
 	var best := 1.0
 	for d in soldiers:
 		if d.owner == 0 and d.state == "garrison" and d.home == b:
-			best = maxf(best, d.str)
+			best = maxf(best, float(d.get("str", 1.0)))
 	return best
 
 func _kill_defender(b: Dictionary) -> void:
@@ -442,6 +631,7 @@ func _capture(b: Dictionary, s: Dictionary) -> void:
 			c.owner = s.owner
 	_enter(s, b)
 	recompute()
+	_burn_outside()
 	economy.message.emit(tr("MSG_CAPTURED") if s.owner == 0 else tr("MSG_LOST_TOWER"))
 
 func _home_point(owner: int) -> Vector3:
@@ -449,13 +639,91 @@ func _home_point(owner: int) -> Vector3:
 		return settlers.lager_door()
 	return _door(ais[owner - 1].lager)
 
+# Pfeil fliegt im Bogen zum Ziel
+func _arrow(from: Vector3, to: Vector3) -> void:
+	var a := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(0.04, 0.04, 0.7)
+	a.mesh = bm
+	var mt := StandardMaterial3D.new()
+	mt.albedo_color = Color(0.45, 0.32, 0.2)
+	a.material_override = mt
+	get_parent().add_child(a)
+	a.position = from
+	var dur := clampf(from.distance_to(to) / 18.0, 0.25, 1.2)
+	var tw := create_tween()
+	tw.tween_method(func(t: float):
+		var p := from.lerp(to, t)
+		p.y += sin(t * PI) * from.distance_to(to) * 0.18
+		if t > 0.01:
+			a.look_at(p + (p - a.position).normalized() * 0.1 if (p - a.position).length() > 0.001 else p + Vector3.FORWARD, Vector3.UP)
+		a.position = p, 0.0, 1.0, dur)
+	tw.tween_interval(1.5)
+	tw.tween_callback(a.queue_free)
+
+# Gebäude versinkt in Rauch und Flammen (wie im Browser)
+func sink(b: Dictionary, fire := false) -> void:
+	b.destroyed = true
+	if not is_instance_valid(b.get("node")):
+		return
+	var n: Node3D = b.node
+	var fx := CPUParticles3D.new()
+	fx.local_coords = false
+	fx.amount = 28
+	fx.lifetime = 2.2
+	var sm := SphereMesh.new()
+	sm.radius = 0.35
+	sm.height = 0.7
+	var smat := StandardMaterial3D.new()
+	smat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	smat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	smat.vertex_color_use_as_albedo = true
+	smat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	sm.material = smat
+	fx.mesh = sm
+	fx.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	fx.emission_box_extents = Vector3(1.6, 0.4, 1.6)
+	fx.direction = Vector3(0, 1, 0)
+	fx.spread = 20.0
+	fx.initial_velocity_min = 1.0
+	fx.initial_velocity_max = 2.2
+	fx.gravity = Vector3(0.3, 0.4, 0)
+	fx.scale_amount_min = 1.0
+	fx.scale_amount_max = 2.4
+	var g := Gradient.new()
+	g.set_color(0, Color(1.0, 0.55, 0.15, 0.9) if fire else Color(0.55, 0.5, 0.45, 0.7))
+	g.add_point(0.35, Color(0.35, 0.32, 0.3, 0.6))
+	g.set_color(g.get_point_count() - 1, Color(0.6, 0.6, 0.6, 0.0))
+	fx.color_ramp = g
+	get_parent().add_child(fx)
+	fx.position = b.pos + Vector3(0, 0.5, 0)
+	fx.emitting = true
+	var tw := create_tween()
+	if fire:
+		tw.tween_interval(2.5)
+	tw.tween_property(n, "position:y", n.position.y - 4.0, 3.0).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(n, "rotation:z", randf_range(-0.12, 0.12), 3.0)
+	tw.tween_callback(n.queue_free)
+	tw.tween_callback(func(): fx.emitting = false)
+	tw.tween_interval(2.5)
+	tw.tween_callback(fx.queue_free)
+
+# KI-Gebäude außerhalb des eigenen Gebiets brennen nieder
+func _burn_outside() -> void:
+	for ai in ais:
+		if not ai.alive:
+			continue
+		for b in ai.buildings.duplicate():
+			if b.type == "lager" or GARRISON.has(b.type) or b.get("destroyed", false):
+				continue
+			if owner_at(b.pos) != ai.id:
+				ai.buildings.erase(b)
+				sink(b, true)
+
 func _defeat_ai(ai: Dictionary) -> void:
 	ai.alive = false
 	for b in ai.buildings:
-		b.destroyed = true
-		var tw := create_tween()
-		tw.tween_property(b.node, "scale:y", 0.05, 1.5)
-		tw.tween_callback(b.node.queue_free)
+		sink(b, true)
 	claims = claims.filter(func(c): return c.owner != ai.id)
 	for s in soldiers.duplicate():
 		if s.owner == ai.id:
@@ -527,7 +795,7 @@ func _ai_attack(ai: Dictionary, wave: int) -> void:
 		return
 	ai.lager.garrison -= k
 	for i in k:
-		var s := _new_soldier(ai.id, _door(ai.lager), 1 if ai.diff == "leicht" else 2)
+		var s := _new_soldier(ai.id, _door(ai.lager), 0 if ai.diff == "leicht" else (1 if ai.diff == "mittel" else 2), "schwert")
 		_send(s, best)
 	economy.message.emit(tr("MSG_AI_ATTACK") % tr(ai.name))
 
