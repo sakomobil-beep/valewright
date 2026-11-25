@@ -94,6 +94,27 @@ func set_speed(v: float) -> void:
 	for e in _speed_btns:
 		e[0].modulate = Color(1, 0.85, 0.4) if e[1] == v else Color.WHITE
 
+# Rechtsklick schließt offene Fenster (Statistik, Bilanz, Militär, Produktionsketten, Meldungen, Markt)
+func _input(e: InputEvent) -> void:
+	if not (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_RIGHT):
+		return
+	var closed := false
+	if stats_win and stats_win.win and is_instance_valid(stats_win.win):
+		stats_win.toggle(stats_win.mode)
+		closed = true
+	if _win:
+		_win.queue_free()
+		_win = null
+		_win_kind = ""
+		closed = true
+	var mk = main.get("market")
+	if mk and mk._win:
+		mk._win.queue_free()
+		mk._win = null
+		closed = true
+	if closed:
+		get_viewport().set_input_as_handled()
+
 func _unhandled_input(e: InputEvent) -> void:
 	if e is InputEventKey and e.pressed and not e.echo and Session.started:
 		match e.keycode:
