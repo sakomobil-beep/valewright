@@ -16,6 +16,98 @@ func _style(c: Control, alpha := 0.94) -> void:
 	sb.set_content_margin_all(22)
 	c.add_theme_stylebox_override("panel", sb)
 
+# ---------- Holzrahmen (prozedural, 9-Slice) und moderne Bedienelemente ----------
+var _wood_tex: ImageTexture
+func _wood_frame() -> StyleBoxTexture:
+	if _wood_tex == null:
+		var n := 192
+		var B := 26
+		var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 77
+		var noise := FastNoiseLite.new()
+		noise.frequency = 0.08
+		for y in n:
+			for x in n:
+				var d: int = mini(mini(x, y), mini(n - 1 - x, n - 1 - y))
+				if d < B:
+					# Holz: Maserung längs der Leiste, Kante dunkler, Fase hell
+					var along: float = float(x) if (y < B or y >= n - B) and not (x < B or x >= n - B) else float(y)
+					var across: float = float(y) if (y < B or y >= n - B) else float(x)
+					if (x < B or x >= n - B) and (y < B or y >= n - B):
+						along = float(x + y)
+						across = float(x - y)
+					var grain: float = 0.5 + 0.5 * sin(across * 0.9 + noise.get_noise_2d(along * 0.15, across * 1.5) * 6.0)
+					var base := Color(0.46, 0.29, 0.15).lerp(Color(0.62, 0.41, 0.22), grain * 0.7)
+					if d < 3:
+						base = base.darkened(0.55)
+					elif d < 6:
+						base = base.lightened(0.18)
+					elif d > B - 5:
+						base = base.darkened(0.45)
+					img.set_pixel(x, y, base)
+				else:
+					var v: float = 0.035 * noise.get_noise_2d(x * 0.6, y * 0.6)
+					img.set_pixel(x, y, Color(0.13 + v, 0.095 + v, 0.06 + v, 0.95))
+		# Eisennägel in den Ecken
+		for c in [Vector2i(13, 13), Vector2i(n - 14, 13), Vector2i(13, n - 14), Vector2i(n - 14, n - 14)]:
+			for yy in range(-4, 5):
+				for xx in range(-4, 5):
+					var r := Vector2(xx, yy).length()
+					if r <= 4.2:
+						img.set_pixel(c.x + xx, c.y + yy, Color(0.22, 0.22, 0.24).lerp(Color(0.62, 0.6, 0.58), clampf(1.0 - (Vector2(xx + 1.5, yy + 1.5).length() / 5.0), 0, 1)))
+		_wood_tex = ImageTexture.create_from_image(img)
+	var sb := StyleBoxTexture.new()
+	sb.texture = _wood_tex
+	sb.set_texture_margin_all(32)
+	sb.set_content_margin_all(40)
+	return sb
+
+func _modern_theme() -> Theme:
+	var th := Theme.new()
+	var mk := func(bg: Color, border: Color) -> StyleBoxFlat:
+		var b := StyleBoxFlat.new()
+		b.bg_color = bg
+		b.border_color = border
+		b.set_border_width_all(1)
+		b.set_corner_radius_all(8)
+		b.content_margin_left = 12
+		b.content_margin_right = 12
+		b.content_margin_top = 6
+		b.content_margin_bottom = 6
+		return b
+	for t in ["OptionButton", "Button"]:
+		th.set_stylebox("normal", t, mk.call(Color(0.09, 0.065, 0.04, 0.85), Color(0.79, 0.64, 0.29, 0.35)))
+		th.set_stylebox("hover", t, mk.call(Color(0.2, 0.14, 0.07, 0.95), Color(0.91, 0.77, 0.42, 0.9)))
+		th.set_stylebox("pressed", t, mk.call(Color(0.28, 0.19, 0.08, 1.0), Color(0.91, 0.77, 0.42, 1.0)))
+		th.set_stylebox("focus", t, mk.call(Color(0, 0, 0, 0), Color(0.91, 0.77, 0.42, 0.6)))
+		th.set_color("font_color", t, TEXT)
+		th.set_color("font_hover_color", t, Color(1, 0.92, 0.7))
+		th.set_font_size("font_size", t, 16)
+	th.set_stylebox("panel", "PopupMenu", mk.call(Color(0.12, 0.085, 0.05, 0.98), Color(0.79, 0.64, 0.29, 0.7)))
+	th.set_stylebox("hover", "PopupMenu", mk.call(Color(0.35, 0.24, 0.1, 1.0), Color(0, 0, 0, 0)))
+	th.set_font_size("font_size", "PopupMenu", 16)
+	th.set_color("font_color", "Label", TEXT)
+	th.set_font_size("font_size", "Label", 16)
+	return th
+
+# goldener Abschnittstitel mit feiner Linie
+func _section(vb: Control, txt: String) -> void:
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 10)
+	vb.add_child(hb)
+	var l := Label.new()
+	l.text = txt
+	l.add_theme_font_size_override("font_size", 18)
+	l.add_theme_color_override("font_color", GOLD)
+	hb.add_child(l)
+	var line := ColorRect.new()
+	line.color = Color(0.79, 0.64, 0.29, 0.35)
+	line.custom_minimum_size = Vector2(0, 1)
+	line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	hb.add_child(line)
+
 func _window(min_w := 520.0) -> VBoxContainer:
 	close()
 	var center := CenterContainer.new()
@@ -99,10 +191,23 @@ func main_menu() -> void:
 
 # ---------- Neues Spiel ----------
 func new_game_menu() -> void:
-	var vb := _window(560)
-	_label(vb, "MENU_NEW", 28, GOLD, true)
+	var outer := _window(0)
+	var pc: PanelContainer = outer.get_parent()
+	pc.add_theme_stylebox_override("panel", _wood_frame())
+	pc.theme = _modern_theme()
+	_label(outer, "MENU_NEW", 32, GOLD, true)
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 28)
+	outer.add_child(cols)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 8)
+	vb.custom_minimum_size = Vector2(470, 0)
+	cols.add_child(vb)
+	var right := VBoxContainer.new()
+	right.add_theme_constant_override("separation", 10)
+	cols.add_child(right)
 	var c := {"mode": "free", "ais": 1, "diff": "leicht", "seed": randi() % 100000, "mission": 0, "victory": "conquest"}
-	_label(vb, "NG_VICTORY")
+	_section(vb, tr("NG_VICTORY"))
 	var ov := OptionButton.new()
 	var vkeys := ["conquest", "economy", "territory", "endless"]
 	for k in vkeys:
@@ -110,7 +215,7 @@ func new_game_menu() -> void:
 	vb.add_child(ov)
 	var vdesc := _label(vb, tr("VICD_CONQUEST"), 13)
 	ov.item_selected.connect(func(i): c.victory = vkeys[i]; vdesc.text = tr("VICD_" + String(vkeys[i]).to_upper()))
-	_label(vb, "NG_AIS")
+	_section(vb, tr("NG_AIS"))
 	var ob := OptionButton.new()
 	for i in 4:
 		ob.add_item(str(i), i)
@@ -148,18 +253,29 @@ func new_game_menu() -> void:
 		for k in 3:
 			rows[k].visible = k < i)
 	_label(vb, "NG_AI_HINT", 12)
-	_label(vb, "NG_MAP")
-	var mh := HBoxContainer.new()
-	mh.add_theme_constant_override("separation", 12)
-	vb.add_child(mh)
+	_section(vb, tr("NG_MAP"))
 	var g := GridContainer.new()
 	g.columns = 2
-	g.add_theme_constant_override("h_separation", 8)
-	mh.add_child(g)
+	g.add_theme_constant_override("h_separation", 14)
+	g.add_theme_constant_override("v_separation", 6)
+	vb.add_child(g)
+	# große Kartenvorschau rechts, in einem eigenen Holzrahmen
+	var pf := PanelContainer.new()
+	var fsb := _wood_frame()
+	fsb.set_content_margin_all(18)
+	pf.add_theme_stylebox_override("panel", fsb)
+	right.add_child(pf)
 	var prev := TextureRect.new()
-	prev.custom_minimum_size = Vector2(150, 150)
+	prev.custom_minimum_size = Vector2(360, 360)
 	prev.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	mh.add_child(prev)
+	prev.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	pf.add_child(prev)
+	var legend := Label.new()
+	legend.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	legend.text = tr("NG_LEGEND")
+	legend.add_theme_font_size_override("font_size", 13)
+	legend.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	right.add_child(legend)
 	var redraw := func(): prev.texture = _map_preview(c)
 	var opts := [
 		["size", "MG_SIZE", ["klein", "mittel", "gross"], 1],
@@ -180,6 +296,8 @@ func new_game_menu() -> void:
 		l.text = tr(o[1])
 		g.add_child(l)
 		var ob2 := OptionButton.new()
+		ob2.custom_minimum_size = Vector2(0, 34)
+		ob2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		for v in vals:
 			ob2.add_item(tr("MGV_" + String(v).to_upper()))
 		ob2.selected = o[3]
@@ -204,9 +322,23 @@ func new_game_menu() -> void:
 	sh.add_child(cb)
 	g.add_child(sh)
 	redraw.call()
-	vb.add_child(HSeparator.new())
-	_button(vb, "NG_START", func(): Session.new_game(c))
-	_button(vb, "UI_BACK", main_menu)
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right.add_child(spacer)
+	var st := _button(right, "NG_START", func(): Session.new_game(c))
+	st.custom_minimum_size = Vector2(0, 56)
+	st.add_theme_font_size_override("font_size", 22)
+	var sbs := StyleBoxFlat.new()
+	sbs.bg_color = Color(0.55, 0.38, 0.12)
+	sbs.border_color = Color(0.95, 0.8, 0.45)
+	sbs.set_border_width_all(2)
+	sbs.set_corner_radius_all(10)
+	st.add_theme_stylebox_override("normal", sbs)
+	var sbh: StyleBoxFlat = sbs.duplicate()
+	sbh.bg_color = Color(0.68, 0.48, 0.16)
+	st.add_theme_stylebox_override("hover", sbh)
+	st.add_theme_color_override("font_color", Color(1, 0.96, 0.85))
+	_button(right, "UI_BACK", main_menu)
 
 # ---------- Kampagne ----------
 func campaign_menu() -> void:
@@ -470,18 +602,44 @@ func settings_menu(in_game: bool) -> void:
 func _map_preview(c: Dictionary) -> ImageTexture:
 	var t = load("res://scripts/terrain.gd").new()
 	t.prepare(c)
-	var n := 100
+	var n := 220
 	var img := Image.create(n, n, false, Image.FORMAT_RGB8)
+	var cell: float = t.SIZE / n
+	var fn := FastNoiseLite.new()
+	fn.seed = int(c.get("seed", 1))
+	fn.frequency = 0.03
+	var dens: float = {"licht": 0.25, "normal": 0.4, "dicht": 0.55}.get(String(c.get("forest", "normal")), 0.4)
 	for j in n:
 		for i in n:
-			var x: float = (i + 0.5) / n * t.SIZE - t.SIZE * 0.5
-			var z: float = (j + 0.5) / n * t.SIZE - t.SIZE * 0.5
+			var x: float = (i + 0.5) * cell - t.SIZE * 0.5
+			var z: float = (j + 0.5) * cell - t.SIZE * 0.5
 			var h: float = t.height(x, z)
+			# Schummerung: Licht von Nordwesten
+			var dx: float = t.height(x + cell, z) - t.height(x - cell, z)
+			var dz: float = t.height(x, z + cell) - t.height(x, z - cell)
+			var shade: float = clampf(1.0 - (dx + dz) * 0.18, 0.6, 1.3)
 			var col: Color
-			if h < t.WATER_Y + 0.2: col = Color(0.2, 0.42, 0.7)
-			elif h > 14.0: col = Color(0.85, 0.85, 0.82)
-			elif h > 7.0: col = Color(0.5, 0.45, 0.38)
-			else: col = Color(0.32, 0.55, 0.25).lerp(Color(0.5, 0.62, 0.3), clampf(h / 7.0, 0, 1))
-			img.set_pixel(i, j, col)
+			if h < t.WATER_Y + 0.2:
+				var depth: float = clampf((t.WATER_Y - h) / 3.0, 0, 1)
+				col = Color(0.36, 0.62, 0.82).lerp(Color(0.16, 0.36, 0.62), depth)
+				shade = 1.0
+			elif h < t.WATER_Y + 0.6:
+				col = Color(0.82, 0.76, 0.55)
+			elif h > 14.0:
+				col = Color(0.93, 0.93, 0.9)
+			elif h > 7.0:
+				col = Color(0.55, 0.5, 0.42).lerp(Color(0.68, 0.64, 0.58), clampf((h - 7.0) / 7.0, 0, 1))
+			else:
+				col = Color(0.42, 0.66, 0.3).lerp(Color(0.56, 0.7, 0.34), clampf(h / 7.0, 0, 1))
+				var fv: float = fn.get_noise_2d(x, z) * 0.5 + 0.5
+				if fv < dens:
+					col = col.lerp(Color(0.16, 0.38, 0.15), clampf((dens - fv) * 6.0, 0.0, 0.85))
+			img.set_pixel(i, j, Color(col.r * shade, col.g * shade, col.b * shade))
+	# Startplatz (Mitte) markieren
+	for yy in range(-4, 5):
+		for xx in range(-4, 5):
+			var r := Vector2(xx, yy).length()
+			if r <= 4.5:
+				img.set_pixel(n / 2 + xx, n / 2 + yy, Color(0.95, 0.8, 0.3) if r < 3.2 else Color(0.25, 0.15, 0.05))
 	t.free()
 	return ImageTexture.create_from_image(img)

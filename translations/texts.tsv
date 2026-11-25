@@ -435,3 +435,4 @@ ST_FEED	Füttert die Ferkel	Feeding the piglets
 ST_PLANT	Pflanzt neuen Baum	Planting a new tree
 ST_DRAW_WATER	Schöpft Wasser	Drawing water
 INFO_FIELDS	Felder: %d · reif: %d · wachsend: %d	Fields: %d · ripe: %d · growing: %d
+NG_LEGEND	🟡 Dein Startplatz · 🌲 Wald · ⛰️ Berge · 💧 Wasser	🟡 Your start · 🌲 Forest · ⛰️ Mountains · 💧 Water
