@@ -290,7 +290,7 @@ func _card(t: String) -> Button:
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(vb)
 	var img := TextureRect.new()
-	img.texture = UiIcons.bld_tex(t)
+	img.texture = UiIcons.bld_tex("lagerhaus" if t == "lager" else t)
 	img.custom_minimum_size = Vector2(0, 78)
 	img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -379,7 +379,8 @@ func model(t: String, lvl := 0) -> Node3D:
 	if t == "bruecke":
 		return Node3D.new()
 	var file := "wohnhaus_%d" % lvl if t == "wohnhaus" else t
-	var ps: PackedScene = load("res://models/%s.glb" % file)
+	# weitere Lagerhäuser bekommen ihr eigenes Modell (das Haupthaus baut main.gd)
+	var ps: PackedScene = load("res://models/lagerhaus.tscn") if t == "lager" else load("res://models/%s.glb" % file)
 	var n: Node3D = ps.instantiate()
 	n.scale = Vector3.ONE * SCALE
 	_shadows(n)
