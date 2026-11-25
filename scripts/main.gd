@@ -80,6 +80,7 @@ func _ready() -> void:
 	rb.settlers = settlers
 	rb.military = military
 	fog.settlers = settlers
+	$Baustellen.settlers = settlers
 	fog.military = military
 	$Tiere.settlers = settlers
 	missions = Missions.new()
@@ -228,6 +229,11 @@ func _setup_stock() -> void:
 	wildlife.terrain = terrain
 	wildlife.economy = economy
 	add_child(wildlife)
+	var cons := preload("res://scripts/construction.gd").new()
+	cons.name = "Baustellen"
+	cons.economy = economy
+	cons.terrain = terrain
+	add_child(cons)
 	var villagers := preload("res://scripts/villagers.gd").new()
 	villagers.name = "Dorfleben"
 	villagers.settlers = settlers

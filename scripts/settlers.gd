@@ -148,16 +148,8 @@ func on_building_placed(b: Dictionary) -> void:
 	if carriers < 3 + economy.buildings.size() / 2:
 		var t := spawn("traeger", lager_door())
 		t.role = "traeger"
-	var w := spawn("bauarbeiter", lager_door())
-	b.status = "ST_BUILDING"
-	w.q = [
-		{"go": door_of(b)},
-		{"fn": func(): b.builder_on_site = true},
-		{"anim": "build", "until": func(): return b.build >= 1.0},
-		{"fn": func(): b.builder_on_site = false; _on_built(b)},
-		{"go": lager_door()},
-		{"fn": func(): _remove(w)},
-	]
+	# Baustelle wie im Browser: Einebnen, Fundament, Gerippe, Wände, Dach – Träger bringen das Material
+	get_parent().get_node("Baustellen").start(b, b.get("site_in_load", {}))
 
 func _on_built(b: Dictionary) -> void:
 	sfx("build")
@@ -376,8 +368,25 @@ func _remove(w: Dictionary) -> void:
 
 # ---------- Träger ----------
 func _carrier_jobs() -> void:
+	var cons = get_parent().get_node_or_null("Baustellen")
 	for w in workers:
-		if w.role != "traeger" or not w.q.is_empty() or economy.pending.is_empty():
+		if w.role != "traeger" or not w.q.is_empty():
+			continue
+		# zuerst Baumaterial vom Lager zur Baustelle bringen
+		if cons:
+			var job = cons.next_delivery()
+			if job != null:
+				var sb: Dictionary = job[0]
+				var item: String = job[1]
+				w.q = [
+					{"go": nearest_lager(sb.pos)},
+					{"wait": 0.4},
+					{"fn": func(): _carry(w, item)},
+					{"go": door_of(sb)},
+					{"fn": func(): _carry(w, null); cons.delivered(sb, item)},
+				]
+				continue
+		if economy.pending.is_empty():
 			continue
 		var job: Dictionary = economy.pending.pop_front()
 		var b: Dictionary = job.b

@@ -99,11 +99,7 @@ func _process(dt: float) -> void:
 	var order: Array = buildings.filter(func(b): return b.get("prio", false)) + buildings.filter(func(b): return not b.get("prio", false))
 	for b in order:
 		if b.build < 1.0:
-			if not b.get("builder_on_site", false):
-				continue
-			b.build = minf(1.0, b.build + dt / BUILD_TIME)
-			b.node.scale = Vector3(b.s, b.s * (0.15 + 0.85 * b.build), b.s)
-			continue
+			continue   # Baustelle: siehe construction.gd
 		if b.type == "wohnhaus":
 			_house(b, dt)
 			continue

@@ -375,3 +375,12 @@ MIL_NONE	Keine Gegner in diesem Spiel.	No rivals in this game.
 MIL_DEFEATED	💀 besiegt	💀 defeated
 MIL_LAND	Land	Land
 ST_NO_FISH	Kein tiefes Wasser in der Nähe	No deep water nearby
+SITE_FOUND	Fundament wird gelegt	Laying the foundation
+SITE_FRAME	Holzgerüst wird aufgestellt	Raising the timber frame
+SITE_WALLS	Wände werden hochgezogen	Building the walls
+SITE_ROOF	Dach wird gedeckt	Roofing
+SITE_LEVEL	Stufe 1: Boden wird eingeebnet (%d %%)	Stage 1: levelling the ground (%d %%)
+SITE_STAGE2	Stufe 2: %s (%d %%)	Stage 2: %s (%d %%)
+SITE_WAIT_MAT	Wartet auf Baumaterial:	Waiting for materials:
+SITE_WAIT_BUILDER	Wartet auf einen Bauarbeiter	Waiting for a builder
+SITE_BUILDER_COMING	Bauarbeiter ist unterwegs	Builder is on the way

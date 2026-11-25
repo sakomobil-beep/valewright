@@ -418,7 +418,8 @@ func _action(a: String) -> void:
 func _demolish(b: Dictionary) -> void:
 	var c: Dictionary = economy.type_info(b.type).cost
 	for k in c:
-		economy.add(k, int(c[k]) / 2)
+		# Baustelle: alles zurück (wurde beim Platzieren bezahlt), fertiges Gebäude: die Hälfte
+		economy.add(k, int(c[k]) if b.build < 1.0 else int(c[k]) / 2)
 	b.removed = true
 	if b.has("boat"):
 		var wl = get_parent().get_node_or_null("Tiere")
@@ -585,7 +586,8 @@ func place_loaded(sv: Dictionary) -> void:
 		elif settlers:
 			settlers._on_built(rec)
 	else:
-		n.scale = Vector3(SCALE, SCALE * (0.15 + 0.85 * rec.build), SCALE)
+		n.scale = Vector3.ONE * SCALE
+		rec.site_in_load = sv.get("site_in", {})
 		if settlers:
 			settlers.on_building_placed(rec)
 
@@ -612,7 +614,7 @@ func confirm() -> void:
 	n.position = p
 	n.rotation.y = ghost_rot
 	add_child(n)
-	n.scale = Vector3(SCALE, SCALE * 0.15, SCALE)   # Baustelle – wächst während der Bauzeit
+	n.scale = Vector3.ONE * SCALE   # Baustelle: Teile erscheinen von unten nach oben (construction.gd)
 	var rec := {"type": placing, "pos": p, "node": n, "build": 0.0, "s": SCALE, "t": 0.0, "status": "ST_BUILDING"}
 	buildings.append(rec)
 	economy.buildings.append(rec)
