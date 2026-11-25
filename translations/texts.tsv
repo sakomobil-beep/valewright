@@ -163,3 +163,72 @@ MSG_AI_DEFEATED	🏆 %s ist besiegt!	🏆 %s has been defeated!
 MSG_VICTORY	👑 Sieg! Alle Gegner sind besiegt.	👑 Victory! All enemies are defeated.
 MSG_DEFEAT	💀 Dein Haupthaus ist gefallen – Niederlage.	💀 Your town hall has fallen – defeat.
 MSG_AI_ATTACK	⚔️ %s greift an!	⚔️ %s is attacking!
+UI_STAGE6	Etappe 6: Menüs, Speichern & Kampagne	Stage 6: menus, saving & campaign
+UI_MENU_BTN	☰ Menü (Esc)	☰ Menu (Esc)
+MENU_TUTORIAL	🎓 Tutorial	🎓 Tutorial
+MENU_CAMPAIGN	📜 Kampagne	📜 Campaign
+MENU_NEW	🆕 Neues Spiel	🆕 New Game
+MENU_LOAD	📂 Laden	📂 Load
+MENU_SAVE	💾 Speichern	💾 Save
+MENU_QUIT	🚪 Beenden	🚪 Quit
+MENU_BY	ein Spiel von	a game by
+MENU_PAUSE	⏸ Pause	⏸ Paused
+MENU_CONTINUE	▶ Weiterspielen	▶ Continue
+MENU_MAIN	🏠 Hauptmenü	🏠 Main Menu
+UI_BACK	← Zurück	← Back
+NG_AIS	Anzahl Gegner	Number of opponents
+NG_DIFF	Schwierigkeit der Gegner	Opponent difficulty
+NG_MAP	Karte	Map
+NG_MAP_RANDOM	Zufällige Karte	Random map
+NG_MAP_CLASSIC	Klassische Karte	Classic map
+NG_START	▶ Spiel starten	▶ Start game
+DIFF_LEICHT	Leicht	Easy
+DIFF_MITTEL	Mittel	Medium
+DIFF_SCHWER	Schwer	Hard
+CAMPAIGN_TITLE	Die Chronik von Valewright	The Chronicle of Valewright
+CAMPAIGN_BOOK1	Buch I: Das Erbe des Tals	Book I: The Legacy of the Vale
+UI_CHAPTER	Kapitel	Chapter
+CH_LOCKED	🔒 Schließe zuerst Kapitel %d ab.	🔒 Complete chapter %d first.
+CH_START	▶ Kapitel starten	▶ Start chapter
+CH_NEXT	▶ Nächstes Kapitel	▶ Next chapter
+CH_KEEP	Weiter siedeln	Keep building
+CH_WON	Kapitel %d geschafft!	Chapter %d complete!
+BOOK1_END	Ende von Buch I: Das Erbe des Tals	End of Book I: The Legacy of the Vale
+CH1_NAME	Die erste Siedlung	The First Settlement
+CH1_STORY	Ein junger Siedlertrupp erreicht ein stilles Tal im Odenwald. Der Graf hat dir das Land anvertraut – zeig ihm, dass hier eine blühende Siedlung entstehen kann. Keine Gegner, kein Zeitdruck.	A young band of settlers reaches a quiet valley in the Odenwald. The count has entrusted the land to you – show him that a thriving settlement can grow here. No enemies, no time pressure.
+CH1_WIN	Der Graf ist beeindruckt! Aus ein paar Zelten ist ein lebendiges Fachwerkdorf geworden – Valewright hat seine ersten Baumeister.	The count is impressed! A few tents have become a lively timber-framed village – Valewright has its first master builders.
+CH2_NAME	Der Streit um das Tal	The Quarrel over the Vale
+CH2_STORY	Deine Siedlung wächst – das bleibt nicht unbemerkt. Der Graf von Rabeneck erhebt Anspruch auf das Tal und hat ganz in der Nähe sein Lager errichtet. Baue Waffen, bilde Soldaten aus, sichere deine Grenzen und erobere sein Haupthaus.	Your settlement grows – and that does not go unnoticed. The Count of Rabeneck lays claim to the vale and has set up camp nearby. Forge weapons, train soldiers, secure your borders and capture his town hall.
+CH2_WIN	Das Banner des Grafen ist gefallen! Das Tal gehört nun ganz dir.	The count's banner has fallen! The vale is now entirely yours.
+CH3_NAME	Gold aus den Bergen	Gold from the Mountains
+CH3_STORY	Der Graf von Rabeneck hat sich mit dem reichen Fürsten von Hohenstein-Mümling verbündet. In den Bergen glänzt Golderz – präge Münzen, lass deine Stadt wachsen und besiege beide Gegner.	The Count of Rabeneck has allied with the wealthy Prince of Hohenstein-Mümling. Gold ore glitters in the mountains – mint coins, grow your town and defeat both enemies.
+CH3_WIN	Rabeneck und Hohenstein-Mümling haben sich ergeben. Deine Stadt ist die mächtigste im Odenwald.	Rabeneck and Hohenstein-Mümling have surrendered. Your town is the mightiest in the Odenwald.
+CH4_NAME	Die Krone des Odenwalds	The Crown of the Odenwald
+CH4_STORY	Der listige Abt von Kloster Waldbrunn schart die besiegten Herren um sich. Rabeneck, Hohenstein-Mümling und das Kloster ziehen gemeinsam gegen dich – es ist der Kampf um die Krone des Odenwalds.	The cunning Abbot of Waldbrunn Abbey rallies the defeated lords. Rabeneck, Hohenstein-Mümling and the abbey march against you together – it is the fight for the crown of the Odenwald.
+CH4_WIN	Der Odenwald liegt dir zu Füßen! Die Chronik nennt dich fortan den Herrn von Valewright.	The Odenwald lies at your feet! From now on the chronicle calls you the Lord of Valewright.
+G_BRETTER	%d Bretter auf Lager	%d planks in storage
+G_BROT	%d Brot auf Lager	%d bread in storage
+G_WERKZEUG	%d Werkzeuge auf Lager	%d tools in storage
+G_TOWERS	%d Wachtürme besetzt	%d watchtowers manned
+G_SETTLERS	%d Siedler im Dorf	%d settlers in the village
+G_SOLDIERS	%d Soldaten	%d soldiers
+G_BEAT_ONE	Haupthaus des Grafen erobert	Count's town hall captured
+G_BEAT_ALL	Alle Gegner besiegt	All enemies defeated
+G_COINS	%d Münzen auf Lager	%d coins in storage
+G_TIMBERHOUSE	Erstes zufriedenes Fachwerkhaus	First happy timber house
+G_TOWNHOUSE	Erstes zufriedenes Bürgerhaus	First happy townhouse
+G_CASTLE	Eine Burg besetzt	A castle manned
+UI_TUTORIAL	Tutorial	Tutorial
+TUT_DONE	Geschafft!	Done!
+TUT_1	Willkommen im Odenwald! Öffne unten „Baustoffe“ und baue einen Holzfäller in der Nähe von Bäumen. Erst Platz wählen, dann „✔ Bauen“ drücken.	Welcome to the Odenwald! Open “Materials” below and build a woodcutter near trees. First pick a spot, then press “✔ Build”.
+TUT_2	Sehr gut! Der Holzfäller liefert Stämme. Baue jetzt ein Sägewerk – es macht aus 1 Stamm 2 Bretter.	Very good! The woodcutter delivers logs. Now build a sawmill – it turns 1 log into 2 planks.
+TUT_3	Für viele Gebäude brauchst du Stein. Baue einen Steinmetz in der Nähe von Felsen.	Many buildings need stone. Build a stonemason near rocks.
+TUT_4	Deine Siedler brauchen Essen und Wasser. Baue unter „Landwirtschaft“ einen Brunnen und einen Bauernhof.	Your settlers need food and water. Build a well and a farm under “Farming”.
+TUT_5	Baue ein Wohnhaus (Siedlung). Zufriedene Wohnhäuser schalten neue Gebäude frei – klicke es später an, um zu sehen, was fehlt.	Build a house (Settlement). Happy houses unlock new buildings – click it later to see what it needs.
+TUT_6	Zum Schluss: Baue unter „Militär“ einen Wachturm. Ein Wächter mit Kampfstock besetzt ihn und dein Gebiet wächst.	Finally: build a watchtower under “Military”. A guard with a fighting staff mans it and your territory grows.
+TUT_7	🎉 Tutorial geschafft! Du kennst jetzt die Grundlagen. Spiel frei weiter oder starte über das Menü die Kampagne.	🎉 Tutorial complete! You know the basics now. Keep playing or start the campaign from the menu.
+SLOT_AUTO	Automatisch	Autosave
+SLOT_N	Spielstand %d	Save %d
+SLOT_EMPTY	leer	empty
+MSG_SAVED	💾 Gespeichert	💾 Saved
+MSG_GOALS_RIGHT	🎯 Deine Ziele siehst du rechts.	🎯 Your goals are shown on the right.

@@ -529,3 +529,30 @@ func _process(dt: float) -> void:
 	for s in soldiers:
 		if s.owner == 0 and s.state == "idle" and s.w.q.is_empty() and s.w.node.position.distance_to(settlers.lager_door()) > 6.0:
 			s.w.q = [{"go": settlers.lager_door() + Vector3(randf_range(-3, 3), 0, randf_range(1, 3))}]
+
+# ---------- Laden ----------
+func load_tower(b: Dictionary, g: int) -> void:
+	b.owner = 0
+	b.garrison = 0
+	_flag(b.node, OWNER_COL[0], b.type == "burg")
+	for i in g:
+		var s := _new_soldier(0, settlers.door_of(b), 1)
+		_enter(s, b)
+	if g < GARRISON[b.type]:
+		_man_tower(b)
+
+func load_ai(a: Dictionary) -> void:
+	var id := int(a.id)
+	var pos := Vector3(a.pos[0], a.pos[1], a.pos[2])
+	if not a.alive:
+		ais.append({"id": id, "name": AI_NAMES[id - 1], "pos": pos, "buildings": [], "alive": false, "diff": a.diff, "lager": {"garrison": 0}})
+		return
+	_spawn_ai(id, pos, a.diff)
+	var ai: Dictionary = ais[-1]
+	ai.lager.garrison = int(a.lager)
+	ai.t_grow = float(a.t_grow)
+	ai.t_expand = float(a.t_expand)
+	ai.t_attack = float(a.t_attack)
+	for tw in a.towers:
+		var b := _ai_building(ai, "wachturm", Vector3(tw.pos[0], tw.pos[1], tw.pos[2]), int(tw.g))
+		claims.append({"pos": b.pos, "r": CLAIM.wachturm, "owner": id, "b": b})

@@ -8,6 +8,13 @@ const Economy := preload("res://scripts/economy.gd")
 const Settlers := preload("res://scripts/settlers.gd")
 const Decor := preload("res://scripts/decor.gd")
 const Military := preload("res://scripts/military.gd")
+const Missions := preload("res://scripts/missions.gd")
+const SaveGame := preload("res://scripts/savegame.gd")
+const GameUI := preload("res://scripts/gameui.gd")
+var missions: Node
+var savegame: Node
+var gameui: CanvasLayer
+var _autosave := 0.0
 var military: Node3D
 var settlers: Node3D
 var economy: Node
@@ -22,6 +29,7 @@ var toast_box: VBoxContainer
 func _ready() -> void:
 	_setup_environment()
 	terrain = Terrain.new()
+	terrain.world_seed = int(Session.cfg.get("seed", 4711))
 	terrain.name = "Gelaende"
 	add_child(terrain)
 	_build_lager()
@@ -59,7 +67,36 @@ func _ready() -> void:
 	add_child(military)
 	settlers.military = military
 	builder.military = military
-	military.start_ais(1, "leicht")
+	missions = Missions.new()
+	missions.name = "Missionen"
+	missions.main = self
+	missions.mission = int(Session.cfg.get("mission", 0))
+	add_child(missions)
+	savegame = SaveGame.new()
+	savegame.main = self
+	add_child(savegame)
+	gameui = GameUI.new()
+	gameui.main = self
+	gameui.layer = 10
+	gameui.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(gameui)
+	missions.finished.connect(gameui.chapter_won)
+	military.game_won.connect(func(): gameui.game_end(true))
+	military.game_lost.connect(func(): gameui.game_end(false))
+	if not Session.started:
+		# Hauptmenü: die Welt dient als Kulisse
+		ui_layer.visible = false
+		gameui.main_menu()
+		return
+	missions.setup(ui_layer)
+	if Session.load_data != null:
+		savegame.apply(Session.load_data)
+		Session.load_data = null
+	else:
+		military.start_ais(int(Session.cfg.get("ais", 1)), String(Session.cfg.get("diff", "leicht")))
+		military.recompute()
+		if missions.mission != 0:
+			_toast(tr("MSG_GOALS_RIGHT"))
 
 func _setup_environment() -> void:
 	var sky_mat := ProceduralSkyMaterial.new()
@@ -153,7 +190,7 @@ func _setup_ui() -> void:
 	title.add_theme_font_size_override("font_size", 20)
 	vb.add_child(title)
 	var info := Label.new()
-	info.text = "UI_STAGE5"
+	info.text = "UI_STAGE6"
 	vb.add_child(info)
 	var ctr := Label.new()
 	ctr.text = "UI_CONTROLS"
@@ -172,6 +209,10 @@ func _setup_ui() -> void:
 		b.pressed.connect(func(): I18n.set_language(lang))
 		hb.add_child(b)
 	info.add_theme_color_override("font_color", Color(0.96, 0.9, 0.78))
+	var mb := Button.new()
+	mb.text = "UI_MENU_BTN"
+	mb.pressed.connect(func(): gameui.pause_menu())
+	vb.add_child(mb)
 	fps_label = Label.new()
 	fps_label.add_theme_color_override("font_color", Color(0.7, 0.85, 0.6))
 	vb.add_child(fps_label)
@@ -235,5 +276,13 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSLATION_CHANGED and stock_label:
 		_update_stock()
 
-func _process(_dt: float) -> void:
+func _process(dt: float) -> void:
+	if not Session.started:
+		var rig := $Kamera
+		rig.yaw += dt * 0.05
+		return
+	_autosave += dt
+	if _autosave > 180.0:
+		_autosave = 0.0
+		savegame.save("auto")
 	fps_label.text = tr("UI_FPS") % Engine.get_frames_per_second()

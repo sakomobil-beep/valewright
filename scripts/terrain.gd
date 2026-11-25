@@ -7,6 +7,7 @@ const RES := 180             # Gitterzellen pro Kante
 const RIVER_X := 34.0        # mittlere Lage des Flusses
 const WATER_Y := -0.6        # Wasserspiegel
 
+var world_seed := 4711
 var noise := FastNoiseLite.new()
 var detail := FastNoiseLite.new()
 var mountains: Array = []
@@ -65,6 +66,8 @@ func height(x: float, z: float) -> float:
 	return h
 
 func _ready() -> void:
+	noise.seed = world_seed
+	detail.seed = world_seed + 88
 	_build_ground()
 	_build_water()
 	_build_trees()
@@ -147,7 +150,7 @@ func _free_spot(x: float, z: float) -> bool:
 func _build_trees() -> void:
 	# Laub- und Nadelbäume als MultiMesh (schnell, auch bei vielen tausend Bäumen)
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 7
+	rng.seed = world_seed + 3
 	var leaf_pos: Array = []
 	var fir_pos: Array = []
 	var half := SIZE * 0.5 - 4.0

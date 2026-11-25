@@ -133,12 +133,15 @@ func _on_built(b: Dictionary) -> void:
 		return
 	if b.type in ["holzfaeller", "steinmetz", "foerster", "rutengaenger"] or economy.produces(b.type):
 		# Jeder neue Arbeiter braucht Werkzeug
-		if economy.stock.get("werkzeug", 0) < 1:
+		if b.get("loaded", false):
+			pass
+		elif economy.stock.get("werkzeug", 0) < 1:
 			b.status = "ST_NO_TOOL"
 			get_tree().create_timer(5.0).timeout.connect(func(): _on_built(b))
 			return
-		economy.stock.werkzeug -= 1
-		economy.changed.emit()
+		else:
+			economy.stock.werkzeug -= 1
+			economy.changed.emit()
 		var job: String = b.type if ResourceLoader.exists("res://models/w_%s.glb" % b.type) else "traeger"
 		var w := spawn(job, lager_door())
 		w.job = b.type

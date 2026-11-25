@@ -398,15 +398,46 @@ func _bridge_input(e: InputEvent) -> void:
 		hint.text = tr("UI_BUILD_CHOSEN")
 
 func _confirm_bridge() -> void:
-	var m: Node3D = terrain.bridge_mesh(_span)
-	add_child(m)
-	terrain.bridges.append(_span)
-	if settlers:
-		settlers.open_line(_span.a, _span.b)
-	var rec := {"type": "bruecke", "pos": (_span.a + _span.b) / 2.0, "node": m, "build": 1.0, "s": 1.0, "t": 0.0, "status": "ST_DONE"}
-	buildings.append(rec)
-	economy.pay("bruecke")
+	place_bridge(_span, true)
 	cancel()
+
+func place_bridge(span: Dictionary, pay: bool) -> void:
+	var m: Node3D = terrain.bridge_mesh(span)
+	add_child(m)
+	terrain.bridges.append(span)
+	if settlers:
+		settlers.open_line(span.a, span.b)
+	var rec := {"type": "bruecke", "pos": (span.a + span.b) / 2.0, "node": m, "build": 1.0, "s": 1.0, "t": 0.0, "status": "ST_DONE"}
+	buildings.append(rec)
+	if pay:
+		economy.pay("bruecke")
+
+# Gebäude aus einem Spielstand wiederherstellen
+func place_loaded(sv: Dictionary) -> void:
+	var t: String = sv.type
+	var p := Vector3(sv.pos[0], sv.pos[1], sv.pos[2])
+	var lvl := int(sv.get("lvl", 0))
+	var n := model(t, lvl)
+	n.position = p
+	n.rotation.y = float(sv.rot)
+	add_child(n)
+	var rec := {"type": t, "pos": p, "node": n, "build": float(sv.build), "s": SCALE, "t": 0.0, "status": "ST_BUILDING", "owner": 0, "loaded": true}
+	if t == "wohnhaus":
+		rec.merge({"lvl": lvl, "sat": int(sv.get("sat", 0)), "bad": 0, "ht": 0.0, "tax": 0.0, "status": "ST_HOUSE_OK", "miss": []})
+	buildings.append(rec)
+	economy.buildings.append(rec)
+	if settlers:
+		settlers.block_area(p, 2.0 * SCALE)
+	if rec.build >= 1.0:
+		n.scale = Vector3.ONE * SCALE
+		if military and military.is_military(t):
+			military.load_tower(rec, int(sv.get("garrison", 0)))
+		elif settlers:
+			settlers._on_built(rec)
+	else:
+		n.scale = Vector3(SCALE, SCALE * (0.15 + 0.85 * rec.build), SCALE)
+		if settlers:
+			settlers.on_building_placed(rec)
 
 func confirm() -> void:
 	if not chosen or not ghost:
