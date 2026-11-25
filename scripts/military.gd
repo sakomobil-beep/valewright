@@ -11,9 +11,9 @@ const GARRISON := {"wachstube": 2, "wachturm": 4, "wehrturm": 5, "burg": 10}
 const OWNER_COL := [Color(0.2, 0.45, 0.95), Color(0.85, 0.15, 0.12), Color(0.95, 0.8, 0.15), Color(0.6, 0.25, 0.75)]
 const AI_NAMES := ["AI_RABENECK", "AI_HOHENSTEIN", "AI_WALDBRUNN"]
 const DIFF := {
-	"leicht": {"start": 2, "grow": 90.0, "expand": 150.0, "attack": 330.0, "wave": 2},
-	"mittel": {"start": 3, "grow": 60.0, "expand": 110.0, "attack": 220.0, "wave": 3},
-	"schwer": {"start": 5, "grow": 40.0, "expand": 80.0, "attack": 140.0, "wave": 5},
+	"leicht": {"start": 2, "grow": 90.0, "expand": 150.0, "attack": 600.0, "wave": 2},
+	"mittel": {"start": 3, "grow": 60.0, "expand": 110.0, "attack": 420.0, "wave": 3},
+	"schwer": {"start": 5, "grow": 40.0, "expand": 80.0, "attack": 240.0, "wave": 5},
 }
 const GRACE := 240.0
 # erster Angriff wie im Browser erst spät: Leicht nach 60 Min., Mittel nach 45 Min., Schwer nach 25 Min. Spielzeit
@@ -284,10 +284,29 @@ func settlers_pos(s: Dictionary) -> void:
 	s.w.on_post = false
 	s.spot = -1
 
+# Heimweg nach dem Kampf (wie homeUnit im Browser): zur Kaserne, sonst zurück in den eigenen Turm
+func _retreat(s: Dictionary) -> void:
+	if s.owner != 0:
+		s.state = "returning"
+		s.w.q = [{"go": _home_point(s.owner)}]
+		return
+	s.state = "idle"
+	var fr = s.get("from")
+	s.erase("from")
+	var k = _kaserne()
+	if k != null:
+		s.w.q = [{"go": settlers.door_of(k)}]
+		return
+	if fr != null and not fr.get("destroyed", false) and fr.get("owner", 0) == 0 and slot_free(fr, s):
+		s.state = "moving"
+		fr.incoming = fr.get("incoming", 0) + 1
+		s.w.q = [{"go": settlers.door_of(fr)}, {"fn": func(): fr.incoming = maxi(0, fr.get("incoming", 1) - 1)}, {"fn": func(): _enter(s, fr)}]
+		return
+	s.w.q = [{"go": _home_point(0)}]
+
 func _enter(s: Dictionary, b: Dictionary) -> void:
 	if b.owner != s.owner or (GARRISON.has(b.type) and not slot_free(b, s)):
-		s.state = "idle" if s.owner == 0 else "returning"
-		s.w.q = [{"go": _home_point(s.owner)}]
+		_retreat(s)
 		return
 	s.home = b
 	s.state = "garrison"
@@ -593,6 +612,8 @@ func attack(owner: int, target: Dictionary, count: int) -> int:
 	return _attack_list(target, available(owner).slice(0, count))
 
 func _attack_list(target: Dictionary, list: Array) -> int:
+	if int(target.get("owner", 0)) > 0 and list.size():
+		ais[int(target.owner) - 1].angry = true   # angegriffene KI schlägt eher zurück
 	# Formation: Schwertkämpfer vorne, Bogenschützen dahinter
 	list.sort_custom(func(a, c): return a.get("kind", "schwert") == "schwert" and c.get("kind", "schwert") == "bogen")
 	var i := 0
@@ -609,6 +630,8 @@ func _send(s: Dictionary, target: Dictionary) -> void:
 	if s.state == "garrison" or not s.w.node.visible:
 		start = settlers.door_of(s.home) if s.home else s.w.node.position
 		s.w.node.position = start
+	if s.home and s.owner == 0 and POSTS.has(s.home.type):
+		s.from = s.home
 	s.home = null
 	s.spot = -1
 	s.w.on_post = false
@@ -643,8 +666,7 @@ func _fight(dt: float) -> void:
 			continue
 		var b: Dictionary = s.target
 		if b.get("destroyed", false) or b.owner == s.owner:
-			s.state = "idle" if s.owner == 0 else "returning"
-			s.w.q = [{"go": _home_point(s.owner)}]
+			_retreat(s)
 			continue
 		if b.type == "lager" and b.owner == 0:
 			b.garrison = soldiers.filter(func(d): return d.owner == 0 and d.state == "idle").size()
@@ -705,8 +727,7 @@ func _capture(b: Dictionary, s: Dictionary) -> void:
 			_lose()
 		else:
 			_defeat_ai(ais[old - 1])
-		s.state = "idle" if s.owner == 0 else "returning"
-		s.w.q = [{"go": _home_point(s.owner)}]
+		_retreat(s)
 		return
 	# Turm wechselt den Besitzer
 	b.owner = s.owner
@@ -865,8 +886,9 @@ func _ai_tick(ai: Dictionary, dt: float) -> void:
 	if ai.t_expand >= D.expand and ai.lager.garrison > 2:
 		ai.t_expand = 0.0
 		_ai_expand(ai)
-	if time > FIRST_ATTACK.get(ai.diff, 2700.0) and ai.t_attack >= D.attack and not ai.get("peaceful", false):
-		ai.t_attack = 0.0
+	var early: bool = ai.get("angry", false) and ai.diff != "leicht"
+	if (time > FIRST_ATTACK.get(ai.diff, 2700.0) or early) and ai.t_attack >= D.attack and not ai.get("peaceful", false):
+		ai.t_attack = D.attack * randf_range(-0.2, 0.2)
 		_ai_attack(ai, D.wave)
 
 func _ai_expand(ai: Dictionary) -> void:
@@ -886,25 +908,75 @@ func _ai_expand(ai: Dictionary) -> void:
 		recompute()
 		return
 
-func _ai_attack(ai: Dictionary, wave: int) -> void:
-	# Ziel: nächstes Militärgebäude des Spielers, sonst sein Lager
-	var targets: Array = economy.buildings.filter(func(b): return b.get("owner", 0) == 0 and GARRISON.has(b.type) and b.get("claimed", false))
-	var player_lager := {"type": "lager", "pos": Vector3.ZERO, "node": get_parent().get_node("Haupthaus"), "owner": 0, "garrison": 0}
-	if targets.is_empty():
-		player_lager.garrison = soldiers.filter(func(s): return s.owner == 0 and s.state == "idle").size()
-		targets = [player_lager]
-	var best: Dictionary = targets[0]
-	for t in targets:
-		if t.pos.distance_to(ai.pos) < best.pos.distance_to(ai.pos):
-			best = t
-	var k := mini(wave, ai.lager.garrison - 1)
-	if k <= 0:
+# Ziele wie aiTargets im Browser: besetzte Posten des Spielers in Reichweite (70 m vom KI-Gebiet), sonst das Lager
+func _ai_targets(ai: Dictionary) -> Array:
+	var posts: Array = economy.buildings.filter(func(b): return b.get("owner", 0) == 0 and GARRISON.has(b.type) and b.get("claimed", false) and not b.get("destroyed", false))
+	var list: Array = posts
+	if posts.is_empty():
+		var pl := {"type": "lager", "pos": Vector3.ZERO, "node": get_parent().get_node("Haupthaus"), "owner": 0, "garrison": soldiers.filter(func(x): return x.owner == 0 and x.state == "idle").size()}
+		list = [pl]
+	var out: Array = []
+	for b in list:
+		var near := 1e9
+		for c in claims:
+			if c.owner == ai.id:
+				near = minf(near, Vector2(c.pos.x - b.pos.x, c.pos.z - b.pos.z).length() - c.r)
+		near = minf(near, Vector2(ai.pos.x - b.pos.x, ai.pos.z - b.pos.z).length() - CLAIM.lager)
+		var defs: Array = soldiers.filter(func(x): return x.get("home") == b and x.state == "garrison")
+		var dsum := 0.0
+		for d in defs:
+			dsum += strength(d)
+		if b.type == "lager":
+			dsum = 10.0 * int(b.garrison)
+		out.append({"b": b, "near": near, "def": dsum, "arch": defs.any(func(x): return x.get("kind", "") == "bogen"), "n": maxi(defs.size(), int(b.get("garrison", 0)))})
+	return out.filter(func(t): return t.near < 70.0 * 1.5)
+
+func _ai_send(ai: Dictionary, target: Dictionary, n: int) -> void:
+	n = mini(n, int(ai.lager.garrison) - 1)
+	if n <= 0:
 		return
-	ai.lager.garrison -= k
-	for i in k:
-		var s := _new_soldier(ai.id, _door(ai.lager), 0 if ai.diff == "leicht" else (1 if ai.diff == "mittel" else 2), "schwert")
-		_send(s, best)
+	ai.lager.garrison -= n
+	var rk: int = 0 if ai.diff == "leicht" else (1 if ai.diff == "mittel" else 2)
+	for i in n:
+		var s := _new_soldier(ai.id, _door(ai.lager), rk, "schwert")
+		s.slot = i
+		_send(s, target)
 	economy.message.emit(tr("MSG_AI_ATTACK") % tr(ai.name))
+
+# Angriffslogik je Schwierigkeit wie aiWar im Browser
+func _ai_attack(ai: Dictionary, _wave: int) -> void:
+	var avail: int = int(ai.lager.garrison) - 1
+	for b in ai.buildings:
+		if GARRISON.has(b.type):
+			avail += maxi(0, int(b.garrison) - 1)
+	var T := _ai_targets(ai)
+	if T.is_empty() or avail < 2:
+		return
+	var angry: bool = ai.get("angry", false)
+	match String(ai.diff):
+		"leicht":
+			if not angry and randf() < 0.7:
+				return
+			T.sort_custom(func(x, y): return x.near < y.near)
+			_ai_send(ai, T[0].b, mini(3, avail / 2))
+		"mittel":
+			T.sort_custom(func(x, y): return x.near < y.near)
+			if avail < T[0].n + 2:
+				return
+			_ai_send(ai, T[0].b, ceili(avail * 0.5))
+		_:
+			var sc := func(t): return t.def + (25.0 if t.arch else 0.0) + t.near * 0.3 - (100.0 if t.n == 0 else 0.0)
+			T.sort_custom(func(x, y): return sc.call(x) < sc.call(y))
+			var main_t: Dictionary = T[0]
+			if avail < main_t.n + 2:
+				return
+			if T.size() > 1 and avail >= 6:
+				_ai_send(ai, T[1].b, 2)   # Ablenkung
+				get_tree().create_timer(25.0).timeout.connect(func():
+					if ai.alive and not main_t.b.get("destroyed", false):
+						_ai_send(ai, main_t.b, ceili(avail * 0.7)))
+			else:
+				_ai_send(ai, main_t.b, ceili(avail * 0.75))
 
 func _process(dt: float) -> void:
 	if game_over:
