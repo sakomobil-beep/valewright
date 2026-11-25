@@ -158,7 +158,11 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSLATION_CHANGED and economy:
 		_refresh_buttons()
 
+var _span = null
+
 func model(t: String, lvl := 0) -> Node3D:
+	if t == "bruecke":
+		return Node3D.new()
 	var file := "wohnhaus_%d" % lvl if t == "wohnhaus" else t
 	var ps: PackedScene = load("res://models/%s.glb" % file)
 	var n: Node3D = ps.instantiate()
@@ -186,7 +190,7 @@ func start(t: String) -> void:
 	ghost = model(t)
 	add_child(ghost)
 	chosen = false
-	hint.text = tr("UI_BUILD_HINT")
+	hint.text = tr("UI_BRIDGE_HINT") if t == "bruecke" else tr("UI_BUILD_HINT")
 	hint.visible = true
 
 func cancel() -> void:
@@ -285,6 +289,9 @@ func _unhandled_input(e: InputEvent) -> void:
 			elif e.position.distance_to(_down_pos) < 6.0:
 				_select_at(e.position)
 		return
+	if placing == "bruecke" and (e is InputEventMouseMotion and not chosen or (e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT and not e.pressed and e.position.distance_to(_down_pos) < 6.0)):
+		_bridge_input(e)
+		return
 	if e is InputEventMouseMotion and not chosen:
 		var p = ground_point(e.position)
 		if p != null:
@@ -329,8 +336,51 @@ func _tint(n: Node, ok: bool) -> void:
 	for c in n.get_children():
 		_tint(c, ok)
 
+func _water_point(screen: Vector2):
+	var from := camera.project_ray_origin(screen)
+	var dir := camera.project_ray_normal(screen)
+	if absf(dir.y) < 0.001:
+		return null
+	var t: float = (terrain.WATER_Y - from.y) / dir.y
+	return from + dir * t if t > 0 else null
+
+func _bridge_input(e: InputEvent) -> void:
+	var p = _water_point(e.position)
+	if p == null:
+		return
+	var span = terrain.bridge_span(p)
+	for c in ghost.get_children():
+		c.queue_free()
+	_span = span
+	if span == null:
+		hint.text = tr("UI_BRIDGE_HINT")
+		return
+	var m: Node3D = terrain.bridge_mesh(span)
+	ghost.position = Vector3.ZERO
+	ghost.add_child(m)
+	_tint(m, true)
+	if e is InputEventMouseButton:
+		chosen = true
+		confirm_box.visible = true
+		hint.text = tr("UI_BUILD_CHOSEN")
+
+func _confirm_bridge() -> void:
+	var m: Node3D = terrain.bridge_mesh(_span)
+	add_child(m)
+	terrain.bridges.append(_span)
+	if settlers:
+		settlers.open_line(_span.a, _span.b)
+	var rec := {"type": "bruecke", "pos": (_span.a + _span.b) / 2.0, "node": m, "build": 1.0, "s": 1.0, "t": 0.0, "status": "ST_DONE"}
+	buildings.append(rec)
+	economy.pay("bruecke")
+	cancel()
+
 func confirm() -> void:
 	if not chosen or not ghost:
+		return
+	if placing == "bruecke":
+		if _span != null:
+			_confirm_bridge()
 		return
 	var p := ghost.position
 	var n := model(placing)

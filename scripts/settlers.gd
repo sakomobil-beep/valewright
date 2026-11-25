@@ -75,6 +75,12 @@ func block_area(p: Vector3, r: float) -> void:
 			if grid.is_in_boundsv(q) and Vector2(i, j).length() * CELL <= r:
 				grid.set_point_solid(q, true)
 
+func open_line(a: Vector3, b: Vector3) -> void:
+	var L := a.distance_to(b)
+	for i in int(L / (CELL * 0.5)) + 1:
+		var c := _cell(a.lerp(b, i * CELL * 0.5 / L))
+		grid.set_point_solid(c, false)
+
 func _open_near(c: Vector2i) -> Vector2i:
 	if not grid.is_point_solid(c):
 		return c
@@ -122,6 +128,13 @@ func on_building_placed(b: Dictionary) -> void:
 
 func _on_built(b: Dictionary) -> void:
 	if b.type in ["holzfaeller", "steinmetz", "foerster"] or economy.produces(b.type):
+		# Jeder neue Arbeiter braucht Werkzeug
+		if economy.stock.get("werkzeug", 0) < 1:
+			b.status = "ST_NO_TOOL"
+			get_tree().create_timer(5.0).timeout.connect(func(): _on_built(b))
+			return
+		economy.stock.werkzeug -= 1
+		economy.changed.emit()
 		var job: String = b.type if ResourceLoader.exists("res://models/w_%s.glb" % b.type) else "traeger"
 		var w := spawn(job, lager_door())
 		w.job = b.type
@@ -291,7 +304,7 @@ func _step(w: Dictionary, dt: float) -> void:
 			return
 		var mv := d.normalized() * minf(d.length(), SPEED * dt)
 		n.position += mv
-		n.position.y = terrain.height(n.position.x, n.position.z)
+		n.position.y = terrain.walk_height(n.position.x, n.position.z)
 		n.rotation.y = lerp_angle(n.rotation.y, atan2(d.x, d.z), minf(1.0, dt * 10.0))
 		w.anim = "walk"
 	elif s.has("face"):

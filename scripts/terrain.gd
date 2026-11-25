@@ -14,6 +14,7 @@ var lakes: Array = []
 var trees: Array = []   # {pos, mm, i, t, alive}
 var rocks: Array = []   # {pos, i, t, left}
 var rock_mm: MultiMesh
+var bridges: Array = []   # {a, b, y}
 
 func _init() -> void:
 	noise.seed = 4711
@@ -299,3 +300,95 @@ func mine_rock(k: Dictionary) -> void:
 	k.left -= 1
 	var f: float = maxf(0.001, 0.35 + 0.65 * k.left / 6.0)
 	rock_mm.set_instance_transform(k.i, Transform3D(k.t.basis.scaled(Vector3.ONE * f), k.pos))
+
+## --- Brücken ---
+func walk_height(x: float, z: float) -> float:
+	var h := height(x, z)
+	for br in bridges:
+		var p := Vector2(x, z)
+		var a := Vector2(br.a.x, br.a.z)
+		var b := Vector2(br.b.x, br.b.z)
+		var t := clampf((p - a).dot(b - a) / (b - a).length_squared(), 0.0, 1.0)
+		if p.distance_to(a.lerp(b, t)) < 1.3:
+			h = maxf(h, br.y + sin(t * PI) * 0.6)
+	return h
+
+# Sucht über Wasser die kürzeste Überquerung (in x- oder z-Richtung)
+func bridge_span(p: Vector3):
+	if height(p.x, p.z) > WATER_Y:
+		return null
+	var best = null
+	for dir in [Vector3(1, 0, 0), Vector3(0, 0, 1), Vector3(1, 0, 1).normalized(), Vector3(1, 0, -1).normalized()]:
+		var ends := []
+		for sgn in [-1.0, 1.0]:
+			var found = null
+			for i in 60:
+				var q: Vector3 = p + dir * sgn * (i * 0.5)
+				if height(q.x, q.z) > WATER_Y + 0.4:
+					found = q
+					break
+			ends.append(found)
+		if ends[0] == null or ends[1] == null:
+			continue
+		var L: float = ends[0].distance_to(ends[1])
+		if L > 30.0:
+			continue
+		if best == null or L < best.len:
+			var a: Vector3 = ends[0] - dir * 1.0
+			var b: Vector3 = ends[1] + dir * 1.0
+			best = {"a": a, "b": b, "len": L, "y": maxf(height(a.x, a.z), height(b.x, b.z)) + 0.2}
+	return best
+
+func bridge_mesh(span: Dictionary) -> Node3D:
+	var g := Node3D.new()
+	var a: Vector3 = span.a
+	var b: Vector3 = span.b
+	var L := Vector2(b.x - a.x, b.z - a.z).length()
+	var wood := StandardMaterial3D.new()
+	wood.albedo_color = Color(0.5, 0.34, 0.2)
+	var dark := StandardMaterial3D.new()
+	dark.albedo_color = Color(0.32, 0.21, 0.12)
+	var stone := StandardMaterial3D.new()
+	stone.albedo_color = Color(0.62, 0.36, 0.28)
+	var n := int(ceil(L / 0.5))
+	for i in n:
+		var t := (i + 0.5) / n
+		var plank := MeshInstance3D.new()
+		var bx := BoxMesh.new()
+		bx.size = Vector3(2.2, 0.12, 0.45)
+		plank.mesh = bx
+		plank.material_override = wood if i % 2 == 0 else dark
+		plank.position = Vector3(0, span.y + sin(t * PI) * 0.6, -L / 2 + t * L)
+		plank.rotation.x = -cos(t * PI) * PI * 0.6 / L
+		g.add_child(plank)
+		if i % 4 == 0:
+			for sx in [-1.05, 1.05]:
+				var post := MeshInstance3D.new()
+				var pb := BoxMesh.new()
+				pb.size = Vector3(0.12, 0.8, 0.12)
+				post.mesh = pb
+				post.material_override = dark
+				post.position = plank.position + Vector3(sx, 0.4, 0)
+				g.add_child(post)
+	for sx in [-1.05, 1.05]:
+		var rail := MeshInstance3D.new()
+		var rb := BoxMesh.new()
+		rb.size = Vector3(0.1, 0.1, L)
+		rail.mesh = rb
+		rail.material_override = dark
+		rail.position = Vector3(sx, span.y + 0.95, 0)
+		g.add_child(rail)
+	# Steinpfeiler im Wasser
+	for t in [0.33, 0.66]:
+		var pil := MeshInstance3D.new()
+		var c := CylinderMesh.new()
+		c.top_radius = 0.45
+		c.bottom_radius = 0.6
+		c.height = 4.0
+		pil.mesh = c
+		pil.material_override = stone
+		pil.position = Vector3(0, span.y - 2.0, -L / 2 + t * L)
+		g.add_child(pil)
+	g.position = Vector3((a.x + b.x) / 2, 0, (a.z + b.z) / 2)
+	g.rotation.y = atan2(b.x - a.x, b.z - a.z)
+	return g

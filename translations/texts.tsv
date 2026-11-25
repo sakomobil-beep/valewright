@@ -138,3 +138,7 @@ UI_LOCKED_TIER	ab zufriedenem %s	needs a happy %s
 MSG_UNLOCKED	🔓 Neue Gebäude freigeschaltet!	🔓 New buildings unlocked!
 MSG_HOUSE_UP	⬆️ Ein Wohnhaus ist zum %s aufgestiegen!	⬆️ A house has become a %s!
 MSG_HOUSE_DOWN	😟 Ein Wohnhaus ist abgestiegen – es fehlen Waren.	😟 A house has declined – goods are missing.
+BLD_BRUECKE	Brücke	Bridge
+UI_BRIDGE_HINT	Zeige auf den Fluss – die Brücke spannt sich von Ufer zu Ufer	Point at the river – the bridge spans from bank to bank
+ST_DONE	Fertig	Finished
+ST_NO_TOOL	Wartet auf Werkzeug 🔨	Waiting for tools 🔨

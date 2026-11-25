@@ -559,6 +559,17 @@
    "r": 2.3,
    "desc": "1 Eisenbarren → 1 Werkzeug",
    "mine": null
+  },
+  "bruecke": {
+   "name": "Brücke",
+   "icon": "🌉",
+   "cost": {
+    "bretter": 8,
+    "stein": 4
+   },
+   "r": 1,
+   "desc": "Über den Fluss.",
+   "mine": null
   }
  },
  "items": {
@@ -1195,7 +1206,8 @@
     "wirtshaus",
     "markt",
     "denkmal",
-    "lager"
+    "lager",
+    "bruecke"
    ]
   },
   {
