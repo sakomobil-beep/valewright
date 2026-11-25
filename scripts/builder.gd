@@ -372,6 +372,7 @@ func start(t: String, move := false) -> void:
 		ghost = model(t, moving.get("lvl", 0))
 		add_child(ghost)
 		ghost.rotation.y = ghost_rot
+		_ghostify(ghost)
 		_add_arrow(t)
 		chosen = false
 		hint.text = tr("UI_MOVE_HINT")
@@ -389,7 +390,7 @@ func start(t: String, move := false) -> void:
 	ghost = model(t)
 	add_child(ghost)
 	ghost.rotation.y = 0.0 if t == "bruecke" else ghost_rot
-	_tint(ghost, true)
+	_ghostify(ghost)
 	_add_arrow(t)
 	chosen = false
 	hint.text = tr("UI_BRIDGE_HINT") if t == "bruecke" else tr("UI_BUILD_HINT")
@@ -799,11 +800,31 @@ func _unhandled_input(e: InputEvent) -> void:
 		elif e.keycode == KEY_ENTER and chosen:
 			confirm()
 
+# Vorschau halb durchsichtig (wie im Browser: Deckkraft 0,55), ohne Schatten
+func _ghostify(n: Node) -> void:
+	if n.name == "Pfeil":
+		return
+	if n is MeshInstance3D and n.mesh:
+		n.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		for i in n.mesh.get_surface_count():
+			var m = n.get_active_material(i)
+			if m is BaseMaterial3D:
+				var c: BaseMaterial3D = m.duplicate()
+				c.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+				c.albedo_color.a = 0.55
+				n.set_surface_override_material(i, c)
+			elif m is ShaderMaterial:
+				n.transparency = 0.45
+	elif n is GeometryInstance3D:
+		n.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		n.transparency = 0.45
+	for c in n.get_children():
+		_ghostify(c)
+
 func _tint(n: Node, ok: bool) -> void:
 	if n.name == "Pfeil":
 		return
 	if n is GeometryInstance3D:
-		n.transparency = 0.35
 		var m := StandardMaterial3D.new()
 		m.albedo_color = Color(0.4, 1.0, 0.4) if ok else Color(1.0, 0.35, 0.3)
 		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
