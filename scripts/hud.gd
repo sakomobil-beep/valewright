@@ -124,7 +124,7 @@ func _process(dt: float) -> void:
 		var sun: DirectionalLight3D = main.get_node("Sonne")
 		sun.rotation_degrees = Vector3(-55.0, -30.0, 0)
 		sun.light_energy = 1.3
-	sun.light_color = Color(1.0, 0.75, 0.55).lerp(Color(1.0, 0.96, 0.88), light)
+		sun.light_color = Color(1.0, 0.96, 0.88)
 	_mm_t += dt
 	if _mm_t > 0.5:
 		_mm_t = 0.0
