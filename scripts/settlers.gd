@@ -75,6 +75,22 @@ func _build_grid() -> void:
 	# Haupthaus
 	block_area(Vector3.ZERO, 4.5)
 
+# liegt zwischen a und b ein Gebäude? (Anfang und Ende dürfen am Haus liegen)
+func _line_free(a: Vector3, b: Vector3) -> bool:
+	var d := Vector2(b.x - a.x, b.z - a.z)
+	var L := d.length()
+	if L < 0.6:
+		return true
+	var n := int(L / 0.5)
+	for i in range(1, n):
+		var t := float(i) / n
+		var q := Vector3(a.x + (b.x - a.x) * t, 0, a.z + (b.z - a.z) * t)
+		if grid.is_point_solid(_cell(q)):
+			# nur ein echtes Hindernis, wenn wir mitten durch ein Haus gingen
+			if i * 0.5 > 1.2 and (n - i) * 0.5 > 1.2:
+				return false
+	return true
+
 func _cell(p: Vector3) -> Vector2i:
 	var n := grid.region.size.x
 	return Vector2i(clampi(int((p.x + _half) / CELL), 0, n - 1), clampi(int((p.z + _half) / CELL), 0, n - 1))
@@ -98,6 +114,21 @@ func release(b: Dictionary) -> void:
 			w.home = null
 			w.node.visible = true
 			w.q = [{"go": lager_door()}, {"fn": func(): _remove(w)}]
+
+# Grundriss eines Gebäudes für die Wegfindung (wie groß es wirklich ist)
+func foot(t: String) -> float:
+	if economy and economy.data.types.has(t):
+		return float(economy.type_info(t).r) * WORKER_SCALE + 0.4
+	return 3.0
+
+# Punkt liegt frei (nicht in oder direkt an einem Gebäude)?
+func clear_of_buildings(p: Vector3, margin := 0.6) -> bool:
+	for b in economy.buildings:
+		if b.get("removed", false):
+			continue
+		if Vector2(p.x - b.pos.x, p.z - b.pos.z).length() < foot(b.type) + margin:
+			return false
+	return true
 
 func block_area(p: Vector3, r: float) -> void:
 	var c := _cell(p)
@@ -142,7 +173,7 @@ func find_path(a: Vector3, b: Vector3) -> Array:
 
 # ---------- Aufträge ----------
 func on_building_placed(b: Dictionary) -> void:
-	block_area(b.pos, 2.0 * WORKER_SCALE)
+	block_area(b.pos, foot(b.type))
 	# mehr Träger, wenn die Siedlung wächst
 	var carriers := workers.filter(func(x): return x.role == "traeger").size()
 	if carriers < 3 + economy.buildings.size() / 2:
@@ -431,7 +462,20 @@ func _step(w: Dictionary, dt: float) -> void:
 		return
 	var s: Dictionary = w.q[0]
 	if s.has("walk"):
-		# kurzer, direkter Weg am eigenen Gebäude (ohne Wegsuche)
+		# kurzer Weg: direkt, solange kein Haus dazwischen steht – sonst außen herum
+		if not s.has("checked"):
+			s.checked = true
+			if not _line_free(w.node.position, s.walk):
+				var pth := find_path(w.node.position, s.walk)
+				if pth.size() > 0:
+					w.q.pop_front()
+					var steps: Array = []
+					for pt in pth:
+						steps.append({"walk": pt, "checked": true})
+					if (pth[-1] as Vector3).distance_to(s.walk) > 0.3:
+						steps.append({"walk": s.walk, "checked": true})
+					w.q = steps + w.q
+					return
 		var wn: Node3D = w.node
 		var wd := Vector3(s.walk.x - wn.position.x, 0, s.walk.z - wn.position.z)
 		if wd.length() < 0.08:

@@ -42,7 +42,7 @@ func _process(dt: float) -> void:
 			for k in kids:
 				if not k.get("going", false):
 					k.going = true
-					k.q = [{"walk": settlers.door_of(b)}, {"fn": func(): settlers._remove(k)}]
+					k.q = [{"go": settlers.door_of(b)}, {"fn": func(): settlers._remove(k)}]
 		b.kids = kids
 	# Plaudern: ab 2 Häusern ab und zu zwei Nachbarn vor einer Tür
 	_talks = _talks.filter(func(t): return not t.done)
@@ -82,8 +82,10 @@ func _kid_play(k: Dictionary, b: Dictionary) -> void:
 		var a := randf() * TAU
 		var r := randf_range(4.5, 8.0)
 		var p: Vector3 = b.pos + Vector3(cos(a) * r, 0, sin(a) * r)
+		if settlers.grid.is_point_solid(settlers._cell(p)) or not settlers.clear_of_buildings(p):
+			continue   # Ziel läge in einem Haus
 		p.y = settlers.terrain.walk_height(p.x, p.z)
-		q.append({"walk": p})
+		q.append({"go": p})
 		if randf() < 0.5:
 			q.append({"anim": "hop", "wait": randf_range(0.8, 1.8)})
 	q.append({"fn": func(): _kid_play(k, b)})
@@ -94,6 +96,8 @@ func _start_talk(b: Dictionary) -> void:
 	var out: Vector3 = (d - b.pos).normalized()
 	var side := out.cross(Vector3.UP)
 	var spot := d + out * 2.2
+	if not settlers.clear_of_buildings(spot + side * 0.65, 0.5) or not settlers.clear_of_buildings(spot - side * 0.65, 0.5):
+		return   # vor dieser Tür ist kein Platz zum Plaudern
 	var a: Dictionary = settlers.spawn(ADULTS[randi() % ADULTS.size()], d)
 	var c: Dictionary = settlers.spawn(ADULTS[randi() % ADULTS.size()], d)
 	for w in [a, c]:

@@ -437,7 +437,7 @@ func _demolish(b: Dictionary) -> void:
 		military.claims = military.claims.filter(func(x): return x.b != b)
 		military.recompute()
 	if settlers:
-		settlers.unblock_area(b.pos, 2.0 * SCALE)
+		settlers.unblock_area(b.pos, settlers.foot(b.type))
 		settlers.release(b)
 	var tw := create_tween()
 	tw.tween_property(b.node, "scale:y", 0.02, 0.6)
@@ -578,7 +578,7 @@ func place_loaded(sv: Dictionary) -> void:
 	buildings.append(rec)
 	economy.buildings.append(rec)
 	if settlers:
-		settlers.block_area(p, 2.0 * SCALE)
+		settlers.block_area(p, settlers.foot(t))
 	if rec.build >= 1.0:
 		n.scale = Vector3.ONE * SCALE
 		# fertige Gebäude stehen auf eingeebnetem Platz
@@ -602,8 +602,8 @@ func confirm() -> void:
 	if moving != null:
 		var b: Dictionary = moving
 		if settlers:
-			settlers.unblock_area(b.pos, 2.0 * SCALE)
-			settlers.block_area(ghost.position, 2.0 * SCALE)
+			settlers.unblock_area(b.pos, settlers.foot(b.type))
+			settlers.block_area(ghost.position, settlers.foot(b.type))
 		b.pos = ghost.position
 		b.node.position = ghost.position
 		b.node.rotation.y = ghost_rot
