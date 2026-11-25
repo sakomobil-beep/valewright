@@ -218,12 +218,13 @@ func _step(b: Dictionary, dt: float) -> void:
 	# Bauarbeiter geht um die Baustelle herum und arbeitet
 	if b.site_at and w.q.is_empty():
 		var levelling: bool = b.site_level < 1.0
+		settlers.shovel_mode(w, levelling)
 		if levelling:
 			var a := randf() * TAU
 			var d := randf() * r * S * 0.85
 			var p: Vector3 = b.pos + Vector3(sin(a) * d, 0, cos(a) * d)
 			p.y = terrain.walk_height(p.x, p.z)
-			w.q = [{"walk": p}, {"face": p + Vector3(randf() - 0.5, 0, randf() - 0.5)}, {"anim": "plant", "wait": randf_range(1.6, 2.4)}]
+			w.q = [{"walk": p}, {"face": p + Vector3(randf() - 0.5, 0, randf() - 0.5)}, {"anim": "shovel", "wait": randf_range(1.6, 2.4)}]
 		else:
 			b.site_spot = (int(b.get("site_spot", 0)) + 1 + randi() % 2) % 6
 			var a2: float = b.site_spot / 6.0 * TAU + b.node.rotation.y

@@ -8,6 +8,7 @@ var _players: Array = []
 func _ready() -> void:
 	sounds.place = _make(func(t): return _tone(t, 520, 0.12) * 0.5 + _noise(t, 0.04) * 0.3, 0.14)
 	sounds.build = _make(func(t): return _knock(t, 0.0) + _knock(t, 0.18) + _knock(t, 0.36), 0.5)
+	sounds.dig = _make(func(t): return _noise(t, 0.12) * 0.55 * (1.0 - t / 0.18), 0.18)
 	sounds.chop = _make(func(t): return _knock(t, 0.0) * 1.2, 0.2)
 	sounds.coin = _make(func(t): return _tone(t, 1320, 0.25) * 0.4 + _tone(t - 0.08, 1760, 0.25) * 0.4, 0.35)
 	sounds.horn = _make(func(t): return _horn(t, 196, 0.9) + _horn(t, 294, 0.9) * 0.5, 0.9)

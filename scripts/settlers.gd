@@ -851,6 +851,20 @@ func _animate(w: Dictionary, dt: float) -> void:
 			lr.rotation.x = -0.1
 			ar.rotation.x = -0.6 + sin(t * 3.0) * 0.6
 			al.rotation.x = -0.6 + sin(t * 3.0) * 0.6
+		"shovel":
+			# wie im Browser: einstechen, Erde anheben, über die Schulter werfen
+			var k := fmod(t * 1.1, 1.0)
+			var stab := k < 0.35
+			var lift := k >= 0.35 and k < 0.7
+			ll.rotation.x = 0.3
+			lr.rotation.x = -0.2
+			ar.rotation.x = (-0.9 + k * 1.2) if stab else ((-0.5 - (k - 0.35) * 3.2) if lift else (-1.6 + (k - 0.7) * 2.3))
+			al.rotation.x = ar.rotation.x * 0.85
+			if lift and k > 0.6 and not w.get("thrown", false):
+				w.thrown = true
+				_dirt(w)
+			if k < 0.3:
+				w.thrown = false
 		"plant":
 			ll.rotation.x = 0.3
 			lr.rotation.x = -0.2
@@ -862,6 +876,68 @@ func _animate(w: Dictionary, dt: float) -> void:
 			al.rotation.x = lerpf(al.rotation.x, 0.0, dt * 8.0)
 			ar.rotation.x = lerpf(ar.rotation.x, 0.0, dt * 8.0)
 
+
+# Erdbrocken fliegen von der Schaufel
+var _dirt_mat: StandardMaterial3D
+func _dirt(w: Dictionary) -> void:
+	if _dirt_mat == null:
+		_dirt_mat = StandardMaterial3D.new()
+		_dirt_mat.albedo_color = Color(0.42, 0.3, 0.18)
+	sfx("dig", -16.0)
+	var n3: Node3D = w.node
+	var fw := Vector3(sin(n3.rotation.y), 0, cos(n3.rotation.y))
+	for i in 6:
+		var c := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = Vector3(0.1, 0.09, 0.1)
+		c.mesh = bm
+		c.material_override = _dirt_mat
+		c.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		get_parent().add_child(c)
+		var p0: Vector3 = n3.position + fw * 0.9 + Vector3(0, 0.7, 0)
+		c.position = p0
+		var v := Vector3(fw.x * 1.5 + randf_range(-0.8, 0.8), 2.2 + randf() * 1.5, fw.z * 1.5 + randf_range(-0.8, 0.8))
+		var tw := c.create_tween()
+		tw.tween_method(func(tt: float):
+			c.position = p0 + v * tt + Vector3(0, -4.9 * tt * tt, 0)
+			c.rotation = Vector3(tt * 6.0, tt * 4.0, 0)
+			c.scale = Vector3.ONE * clampf(1.4 - tt * 1.2, 0.05, 1.0), 0.0, 0.9, 0.9)
+		tw.tween_callback(c.queue_free)
+
+# Schaufel für den Bauarbeiter (beim Einebnen statt Hammer, wie im Browser)
+func shovel_mode(w: Dictionary, on: bool) -> void:
+	var ar = w.get("arm_r")
+	if ar == null:
+		return
+	var tool: Node3D = null
+	for ch in ar.get_children():
+		if ch is Node3D and not ch is MeshInstance3D:
+			tool = ch
+	if tool == null:
+		return
+	var sv = tool.get_node_or_null("Schaufel")
+	if sv == null:
+		sv = Node3D.new()
+		sv.name = "Schaufel"
+		var wood := StandardMaterial3D.new()
+		wood.albedo_color = Color(0.45, 0.3, 0.17)
+		var iron := StandardMaterial3D.new()
+		iron.albedo_color = Color(0.54, 0.56, 0.6)
+		iron.metallic = 0.6
+		for part in [[Vector3(0.035, 0.035, 0.75), Vector3(0, 0, 0.3), wood, 0.0], [Vector3(0.14, 0.05, 0.03), Vector3(0, 0, -0.07), wood, 0.0], [Vector3(0.2, 0.025, 0.24), Vector3(0, -0.03, 0.78), iron, 0.25]]:
+			var mi := MeshInstance3D.new()
+			var bm := BoxMesh.new()
+			bm.size = part[0]
+			mi.mesh = bm
+			mi.material_override = part[2]
+			mi.position = part[1]
+			mi.rotation.x = part[3]
+			sv.add_child(mi)
+		tool.add_child(sv)
+	sv.visible = on
+	for ch in tool.get_children():
+		if ch != sv:
+			ch.visible = not on
 
 # ---------- Karre & Warenhaufen ----------
 var _pile_t := 0.0
@@ -1026,7 +1102,7 @@ func _seq_next(w: Dictionary) -> void:
 		if h == "IN": h = first
 		elif h == "OUT": h = out
 		var look := _local(b, st.l)
-		var anim: String = {"hammer": "chop", "dig": "plant", "saw": "saw", "carve": "carve", "push": "push", "stoke": "stoke", "chop": "chop", "shoot": "shoot"}.get(String(st.get("a", "")), "push")
+		var anim: String = {"hammer": "chop", "dig": "plant", "saw": "saw", "carve": "carve", "push": "push", "stoke": "stoke", "chop": "chop", "shoot": "shoot", "shovel": "shovel"}.get(String(st.get("a", "")), "push")
 		q.append({"walk": _local(b, st.p)})
 		q.append({"face": look})
 		q.append({"fn": func(): _carry(w, h); _show_prop(b, st, out)})
