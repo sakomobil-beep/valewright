@@ -243,6 +243,7 @@ func _enter(s: Dictionary, b: Dictionary) -> void:
 	s.home = b
 	s.state = "garrison"
 	s.w.node.visible = false
+	_place_on_post(s, b)
 	b.garrison += 1
 	b.status = "ST_GUARDED"
 	if not b.get("claimed", false):
@@ -424,7 +425,10 @@ func _barracks(dt: float) -> void:
 				if not s.get("hungry", false):
 					s.hungry = true
 					dress_rank(s)
-		if s.state == "idle" and s.rank < mini(2, max_rank(s.kind)) and _kaserne() != null:
+		var kz = _kaserne()
+		if s.state == "idle" and kz != null:
+			_drill(s, kz)
+		if s.state == "idle" and s.rank < mini(2, max_rank(s.kind)) and kz != null:
 			s.xp = float(s.get("xp", 0.0)) + dt / (300.0 * tf)
 			if s.xp >= 1.0:
 				s.xp = 0.0
@@ -437,6 +441,38 @@ func _barracks(dt: float) -> void:
 		for b in economy.buildings:
 			if GARRISON.has(b.type) and b.build >= 1.0 and b.get("owner", 0) == 0 and int(b.garrison) + int(b.get("incoming", 0)) < GARRISON[b.type] and _free_soldier(0) != null:
 				_man_tower(b)
+
+# Bogenschützen stehen sichtbar auf der Turmplattform (wie placeOnPost im Browser)
+const PLAT := {"wachturm": [2.66, [[-0.6, 0.6], [0.6, 0.6], [0.6, -0.6], [-0.6, -0.6]]], "wehrturm": [3.36, [[-0.45, 0.45], [0.45, 0.45]]], "burg": [2.62, [[-1.55, 1.8], [1.55, 1.8], [-1.85, -1.3], [1.85, -1.3]]]}
+func _place_on_post(s: Dictionary, b: Dictionary) -> void:
+	if s.get("kind", "") != "bogen" or not PLAT.has(b.type) or not is_instance_valid(b.get("node")):
+		return
+	var used: Array = soldiers.filter(func(x): return x != s and x.get("home") == b and x.get("spot", -1) >= 0).map(func(x): return x.spot)
+	var P: Array = PLAT[b.type]
+	for i in P[1].size():
+		if i in used:
+			continue
+		s.spot = i
+		var sc: float = b.node.scale.x
+		var off := Vector3(P[1][i][0], 0, P[1][i][1]).rotated(Vector3.UP, b.node.rotation.y) * sc
+		s.w.q = []
+		s.w.node.position = Vector3(b.pos.x + off.x, b.node.position.y + float(P[0]) * sc, b.pos.z + off.z)
+		s.w.node.rotation.y = atan2(off.x, off.z)
+		s.w.node.visible = true
+		s.w.on_post = true
+		return
+
+# Übung auf dem Kasernenhof (wie soldierAI im Browser)
+func _drill(s: Dictionary, k: Dictionary) -> void:
+	var w: Dictionary = s.w
+	if not w.q.is_empty():
+		return
+	var bow: bool = s.get("kind", "") == "bogen"
+	var sc: float = k.node.scale.x
+	var spot: Vector3 = (Vector3(-1.2 + randf() * 0.8, 0, 2.6) if bow else Vector3(1.4 + randf() * 0.6, 0, 2.4 + randf() * 0.4)).rotated(Vector3.UP, k.node.rotation.y) * sc + k.pos
+	var look: Vector3 = (Vector3(-1.6, 0, -2.4) if bow else Vector3(2.6, 0, 2.6)).rotated(Vector3.UP, k.node.rotation.y) * sc + k.pos
+	spot.y = terrain.height(spot.x, spot.z)
+	w.q = [{"go": spot}, {"face": look}, {"anim": "shoot" if bow else "chop", "wait": 2.0 + randf() * 2.0}]
 
 func _kaserne():
 	for b in economy.buildings:
@@ -512,6 +548,8 @@ func _send(s: Dictionary, target: Dictionary) -> void:
 		start = settlers.door_of(s.home) if s.home else s.w.node.position
 		s.w.node.position = start
 	s.home = null
+	s.spot = -1
+	s.w.on_post = false
 	s.w.node.visible = true
 	s.state = "attack"
 	s.target = target
