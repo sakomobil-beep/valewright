@@ -23,7 +23,7 @@ var unl := 0     # Freischalt-Stufe (steigt mit zufriedenen Wohnhäusern)
 var BUILD_TIME := 8.0
 var WORK_TIME := 10.0
 # Diese Berufe arbeiten draußen in der Welt (siehe settlers.gd)
-const FIELD_WORKERS := ["holzfaeller", "steinmetz", "foerster", "rutengaenger"]
+const FIELD_WORKERS := ["holzfaeller", "steinmetz", "foerster", "rutengaenger", "bauernhof", "schweinezucht"]
 # Diese Gebäude produzieren (noch) keine Waren
 const NO_PRODUCTION := ["wohnhaus", "denkmal", "kaserne", "wirtshaus", "lager", "markt", "burg", "wachturm", "wachstube", "wehrturm"]
 # Mengen, die von 1 abweichen
@@ -390,8 +390,10 @@ func _produce(b: Dictionary, dt: float) -> void:
 		b.t = 0.0
 		var r: Array = b.cur
 		if b.type == "goldmine" and b.get("gold_dep") != null:
-			b.gold_dep.left = int(b.gold_dep.left) - 1
+			b.gold_dep.left = maxi(0, int(b.gold_dep.left) - int(r[2]))
 		put_out(b, r[1], int(r[2]))
+		if b.type == "imker":
+			put_out(b, "kerzen", 1)   # Wachs → Kerzen (wie im Browser)
 
 # ---------- Wohnhäuser (Waren werden ins Haus geliefert, Bier im Wirtshaus) ----------
 func near_pub(b: Dictionary):

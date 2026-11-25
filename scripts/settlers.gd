@@ -185,7 +185,7 @@ func _on_built(b: Dictionary) -> void:
 	if military and military.is_military(b.type):
 		military.on_player_built(b)
 		return
-	if b.type in ["holzfaeller", "steinmetz", "foerster", "rutengaenger"] or economy.produces(b.type):
+	if b.type in economy.FIELD_WORKERS or economy.produces(b.type):
 		# Jeder neue Arbeiter braucht Werkzeug
 		if b.get("loaded", false):
 			pass
@@ -249,6 +249,92 @@ func _next_job(w: Dictionary) -> void:
 				{"wait": 1.5},
 				{"fn": func(): _next_job(w)},
 			]
+		"bauernhof":
+			# wie im Browser: reife Felder ernten, leere einsäen, sonst warten
+			var plots: Array = b.get("plots", [])
+			var ripe = null
+			var empty = null
+			for pl in plots:
+				if pl.reserved:
+					continue
+				if ripe == null and pl.state == "reif":
+					ripe = pl
+				if empty == null and pl.state == "leer":
+					empty = pl
+			if b.get("paused", false) or economy.out_total(b) >= 8:
+				b.status = "ST_PAUSED" if b.get("paused", false) else "ST_OUT_FULL"
+				w.q = [{"wait": 2.0}, {"fn": func(): _next_job(w)}]
+				return
+			var wf: float = 2.5 * economy.tf() * (0.8 if b.get("up", 0) > 0 else 1.0)
+			if ripe:
+				ripe.reserved = true
+				b.status = "ST_HARVEST"
+				w.q = [
+					{"go": _beside(ripe.pos, b.pos)},
+					{"face": ripe.pos},
+					{"anim": "plant", "wait": 3.0 * wf},
+					{"fn": func(): ripe.state = "leer"; ripe.growth = 0.0; ripe.reserved = false; _carry(w, "getreide")},
+					{"go": door_of(b)},
+					{"fn": func(): _carry(w, null); economy.put_out(b, "getreide", 2)},
+					{"wait": 1.0},
+					{"fn": func(): _next_job(w)},
+				]
+			elif empty:
+				empty.reserved = true
+				b.status = "ST_SOW"
+				w.q = [
+					{"go": _beside(empty.pos, b.pos)},
+					{"face": empty.pos},
+					{"anim": "plant", "wait": 2.5 * wf},
+					{"fn": func(): empty.state = "wächst"; empty.growth = 0.0; empty.reserved = false},
+					{"go": door_of(b)},
+					{"fn": func(): _next_job(w)},
+				]
+			else:
+				b.status = "ST_WAIT_RIPE"
+				w.q = [{"wait": 2.0}, {"fn": func(): _next_job(w)}]
+		"schweinezucht":
+			var pigs: Array = b.get("pigs", [])
+			var big = null
+			for pg in pigs:
+				if pg.growth >= 1.0:
+					big = pg
+					break
+			var wf2: float = 2.5 * economy.tf() * (0.8 if b.get("up", 0) > 0 else 1.0)
+			if b.get("paused", false) or economy.out_total(b) >= 8 or pigs.is_empty():
+				b.status = "ST_PAUSED" if b.get("paused", false) else ("ST_OUT_FULL" if economy.out_total(b) >= 8 else "ST_IDLE")
+				w.q = [{"wait": 2.0}, {"fn": func(): _next_job(w)}]
+				return
+			var trough: Vector3 = b.get("trough", b.pos)
+			trough.y = terrain.height(trough.x, trough.z)
+			if big:
+				b.status = "ST_FETCH_PIG"
+				w.q = [
+					{"go": big.node.position},
+					{"anim": "plant", "wait": 2.0 * wf2},
+					{"fn": func(): big.growth = 0.15; _carry(w, "schwein")},
+					{"go": door_of(b)},
+					{"fn": func(): _carry(w, null); economy.put_out(b, "schwein", 1)},
+					{"fn": func(): _next_job(w)},
+				]
+			elif economy.has_in(b, {"getreide": 1, "wasser": 1}):
+				economy.take_in(b, {"getreide": 1, "wasser": 1})
+				b.status = "ST_FEED"
+				w.q = [
+					{"fn": func(): _carry(w, "getreide")},
+					{"go": trough},
+					{"fn": func(): _carry(w, null)},
+					{"anim": "plant", "wait": 3.0 * wf2},
+					{"fn": func():
+						for pg in pigs:
+							pg.growth = minf(1.0, pg.growth + 0.2)},
+					{"go": door_of(b)},
+					{"fn": func(): _next_job(w)},
+				]
+			else:
+				b.status = "ST_MISSING"
+				b.missing = "getreide" if int(b["in"].get("getreide", 0)) <= 0 else "wasser"
+				w.q = [{"wait": 2.0}, {"fn": func(): _next_job(w)}]
 		"foerster":
 			var tr_ = _free(terrain.nearest_tree(b.pos, 14.0, false), terrain.trees, true)
 			if tr_ == null:

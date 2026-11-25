@@ -774,6 +774,8 @@ func place_loaded(sv: Dictionary) -> void:
 		rec[kk] = int(sv.get(kk, 0))
 	rec.wo = sv.get("wo", {}).duplicate()
 	rec.up = int(sv.get("up", 0))
+	rec.plots_load = sv.get("plots", [])
+	rec.pigs_load = sv.get("pigs", [])
 	if rec.up > 0:
 		up_badge.call_deferred(rec)
 	if settlers:

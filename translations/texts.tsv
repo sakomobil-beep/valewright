@@ -427,3 +427,8 @@ MG_UNLOCK	🔓 Gebäude	🔓 Buildings
 MGV_SCHRITT	Nach und nach freischalten	Unlock step by step
 MGV_ALLE	Alles von Anfang an	Everything from the start
 MSG_PEACE	🕊️ Friedliches Spiel – keine Kämpfe	🕊️ Peaceful game – no battles
+ST_HARVEST	Erntet Getreide	Harvesting grain
+ST_SOW	Sät	Sowing
+ST_WAIT_RIPE	Wartet, bis das Getreide reif ist	Waiting for the grain to ripen
+ST_FETCH_PIG	Holt ein großes Schwein	Fetching a grown pig
+ST_FEED	Füttert die Ferkel	Feeding the piglets
