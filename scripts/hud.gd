@@ -59,8 +59,8 @@ func setup(l: CanvasLayer) -> void:
 		b.tooltip_text = tr({0.0: "SPD_PAUSE", 1.0: "SPD_NORMAL", 2.0: "SPD_FAST", 4.0: "SPD_FASTEST"}[sp[0]])
 		_speed_btns.append([b, sp[0]])
 	hb.add_child(VSeparator.new())
-	_icon_btn(hb, "📊", func(): stats_win.toggle()).tooltip_text = tr("UI_STATS")
-	_icon_btn(hb, "📈", func(): open_window("balance")).tooltip_text = tr("UI_BALANCE")
+	_icon_btn(hb, "📊", func(): stats_win.toggle("stats")).tooltip_text = tr("UI_STATS")
+	_icon_btn(hb, "📈", func(): stats_win.toggle("balance")).tooltip_text = tr("UI_BALANCE")
 	_icon_btn(hb, "🔗", func(): open_window("chains")).tooltip_text = tr("UI_CHAINS")
 	_icon_btn(hb, "⚔️", func(): open_window("military")).tooltip_text = tr("UI_MILITARY")
 	_icon_btn(hb, "🏪", func(): main.market.open()).tooltip_text = tr("UI_MARKET")
@@ -106,9 +106,9 @@ func _unhandled_input(e: InputEvent) -> void:
 			KEY_3:
 				set_speed(4.0)
 			KEY_T:
-				stats_win.toggle()
+				stats_win.toggle("stats")
 			KEY_B:
-				open_window("balance")
+				stats_win.toggle("balance")
 			KEY_K:
 				open_window("chains")
 			KEY_M:

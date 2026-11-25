@@ -467,3 +467,32 @@ STW_COL_COUNT	Anzahl	Count
 STW_COL_WORK	arbeiten	working
 STW_COL_WAIT	warten	waiting
 STW_COL_SITE	im Bau	under construction
+BLW_TABLE	Bilanz	Balance
+BLW_BOTTLENECKS	Engpässe	Bottlenecks
+BLW_HISTORY	Verlauf	History
+BLW_SPAN	Zeitraum:	Period:
+BLW_5	5 Minuten	5 minutes
+BLW_15	15 Minuten	15 minutes
+BLW_ALL	ganzes Spiel	whole game
+BLW_SURPLUS	Waren mit Überschuss	goods in surplus
+BLW_DEFICIT	Waren mit Mangel	goods in deficit
+BLW_TOTAL	hergestellt / verbraucht pro Min.	produced / used per min.
+BLW_COL_MADE	Herstellung/Min.	produced/min
+BLW_COL_USED	Verbrauch/Min.	used/min
+BLW_COL_LASTS	reicht noch	lasts
+BLW_EMPTY_NOW	leer!	empty!
+BLW_MIN	≈ %d Min.	≈ %d min
+BLW_GROWS	wächst	growing
+BLW_BN_HINT	Hier siehst du, woran deine Wirtschaft gerade hakt und was du dagegen tun kannst.	See what is holding your economy back and what to do about it.
+BLW_BN_NONE_T	Fehlende Waren	Missing goods
+BLW_BN_NONE	✔ Kein Gebäude wartet gerade auf Waren.	✔ No building is waiting for goods right now.
+BLW_BN_MISSING	Fehlende Waren – diese Gebäude stehen still	Missing goods – these buildings are idle
+BLW_WAITING	%d Gebäude warten	%d buildings waiting
+BLW_BUILD_MORE	mehr %s bauen	build more: %s
+BLW_SOON	Geht bald aus	Running out soon
+BLW_SOON_NONE	✔ Keine Ware geht gerade zur Neige.	✔ No good is running low.
+BLW_LASTS	reicht noch etwa %d Minuten	lasts about %d more minutes
+BLW_TRANSPORT	Transport	Transport
+BLW_TRANSPORT_T	%d Träger · %d Waren warten an den Gebäuden auf Abholung	%d carriers · %d goods waiting to be picked up
+BLW_HIST_ALL	Herstellung und Verbrauch aller Waren pro Minute	Production and use of all goods per minute
+BLW_HIST_COINS	Münzen und Landanteil	Coins and land share

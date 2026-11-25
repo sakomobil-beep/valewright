@@ -18,6 +18,8 @@ var _t := 0.0
 var _time := 0.0
 var win: Control
 var tab := 0
+var mode := "stats"        # "stats" oder "balance"
+var span := 5.0            # Bilanz-Zeitraum in Minuten (0 = seit Spielbeginn)
 var sel_item := "bretter"
 var _body: VBoxContainer
 var _refresh_t := 0.0
@@ -55,11 +57,15 @@ func _own_buildings() -> Array:
 	return main.economy.buildings.filter(func(b): return not b.get("removed", false) and b.get("owner", 0) == 0)
 
 # ---------- Fenster ----------
-func toggle() -> void:
+func toggle(m := "stats") -> void:
 	if win and is_instance_valid(win):
 		win.queue_free()
 		win = null
-		return
+		if mode == m:
+			return
+	if mode != m:
+		tab = 0
+	mode = m
 	_sample()
 	win = PanelContainer.new()
 	win.add_theme_stylebox_override("panel", UiIcons.wood(14))
@@ -81,7 +87,9 @@ func toggle() -> void:
 	var head := HBoxContainer.new()
 	vb.add_child(head)
 	var title := Label.new()
-	title.text = "📊 " + tr("UI_STATS")
+	var tt: String = tr("UI_STATS") if mode == "stats" else tr("UI_BALANCE")
+	var rx := RegEx.create_from_string("\\s*\\([A-Z]\\)$")
+	title.text = ("📊 " if mode == "stats" else "📈 ") + rx.sub(tt, "")
 	title.add_theme_font_size_override("font_size", 24)
 	title.add_theme_color_override("font_color", GOLD)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -92,7 +100,7 @@ func toggle() -> void:
 	head.add_child(tabs)
 	for i in 3:
 		var b := Button.new()
-		b.text = tr(["STW_OVERVIEW", "STW_GOODS", "STW_BUILDINGS"][i])
+		b.text = tr((["STW_OVERVIEW", "STW_GOODS", "STW_BUILDINGS"] if mode == "stats" else ["BLW_TABLE", "BLW_BOTTLENECKS", "BLW_HISTORY"])[i])
 		b.toggle_mode = true
 		b.button_pressed = i == tab
 		b.custom_minimum_size = Vector2(120, 34)
@@ -105,7 +113,7 @@ func toggle() -> void:
 	var x := Button.new()
 	x.text = "✕"
 	x.custom_minimum_size = Vector2(34, 34)
-	x.pressed.connect(toggle)
+	x.pressed.connect(func(): toggle(mode))
 	head.add_child(x)
 	var line := ColorRect.new()
 	line.color = Color(0.79, 0.64, 0.29, 0.4)
@@ -134,10 +142,16 @@ func _fill() -> void:
 	if tabs:
 		for k in tabs.get_child_count():
 			tabs.get_child(k).button_pressed = k == tab
-	match tab:
-		0: _overview()
-		1: _goods()
-		2: _buildings()
+	if mode == "balance":
+		match tab:
+			0: _bal_table()
+			1: _bal_bottlenecks()
+			2: _bal_history()
+	else:
+		match tab:
+			0: _overview()
+			1: _goods()
+			2: _buildings()
 	await get_tree().process_frame
 	if is_instance_valid(sc):
 		sc.scroll_vertical = keep
@@ -214,7 +228,7 @@ func _chart(series: Array, h := 170.0, title := "") -> void:
 		for s in series:
 			for v in s.data:
 				mx = maxf(mx, float(v))
-		mx = ceilf(mx * 1.1)
+		mx = ceilf(mx * 1.1 / 4.0) * 4.0
 		var L := 40.0
 		var B := 18.0
 		for g in 5:
@@ -246,7 +260,9 @@ func _series(key: String) -> Array:
 	return hist.map(func(s): return float(s.get(key, 0)))
 
 func _rate(item: String, kind: String, minutes := 5.0) -> float:
-	# Menge pro Minute über die letzten Minuten
+	# Menge pro Minute über die letzten Minuten (0 = seit Spielbeginn)
+	if minutes <= 0.0:
+		return float(main.economy.stats[kind].get(item, 0)) / maxf(1.0, _time / 60.0)
 	if hist.size() < 2:
 		return 0.0
 	var now: Dictionary = hist[-1]
@@ -435,3 +451,171 @@ func _buildings() -> void:
 			_label(hb, "–" if noprod else str(working), 14, GREEN, 110, HORIZONTAL_ALIGNMENT_RIGHT)
 			_label(hb, "–" if noprod else str(built.size() - working), 14, RED if built.size() - working > 0 and not noprod else DIM, 110, HORIZONTAL_ALIGNMENT_RIGHT)
 			_label(hb, str(list.size() - built.size()), 14, DIM, 110, HORIZONTAL_ALIGNMENT_RIGHT)
+
+
+# ======================= Wirtschaftsbilanz =======================
+func _span_bar() -> void:
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 6)
+	_body.add_child(hb)
+	_label(hb, tr("BLW_SPAN"), 14, DIM)
+	for o in [[5.0, "BLW_5"], [15.0, "BLW_15"], [0.0, "BLW_ALL"]]:
+		var b := Button.new()
+		b.text = tr(o[1])
+		b.toggle_mode = true
+		b.button_pressed = span == o[0]
+		b.custom_minimum_size = Vector2(110, 30)
+		b.pressed.connect(func(): span = o[0]; _fill())
+		hb.add_child(b)
+
+func _bal_rows() -> Array:
+	var e: Node = main.economy
+	var rows: Array = []
+	for k in e.data.items:
+		var made := _rate(k, "prod", span)
+		var used := _rate(k, "use", span)
+		if made < 0.01 and used < 0.01:
+			continue
+		rows.append({"k": k, "made": made, "used": used, "net": made - used, "stock": int(e.stock.get(k, 0))})
+	return rows
+
+func _bal_table() -> void:
+	_span_bar()
+	var rows := _bal_rows()
+	var pos := rows.filter(func(r): return r.net > 0.05).size()
+	var neg := rows.filter(func(r): return r.net < -0.05).size()
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 8)
+	_body.add_child(grid)
+	var tp := 0.0
+	var tu := 0.0
+	for r in rows:
+		tp += r.made
+		tu += r.used
+	_tile(grid, "⬆️", str(pos), tr("BLW_SURPLUS"), "")
+	_tile(grid, "⬇️", str(neg), tr("BLW_DEFICIT"), "")
+	_tile(grid, "⚖️", "%.1f / %.1f" % [tp, tu], tr("BLW_TOTAL"), "")
+	if rows.is_empty():
+		_label(_body, tr("BAL_EMPTY"), 13, DIM)
+		return
+	var head := HBoxContainer.new()
+	_body.add_child(head)
+	for c in [[tr("STW_COL_ITEM"), 200, 0], [tr("BLW_COL_MADE"), 110, 2], [tr("BLW_COL_USED"), 110, 2], [tr("STW_COL_NET"), 110, 2], [tr("STW_COL_STOCK"), 70, 2], [tr("BLW_COL_LASTS"), 150, 2]]:
+		_label(head, c[0], 13, GOLD, c[1], HORIZONTAL_ALIGNMENT_LEFT if c[2] == 0 else HORIZONTAL_ALIGNMENT_RIGHT)
+	rows.sort_custom(func(a, b): return a.net < b.net)
+	var odd := false
+	for r in rows:
+		odd = not odd
+		var bg := PanelContainer.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(1, 1, 1, 0.04) if odd else Color(0, 0, 0, 0)
+		if r.net < -0.05 and r.stock > 0 and r.stock / -r.net < 10.0:
+			sb.bg_color = Color(0.9, 0.3, 0.2, 0.16)
+		sb.set_corner_radius_all(4)
+		bg.add_theme_stylebox_override("panel", sb)
+		_body.add_child(bg)
+		var hb := HBoxContainer.new()
+		bg.add_child(hb)
+		hb.add_child(UiIcons.icon_rect(r.k, 22))
+		_label(hb, tr("ITEM_" + String(r.k).to_upper()), 14, TEXT, 174)
+		_label(hb, "+%.1f" % r.made, 14, GREEN, 110, HORIZONTAL_ALIGNMENT_RIGHT)
+		_label(hb, "−%.1f" % r.used, 14, RED, 110, HORIZONTAL_ALIGNMENT_RIGHT)
+		_label(hb, ("%+.1f" % r.net) if absf(r.net) >= 0.05 else "±0", 15, GREEN if r.net > 0.05 else (RED if r.net < -0.05 else DIM), 110, HORIZONTAL_ALIGNMENT_RIGHT)
+		_label(hb, str(r.stock), 14, TEXT, 70, HORIZONTAL_ALIGNMENT_RIGHT)
+		var lasts := "–"
+		var lc := DIM
+		if r.net < -0.05:
+			var m: float = r.stock / -r.net
+			lasts = tr("BLW_EMPTY_NOW") if r.stock <= 0 else tr("BLW_MIN") % int(ceilf(m))
+			lc = RED if m < 10.0 else Color(1, 0.8, 0.4)
+		elif r.net > 0.05:
+			lasts = tr("BLW_GROWS")
+			lc = GREEN
+		_label(hb, lasts, 14, lc, 150, HORIZONTAL_ALIGNMENT_RIGHT)
+
+func _bal_bottlenecks() -> void:
+	var e: Node = main.economy
+	_label(_body, tr("BLW_BN_HINT"), 12, DIM)
+	# welche Ware fehlt welchen Gebäuden?
+	var miss := {}
+	for b in e.buildings:
+		if b.get("removed", false) or b.get("owner", 0) != 0 or b.build < 1.0:
+			continue
+		if String(b.get("status", "")) == "ST_MISSING" and b.get("missing", "") != "":
+			var k: String = b.missing
+			if not miss.has(k):
+				miss[k] = []
+			miss[k].append(b.type)
+	if miss.is_empty():
+		_section(tr("BLW_BN_NONE_T"))
+		_label(_body, tr("BLW_BN_NONE"), 14, GREEN)
+	else:
+		_section(tr("BLW_BN_MISSING"))
+		var ks: Array = miss.keys()
+		ks.sort_custom(func(a, b): return miss[a].size() > miss[b].size())
+		for k in ks:
+			var hb := HBoxContainer.new()
+			hb.add_theme_constant_override("separation", 8)
+			_body.add_child(hb)
+			hb.add_child(UiIcons.icon_rect(k, 26))
+			_label(hb, tr("ITEM_" + k.to_upper()), 15, TEXT, 160)
+			_label(hb, tr("BLW_WAITING") % miss[k].size(), 14, RED, 150)
+			var names := {}
+			for t in miss[k]:
+				names[t] = int(names.get(t, 0)) + 1
+			_label(hb, ", ".join(names.keys().map(func(t): return ("%d× " % names[t] if names[t] > 1 else "") + tr("BLD_" + String(t).to_upper()))), 13, DIM)
+			var who := _producer_of(k)
+			if who != "":
+				_label(_body, "      → " + tr("BLW_BUILD_MORE") % tr("BLD_" + who.to_upper()), 13, GOLD)
+	# Waren, die bald ausgehen
+	var soon: Array = _bal_rows().filter(func(r): return r.net < -0.05 and r.stock > 0)
+	soon.sort_custom(func(a, b): return a.stock / -a.net < b.stock / -b.net)
+	_section(tr("BLW_SOON"))
+	if soon.is_empty():
+		_label(_body, tr("BLW_SOON_NONE"), 14, GREEN)
+	for r in soon.slice(0, 8):
+		var hb := HBoxContainer.new()
+		hb.add_theme_constant_override("separation", 8)
+		_body.add_child(hb)
+		hb.add_child(UiIcons.icon_rect(r.k, 24))
+		_label(hb, tr("ITEM_" + String(r.k).to_upper()), 14, TEXT, 160)
+		var m: float = r.stock / -r.net
+		_label(hb, tr("BLW_LASTS") % int(ceilf(m)), 14, RED if m < 10.0 else Color(1, 0.8, 0.4), 260)
+		var who := _producer_of(r.k)
+		if who != "":
+			_label(hb, "→ " + tr("BLW_BUILD_MORE") % tr("BLD_" + who.to_upper()), 13, GOLD)
+	# Träger
+	var waiting := 0
+	for b in e.buildings:
+		waiting += e.out_total(b)
+	_section(tr("BLW_TRANSPORT"))
+	_label(_body, tr("BLW_TRANSPORT_T") % [_carriers(), waiting], 14, RED if waiting > 12 else TEXT)
+
+func _producer_of(item: String) -> String:
+	var e: Node = main.economy
+	for t in e.data.io:
+		if item in e.outputs(t) and e.data.types.has(t):
+			return t
+	return ""
+
+func _bal_history() -> void:
+	# Herstellung und Verbrauch aller Waren pro Minute über die Zeit
+	var made: Array = []
+	var used: Array = []
+	for i in range(1, hist.size()):
+		var a: Dictionary = hist[i - 1]
+		var b: Dictionary = hist[i]
+		var dtm: float = maxf(0.1, (b.t - a.t) / 60.0)
+		var pm := 0.0
+		var um := 0.0
+		for k in b.prod:
+			pm += float(b.prod[k]) - float(a.prod.get(k, 0))
+		for k in b.use:
+			um += float(b.use[k]) - float(a.use.get(k, 0))
+		made.append(pm / dtm)
+		used.append(um / dtm)
+	_section(tr("BLW_HIST_ALL"))
+	_chart([{"name": tr("BLW_COL_MADE"), "data": made, "col": GREEN}, {"name": tr("BLW_COL_USED"), "data": used, "col": RED}], 190.0)
+	_section(tr("BLW_HIST_COINS"))
+	_chart([{"name": tr("ITEM_MUENZEN"), "data": hist.map(func(s): return float(s.stock.get("muenzen", 0))), "col": GOLD}, {"name": tr("MIL_LAND") + " %", "data": _series("land"), "col": BLUE}], 150.0)
