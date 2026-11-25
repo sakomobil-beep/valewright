@@ -75,13 +75,7 @@ func setup(l: CanvasLayer) -> void:
 	_setup_minimap()
 
 func _panel_style(c: Control, m := 10) -> void:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.165, 0.114, 0.07, 0.9)
-	sb.border_color = Color(0.79, 0.64, 0.29)
-	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(10)
-	sb.set_content_margin_all(m)
-	c.add_theme_stylebox_override("panel", sb)
+	c.add_theme_stylebox_override("panel", UiIcons.wood(m))
 
 func _icon_btn(parent: Control, txt: String, cb: Callable) -> Button:
 	var b := Button.new()

@@ -23,13 +23,7 @@ var _pop: Label
 var _groups: Array = []
 
 func _ready() -> void:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.165, 0.114, 0.07, 0.9)
-	sb.border_color = Color(0.79, 0.64, 0.29)
-	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(10)
-	sb.set_content_margin_all(6)
-	add_theme_stylebox_override("panel", sb)
+	add_theme_stylebox_override("panel", UiIcons.wood(4))
 	position = Vector2(12, 12)
 	var hb := HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 4)
@@ -52,7 +46,7 @@ func _ready() -> void:
 	_pop.mouse_filter = Control.MOUSE_FILTER_STOP
 	hb.add_child(_pop)
 	_drop = PanelContainer.new()
-	_drop.add_theme_stylebox_override("panel", sb)
+	_drop.add_theme_stylebox_override("panel", UiIcons.wood(6))
 	_drop.visible = false
 	_drop.top_level = true
 	add_child(_drop)

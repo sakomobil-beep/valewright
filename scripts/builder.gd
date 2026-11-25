@@ -104,7 +104,7 @@ func setup_ui(layer: CanvasLayer) -> void:
 	isb.set_border_width_all(2)
 	isb.set_corner_radius_all(10)
 	isb.set_content_margin_all(10)
-	info_panel.add_theme_stylebox_override("panel", isb)
+	info_panel.add_theme_stylebox_override("panel", UiIcons.wood(6))
 	info_panel.offset_left = 14
 	info_panel.offset_top = 190
 	info_panel.custom_minimum_size = Vector2(260, 0)

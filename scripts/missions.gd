@@ -78,18 +78,12 @@ func tutorial_steps() -> Array:
 
 func setup(layer: CanvasLayer) -> void:
 	panel = PanelContainer.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.165, 0.114, 0.07, 0.92)
-	sb.border_color = Color(0.79, 0.64, 0.29)
-	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(10)
-	sb.set_content_margin_all(10)
-	panel.add_theme_stylebox_override("panel", sb)
+	panel.add_theme_stylebox_override("panel", UiIcons.wood(8))
 	panel.anchor_left = 1.0
 	panel.anchor_right = 1.0
 	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	panel.offset_right = -14
-	panel.offset_top = 64
+	panel.offset_top = 80
 	panel.custom_minimum_size = Vector2(300, 0)
 	panel.visible = mission != 0 or _victory() != "endless"
 	layer.add_child(panel)

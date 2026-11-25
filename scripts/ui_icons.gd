@@ -44,3 +44,12 @@ static func cost_row(c: Dictionary, size := 20, col := Color(1, 0.95, 0.85)) -> 
 		l.add_theme_color_override("font_color", col)
 		hb.add_child(l)
 	return hb
+
+# kleiner Holzrahmen für alle Spiel-Leisten und -Fenster (wie Baumenü)
+static var _wood_helper: Node
+static func wood(margin := 10) -> StyleBox:
+	if _wood_helper == null:
+		_wood_helper = load("res://scripts/gameui.gd").new()
+	var sb: StyleBoxTexture = _wood_helper._wood_frame(12)
+	sb.set_content_margin_all(margin + 8)
+	return sb
