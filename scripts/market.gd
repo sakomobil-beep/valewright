@@ -20,12 +20,13 @@ func _process(dt: float) -> void:
 	if not has_market():
 		return
 	t += dt
-	if not here and t > COME:
+	var tf: float = main.economy.tf()
+	if not here and t > COME * tf:
 		here = true
 		t = 0.0
 		paid = 0
 		main._toast(tr("MSG_TRADER_HERE"))
-	elif here and t > STAY:
+	elif here and t > STAY * tf:
 		here = false
 		t = 0.0
 		main._toast(tr("MSG_TRADER_GONE"))
@@ -35,6 +36,11 @@ func _process(dt: float) -> void:
 	for b in main.economy.buildings:
 		if b.type == "markt" and b.build >= 1.0:
 			b.status = "ST_TRADER_HERE" if here else "ST_TRADER_COMING"
+
+var _tg := "stamm"
+var _tt := "werkzeug"
+func trade_cost(give: String, take: String) -> int:
+	return maxi(1, ceili(float(VAL.get(take, 3)) * 1.5 / float(VAL.get(give, 1))))
 
 func buy_price(k: String) -> int:
 	return VAL[k] * 2
@@ -51,7 +57,7 @@ func open() -> void:
 		main._toast(tr("MSG_NEED_MARKET"))
 		return
 	if not here:
-		main._toast(tr("MSG_TRADER_IN") % ceili((COME - t) / 60.0))
+		main._toast(tr("MSG_TRADER_IN") % maxi(1, ceili((COME * main.economy.tf() - t) / 60.0)))
 		return
 	_build()
 
@@ -99,6 +105,44 @@ func _build() -> void:
 		sb.disabled = e.stock.get(k, 0) < 1 or paid + sell_price(k) > 5
 		sb.pressed.connect(func(): _sell(k))
 		grid.add_child(sb)
+	# Tauschhandel wie im Browser: Ware gegen Ware
+	main.hud._lbl(vb, "🔁 " + tr("MARKET_BARTER"), 16, gold)
+	var tb := HBoxContainer.new()
+	vb.add_child(tb)
+	var give := OptionButton.new()
+	var take := OptionButton.new()
+	for ob in [give, take]:
+		ob.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		for k in VAL:
+			ob.add_item("%s (%d)" % [tr("ITEM_" + k.to_upper()), e.stock.get(k, 0)])
+			ob.set_item_metadata(ob.item_count - 1, k)
+	give.select(VAL.keys().find(_tg))
+	take.select(VAL.keys().find(_tt))
+	var info := Label.new()
+	info.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	var do := Button.new()
+	do.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	do.text = tr("MARKET_SWAP")
+	var upd := func():
+		var c := trade_cost(_tg, _tt)
+		info.text = "  %d× %s → 1× %s  " % [c, tr("ITEM_" + _tg.to_upper()), tr("ITEM_" + _tt.to_upper())]
+		do.disabled = _tg == _tt or int(e.stock.get(_tg, 0)) < c
+	give.item_selected.connect(func(i): _tg = give.get_item_metadata(i); upd.call())
+	take.item_selected.connect(func(i): _tt = take.get_item_metadata(i); upd.call())
+	do.pressed.connect(func():
+		var c := trade_cost(_tg, _tt)
+		if not here or _tg == _tt or int(e.stock.get(_tg, 0)) < c:
+			return
+		e.stock[_tg] -= c
+		e.note("use", _tg, c)
+		e.add(_tt, 1)
+		_coin()
+		_refresh())
+	tb.add_child(give)
+	tb.add_child(take)
+	tb.add_child(info)
+	tb.add_child(do)
+	upd.call()
 	var close := Button.new()
 	close.text = "UI_CLOSE"
 	close.pressed.connect(func(): _win.queue_free(); _win = null)

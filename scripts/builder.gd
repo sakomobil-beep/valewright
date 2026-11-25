@@ -729,6 +729,7 @@ func place_loaded(sv: Dictionary) -> void:
 	if t == "wohnhaus":
 		rec.merge({"lvl": lvl, "sat": int(sv.get("sat", 0)), "bad": 0, "ht": 0.0, "tax": 0.0, "status": "ST_HOUSE_OK", "miss": []})
 	buildings.append(rec)
+	terrain.clear_stumps(p, float(economy.type_info(t).r) * SCALE + 1.2)
 	economy.buildings.append(rec)
 	rec["in"] = sv.get("in", {}).duplicate()
 	rec.inc = {}
@@ -786,6 +787,7 @@ func confirm() -> void:
 	var rec := {"type": placing, "pos": p, "node": n, "build": 0.0, "s": SCALE, "t": 0.0, "status": "ST_BUILDING"}
 	buildings.append(rec)
 	economy.buildings.append(rec)
+	terrain.clear_stumps(p, float(economy.type_info(placing).r) * SCALE + 1.2)
 	if settlers:
 		settlers.sfx("place")
 		settlers.on_building_placed(rec)

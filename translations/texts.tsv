@@ -418,3 +418,5 @@ NOTE_NO_FOOD	🍞 Kein Brot, Fisch oder Schinken – die Minen stehen still! Bau
 ORD_POST	Passenden Kämpfer hierher schicken	Send a fitting fighter here
 MSG_NO_FIT	Kein freier Kämpfer passt in diesen Turm	No free fighter fits this tower
 ORD_SLOTS	Plätze: ⚔️ %d · 🏹 %d	Slots: ⚔️ %d · 🏹 %d
+MARKET_BARTER	Tauschen (Ware gegen Ware)	Barter (goods for goods)
+MARKET_SWAP	Tauschen	Swap

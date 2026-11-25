@@ -507,7 +507,7 @@ func nearest_tree(p: Vector3, r: float, alive := true):
 	var best = null
 	var bd := r
 	for t in trees:
-		if t.alive != alive:
+		if t.alive != alive or t.get("blocked", false):
 			continue
 		var d := Vector2(t.pos.x - p.x, t.pos.z - p.z).length()
 		if d < bd:
@@ -581,6 +581,16 @@ func _show_stump(t: Dictionary, on: bool) -> void:
 	elif t.has("stump"):
 		stump_mm.set_instance_transform(t.stump, Transform3D(Basis().scaled(Vector3.ONE * 0.001), Vector3(0, -50, 0)))
 		t.erase("stump")
+
+# Baumstümpfe unter einem neuen Gebäude entfernen (wie clearStumps im Browser)
+func clear_stumps(p: Vector3, r: float) -> void:
+	for t in trees:
+		if t.alive and Vector2(t.pos.x - p.x, t.pos.z - p.z).length() < r:
+			fell_tree(t, null, true)   # Bäume unter dem Bauplatz verschwinden (clearTrees)
+		if Vector2(t.pos.x - p.x, t.pos.z - p.z).length() < r:
+			t.blocked = true   # Förster pflanzt hier nicht wieder
+		if t.has("stump") and Vector2(t.pos.x - p.x, t.pos.z - p.z).length() < r:
+			_show_stump(t, false)
 
 # ---------- Unterholz: Büsche & Farne (wie im Browser) ----------
 func _build_undergrowth() -> void:
