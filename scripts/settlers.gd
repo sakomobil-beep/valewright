@@ -307,6 +307,29 @@ func _carry(w: Dictionary, item) -> void:
 		w.carry = null
 	if item == null:
 		return
+	if item == "angel":
+		var rod := MeshInstance3D.new()
+		var rb := BoxMesh.new()
+		rb.size = Vector3(0.03, 0.03, 1.9)
+		rod.mesh = rb
+		var rm := StandardMaterial3D.new()
+		rm.albedo_color = Color(0.45, 0.32, 0.2)
+		rod.material_override = rm
+		rod.position = Vector3(0.12, 0.95, 0.75) / WORKER_SCALE * 1.5
+		rod.rotation.x = -0.45
+		var line := MeshInstance3D.new()
+		var lb := BoxMesh.new()
+		lb.size = Vector3(0.008, 1.2, 0.008)
+		line.mesh = lb
+		var lm := StandardMaterial3D.new()
+		lm.albedo_color = Color(0.92, 0.92, 0.92)
+		line.material_override = lm
+		line.position = Vector3(0, -0.55, 0.95)
+		line.rotation.x = 0.45
+		rod.add_child(line)
+		w.node.add_child(rod)
+		w.carry = rod
+		return
 	if item == "karre":
 		w.carry = _cart()
 		w.node.add_child(w.carry)
@@ -467,6 +490,11 @@ func _animate(w: Dictionary, dt: float) -> void:
 			lr.rotation.x = 0.0
 			ar.rotation.x = -1.4 + sin(t * 7.0) * 1.1
 			al.rotation.x = -0.4
+		"fish":
+			ll.rotation.x = 0.0
+			lr.rotation.x = 0.0
+			ar.rotation.x = -0.9 + sin(t * 1.5) * 0.15
+			al.rotation.x = -0.9 + sin(t * 1.5) * 0.15
 		"hop":
 			var hp := absf(sin(t * 7.0))
 			w.node.position.y = terrain.walk_height(w.node.position.x, w.node.position.z) + hp * 0.35
@@ -737,7 +765,31 @@ func _fisher_job(w: Dictionary, b: Dictionary) -> void:
 		b.status = "ST_NO_FISH"
 		w.q = [{"wait": 5.0}, {"fn": func(): _next_job(w)}]
 		return
-	# Anlegestelle: vom Fangplatz Richtung Haus bis ans Ufer
+	# Kleiner See: kein Platz für ein Boot – er wirft die Angel vom Ufer aus
+	if absf(spot.x - terrain.river_x(spot.z)) > 10.0 * terrain.river_w:
+		var d2: Vector3 = (b.pos - spot)
+		d2.y = 0
+		d2 = d2.normalized()
+		var sh: Vector3 = spot
+		for k in 80:
+			if not _water_at(sh.x, sh.z) and terrain.height(sh.x, sh.z) > terrain.WATER_Y + 0.15:
+				break
+			sh += d2 * 0.5
+		sh.y = terrain.height(sh.x, sh.z)
+		b.status = "ST_WORKING"
+		w.q = [
+			{"go": sh},
+			{"face": spot},
+			{"fn": func(): _carry(w, "angel")},
+			{"anim": "fish", "wait": economy.WORK_TIME * 0.7},
+			{"fn": func(): sfx("chop", -18.0); _carry(w, "fisch")},
+			{"go": door_of(b)},
+			{"fn": func(): _carry(w, null); economy.pending.append({"b": b, "item": "fisch"})},
+			{"wait": 2.0},
+			{"fn": func(): _next_job(w)},
+		]
+		return
+	# Fluss: Anlegestelle vom Fangplatz Richtung Haus bis ans Ufer
 	if not b.has("boat"):
 		var dir: Vector3 = (b.pos - spot)
 		dir.y = 0
