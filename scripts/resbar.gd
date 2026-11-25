@@ -147,7 +147,7 @@ func _update() -> void:
 				continue
 			if w.role == "traeger":
 				car += 1
-			elif w.role != "soldat":
+			elif not w.role in ["soldat", "kind", "dorf"]:
 				work += 1
 		var fig := 0
 		if military:

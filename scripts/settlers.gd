@@ -465,6 +465,18 @@ func _animate(w: Dictionary, dt: float) -> void:
 			lr.rotation.x = 0.0
 			ar.rotation.x = -1.4 + sin(t * 7.0) * 1.1
 			al.rotation.x = -0.4
+		"hop":
+			var hp := absf(sin(t * 7.0))
+			w.node.position.y = terrain.walk_height(w.node.position.x, w.node.position.z) + hp * 0.35
+			al.rotation.x = -2.6 * hp
+			ar.rotation.x = -2.6 * hp
+			ll.rotation.x = 0.0
+			lr.rotation.x = 0.0
+		"talk":
+			ll.rotation.x = 0.0
+			lr.rotation.x = 0.0
+			ar.rotation.x = -0.5 + sin(t * 3.3) * 0.35
+			al.rotation.x = lerpf(al.rotation.x, 0.0, dt * 4.0)
 		"saw":
 			ll.rotation.x = 0.0
 			lr.rotation.x = 0.0

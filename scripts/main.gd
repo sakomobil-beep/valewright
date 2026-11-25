@@ -214,6 +214,11 @@ func _setup_stock() -> void:
 	grass.rig = $Kamera
 	grass.economy = economy
 	add_child(grass)
+	var villagers := preload("res://scripts/villagers.gd").new()
+	villagers.name = "Dorfleben"
+	villagers.settlers = settlers
+	villagers.economy = economy
+	add_child(villagers)
 	var effects := preload("res://scripts/effects.gd").new()
 	effects.name = "Effekte"
 	effects.economy = economy

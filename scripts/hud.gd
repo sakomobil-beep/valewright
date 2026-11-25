@@ -293,7 +293,7 @@ func _fill_window() -> void:
 		return
 	if _win_kind == "stats":
 		_lbl(vb, "📊 " + tr("UI_STATS"), 20, gold)
-		var people: int = main.settlers.workers.size()
+		var people: int = main.settlers.workers.filter(func(w): return not w.role in ["kind", "dorf"] and not w.get("dead", false)).size()
 		var sold: int = main.military.soldiers.filter(func(s): return s.owner == 0).size()
 		_lbl(vb, "👥 %s %d   ⚔️ %s %d   🏠 %s %d" % [tr("ST_SETTLERS"), people, tr("ST_SOLDIERS"), sold, tr("ST_BUILDINGS"), e.buildings.size()])
 		_lbl(vb, tr("ST_TABLE_HEAD"), 13, gold)
