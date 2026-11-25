@@ -1203,11 +1203,11 @@
    "icon": "🏡",
    "types": [
     "wohnhaus",
+    "lager",
+    "bruecke",
     "wirtshaus",
     "markt",
-    "denkmal",
-    "lager",
-    "bruecke"
+    "denkmal"
    ]
   },
   {
@@ -1217,20 +1217,22 @@
     "holzfaeller",
     "foerster",
     "saegewerk",
-    "steinmetz"
+    "steinmetz",
+    "lehmgrube",
+    "toepfer"
    ]
   },
   {
    "key": "CAT_LANDWIRTSCHAFT",
    "icon": "🌾",
    "types": [
-    "bauernhof",
     "brunnen",
+    "bauernhof",
     "fischer",
     "schweinezucht",
     "kuhstall",
-    "schaefer",
     "hopfenbauer",
+    "schaefer",
     "imker",
     "flachsbauer",
     "winzer"
@@ -1244,8 +1246,8 @@
     "baeckerei",
     "metzger",
     "raeucherei",
-    "kaeserei",
     "brauerei",
+    "kaeserei",
     "konditorei",
     "kelterei"
    ]
@@ -1258,8 +1260,8 @@
     "steinmine",
     "kohlemine",
     "eisenmine",
-    "goldmine",
-    "koehler"
+    "koehler",
+    "goldmine"
    ]
   },
   {
@@ -1268,8 +1270,9 @@
    "types": [
     "schmelze",
     "schmied",
+    "wagner",
     "muenzpraege",
-    "wagner"
+    "goldschmied"
    ]
   },
   {
@@ -1278,22 +1281,19 @@
    "types": [
     "weberei",
     "schneider",
-    "seilerei",
-    "lehmgrube",
-    "toepfer",
-    "goldschmied"
+    "seilerei"
    ]
   },
   {
    "key": "CAT_MILITAER",
    "icon": "⚔️",
    "types": [
-    "waffenschnitzer",
-    "bogenbauer",
-    "waffenschmied",
-    "kaserne",
     "wachstube",
     "wachturm",
+    "waffenschnitzer",
+    "waffenschmied",
+    "bogenbauer",
+    "kaserne",
     "wehrturm",
     "burg"
    ]
