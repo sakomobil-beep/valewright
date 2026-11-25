@@ -15,6 +15,8 @@ var trees: Array = []   # {pos, mm, i, t, alive}
 var rocks: Array = []   # {pos, i, t, left}
 var rock_mm: MultiMesh
 var bridges: Array = []   # {a, b, y}
+var deposits: Array = []  # {pos, kind, found, node}
+const DEPOSIT_KINDS := ["stein", "kohle", "eisenerz", "gold"]
 
 func _init() -> void:
 	noise.seed = 4711
@@ -67,6 +69,7 @@ func _ready() -> void:
 	_build_water()
 	_build_trees()
 	_build_rocks()
+	_make_deposits()
 
 func _ground_color(x: float, z: float, h: float, steep: float) -> Color:
 	var grass := Color(0.47, 0.62, 0.27).lerp(Color(0.36, 0.52, 0.22), clampf(detail.get_noise_2d(x * 0.6, z * 0.6) + 0.5, 0.0, 1.0))
@@ -392,3 +395,54 @@ func bridge_mesh(span: Dictionary) -> Node3D:
 	g.position = Vector3((a.x + b.x) / 2, 0, (a.z + b.z) / 2)
 	g.rotation.y = atan2(b.x - a.x, b.z - a.z)
 	return g
+
+## --- Bodenschätze in den Bergen (der Rutengänger findet sie) ---
+func _make_deposits() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 314
+	for m in mountains:
+		var kinds: Array = DEPOSIT_KINDS.duplicate()
+		for k in 8:
+			var ang := rng.randf() * TAU
+			var r: float = rng.randf_range(0.35, 0.95) * m.r
+			var x: float = m.p.x + cos(ang) * r
+			var z: float = m.p.y + sin(ang) * r
+			var kind: String = kinds[k % kinds.size()] if k < 4 else kinds[rng.randi() % kinds.size()]
+			deposits.append({"pos": Vector3(x, height(x, z), z), "kind": kind, "found": false, "node": null})
+
+func deposit_near(p: Vector3, kind: String, r: float):
+	for d in deposits:
+		if d.found and d.kind == kind and Vector2(d.pos.x - p.x, d.pos.z - p.z).length() < r:
+			return d
+	return null
+
+const DEPOSIT_COL := {"stein": Color(0.7, 0.7, 0.7), "kohle": Color(0.12, 0.12, 0.12), "eisenerz": Color(0.62, 0.32, 0.2), "gold": Color(1.0, 0.82, 0.2)}
+
+func reveal_deposit(d: Dictionary) -> void:
+	d.found = true
+	var g := Node3D.new()
+	var pole := MeshInstance3D.new()
+	var pm := CylinderMesh.new()
+	pm.top_radius = 0.05
+	pm.bottom_radius = 0.05
+	pm.height = 2.0
+	pole.mesh = pm
+	var wood := StandardMaterial3D.new()
+	wood.albedo_color = Color(0.4, 0.28, 0.16)
+	pole.material_override = wood
+	pole.position.y = 1.0
+	g.add_child(pole)
+	var flag := MeshInstance3D.new()
+	var fm := BoxMesh.new()
+	fm.size = Vector3(0.7, 0.45, 0.04)
+	flag.mesh = fm
+	var fmat := StandardMaterial3D.new()
+	fmat.albedo_color = DEPOSIT_COL[d.kind]
+	fmat.emission_enabled = d.kind == "gold"
+	fmat.emission = Color(0.6, 0.45, 0.05)
+	flag.material_override = fmat
+	flag.position = Vector3(0.38, 1.75, 0)
+	g.add_child(flag)
+	g.position = d.pos
+	add_child(g)
+	d.node = g

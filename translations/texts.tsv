@@ -142,3 +142,7 @@ BLD_BRUECKE	Brücke	Bridge
 UI_BRIDGE_HINT	Zeige auf den Fluss – die Brücke spannt sich von Ufer zu Ufer	Point at the river – the bridge spans from bank to bank
 ST_DONE	Fertig	Finished
 ST_NO_TOOL	Wartet auf Werkzeug 🔨	Waiting for tools 🔨
+UI_NEED_DEPOSIT	Hier ist kein gefundenes Vorkommen – erst den Rutengänger suchen lassen	No discovered deposit here – let the dowser search first
+ST_SEARCHING	Sucht nach Bodenschätzen	Searching for deposits
+ST_NOTHING_FOUND	Nichts mehr zu finden	Nothing left to find
+MSG_DEPOSIT	🪄 Vorkommen gefunden: %s	🪄 Deposit found: %s

@@ -210,16 +210,16 @@ func _update_ghost_rot() -> void:
 
 func can_place(p: Vector3) -> bool:
 	var r: float = float(economy.data.types[placing].r) * SCALE
+	var info: Dictionary = economy.type_info(placing)
+	if info.get("mine") != null:
+		# Bergwerke nur an einem gefundenen Vorkommen (Rutengänger!)
+		return terrain.deposit_near(p, info.mine, 6.0) != null and _no_overlap(p, r)
 	for a in [0.0, PI / 2, PI, PI * 1.5]:
 		var q := p + Vector3(cos(a), 0, sin(a)) * r
 		if terrain.height(q.x, q.z) < terrain.WATER_Y + 0.4:
 			return false
 		if absf(terrain.height(q.x, q.z) - p.y) > 1.6:
 			return false
-	var info: Dictionary = economy.type_info(placing)
-	if info.get("mine") != null:
-		# Bergwerke nur am Berg
-		return terrain.mountain(p.x, p.z) > 2.5 and terrain.height(p.x, p.z) > terrain.WATER_Y + 0.5 and _no_overlap(p, r)
 	if terrain.mountain(p.x, p.z) > 6.0:
 		return false
 	if placing == "fischer" and not _water_near(p, 10.0):
@@ -312,6 +312,8 @@ func _unhandled_input(e: InputEvent) -> void:
 				confirm_box.visible = true
 				hint.text = tr("UI_BUILD_CHOSEN")
 				_tint(ghost, true)
+			elif economy.type_info(placing).get("mine") != null:
+				hint.text = tr("UI_NEED_DEPOSIT")
 			else:
 				hint.text = tr("UI_BUILD_BLOCKED")
 	elif e is InputEventKey and e.pressed:

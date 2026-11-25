@@ -23,9 +23,9 @@ var unl := 0     # Freischalt-Stufe (steigt mit zufriedenen Wohnhäusern)
 const BUILD_TIME := 8.0
 const WORK_TIME := 10.0
 # Diese Berufe arbeiten draußen in der Welt (siehe settlers.gd)
-const FIELD_WORKERS := ["holzfaeller", "steinmetz", "foerster"]
+const FIELD_WORKERS := ["holzfaeller", "steinmetz", "foerster", "rutengaenger"]
 # Diese Gebäude produzieren (noch) keine Waren
-const NO_PRODUCTION := ["wohnhaus", "denkmal", "kaserne", "wirtshaus", "rutengaenger", "lager", "markt", "burg", "wachturm", "wachstube", "wehrturm"]
+const NO_PRODUCTION := ["wohnhaus", "denkmal", "kaserne", "wirtshaus", "lager", "markt", "burg", "wachturm", "wachstube", "wehrturm"]
 # Mengen, die von 1 abweichen
 const AMOUNT := {"saegewerk": {"bretter": 2}, "bogenbauer": {"pfeile": 5}, "imker": {"honig": 2}}
 

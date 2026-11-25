@@ -127,7 +127,7 @@ func on_building_placed(b: Dictionary) -> void:
 	]
 
 func _on_built(b: Dictionary) -> void:
-	if b.type in ["holzfaeller", "steinmetz", "foerster"] or economy.produces(b.type):
+	if b.type in ["holzfaeller", "steinmetz", "foerster", "rutengaenger"] or economy.produces(b.type):
 		# Jeder neue Arbeiter braucht Werkzeug
 		if economy.stock.get("werkzeug", 0) < 1:
 			b.status = "ST_NO_TOOL"
@@ -192,6 +192,30 @@ func _next_job(w: Dictionary) -> void:
 				{"go": _beside(tr_.pos, b.pos)},
 				{"anim": "plant", "wait": 2.5},
 				{"fn": func(): terrain.plant_tree(tr_); reserved.erase(tr_.pos)},
+				{"go": door_of(b)},
+				{"wait": 3.0},
+				{"fn": func(): _next_job(w)},
+			]
+		"rutengaenger":
+			var best = null
+			var bd := 45.0
+			for d in terrain.deposits:
+				if d.found or reserved.has(d.pos):
+					continue
+				var dist := Vector2(d.pos.x - b.pos.x, d.pos.z - b.pos.z).length()
+				if dist < bd:
+					bd = dist
+					best = d
+			if best == null:
+				b.status = "ST_NOTHING_FOUND"
+				w.q = [{"wait": 10.0}, {"fn": func(): _next_job(w)}]
+				return
+			b.status = "ST_SEARCHING"
+			reserved[best.pos] = true
+			w.q = [
+				{"go": best.pos},
+				{"anim": "plant", "wait": 4.0},
+				{"fn": func(): terrain.reveal_deposit(best); reserved.erase(best.pos); economy.message.emit(tr("MSG_DEPOSIT") % tr("ITEM_" + ("GOLDERZ" if best.kind == "gold" else String(best.kind).to_upper())))},
 				{"go": door_of(b)},
 				{"wait": 3.0},
 				{"fn": func(): _next_job(w)},
