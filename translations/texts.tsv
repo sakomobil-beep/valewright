@@ -437,3 +437,7 @@ ST_DRAW_WATER	Schöpft Wasser	Drawing water
 INFO_FIELDS	Felder: %d · reif: %d · wachsend: %d	Fields: %d · ripe: %d · growing: %d
 NG_LEGEND	🟡 Dein Startplatz · 🌲 Wald · ⛰️ Berge · 💧 Wasser	🟡 Your start · 🌲 Forest · ⛰️ Mountains · 💧 Water
 BLD_HAUPTHAUS	Haupthaus	Town Hall
+SPD_PAUSE	Pause (Leertaste)	Pause (space)
+SPD_NORMAL	Normale Geschwindigkeit	Normal speed
+SPD_FAST	Doppelt so schnell	Double speed
+SPD_FASTEST	Vierfach schnell	Four times as fast

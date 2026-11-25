@@ -50,20 +50,21 @@ func setup(l: CanvasLayer) -> void:
 	bar.add_child(hb)
 	for sp in [[0.0, "⏸"], [1.0, "▶"], [2.0, "⏩"], [4.0, "⏭"]]:
 		var b := _icon_btn(hb, sp[1], func(): set_speed(sp[0]))
+		b.tooltip_text = tr({0.0: "SPD_PAUSE", 1.0: "SPD_NORMAL", 2.0: "SPD_FAST", 4.0: "SPD_FASTEST"}[sp[0]])
 		_speed_btns.append([b, sp[0]])
 	hb.add_child(VSeparator.new())
-	_icon_btn(hb, "📊", func(): open_window("stats")).tooltip_text = "UI_STATS"
-	_icon_btn(hb, "📈", func(): open_window("balance")).tooltip_text = "UI_BALANCE"
-	_icon_btn(hb, "🔗", func(): open_window("chains")).tooltip_text = "UI_CHAINS"
-	_icon_btn(hb, "⚔️", func(): open_window("military")).tooltip_text = "UI_MILITARY"
-	_icon_btn(hb, "🏪", func(): main.market.open()).tooltip_text = "UI_MARKET"
+	_icon_btn(hb, "📊", func(): open_window("stats")).tooltip_text = tr("UI_STATS")
+	_icon_btn(hb, "📈", func(): open_window("balance")).tooltip_text = tr("UI_BALANCE")
+	_icon_btn(hb, "🔗", func(): open_window("chains")).tooltip_text = tr("UI_CHAINS")
+	_icon_btn(hb, "⚔️", func(): open_window("military")).tooltip_text = tr("UI_MILITARY")
+	_icon_btn(hb, "🏪", func(): main.market.open()).tooltip_text = tr("UI_MARKET")
 	hb.add_child(VSeparator.new())
-	_icon_btn(hb, "🏷️", toggle_labels).tooltip_text = "UI_LABELS"
+	_icon_btn(hb, "🏷️", toggle_labels).tooltip_text = tr("UI_LABELS")
 	_sound_btn = _icon_btn(hb, "🔊", toggle_sound)
-	_sound_btn.tooltip_text = "UI_SOUND"
+	_sound_btn.tooltip_text = tr("UI_SOUND")
 	_bell = _icon_btn(hb, "🔔", func(): open_window("news"))
-	_bell.tooltip_text = "UI_NEWS"
-	_icon_btn(hb, "☰", func(): main.gameui.pause_menu()).tooltip_text = "UI_MENU_BTN"
+	_bell.tooltip_text = tr("UI_NEWS")
+	_icon_btn(hb, "☰", func(): main.gameui.pause_menu()).tooltip_text = tr("UI_MENU_BTN")
 	main.economy.message.connect(_log_news)
 	set_speed(1.0)
 	_setup_minimap()

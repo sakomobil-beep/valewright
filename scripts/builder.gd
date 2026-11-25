@@ -156,7 +156,7 @@ func setup_ui(layer: CanvasLayer) -> void:
 		b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		b.custom_minimum_size = Vector2(44, 34)
 		b.text = a[1]
-		b.tooltip_text = "ACT_" + a[0].to_upper()
+		b.tooltip_text = tr("ACT_" + a[0].to_upper())
 		b.pressed.connect(func(): _action(a[0]))
 		act_box.add_child(b)
 		act_btns[a[0]] = b
@@ -171,7 +171,7 @@ func setup_ui(layer: CanvasLayer) -> void:
 		ob.text = o[2]
 		ob.set_meta("for", o[0])
 		if o[1] == "post":
-			ob.tooltip_text = "ORD_POST"
+			ob.tooltip_text = tr("ORD_POST")
 		ob.pressed.connect(func(): _order(o[0], o[1]))
 		order_box.add_child(ob)
 	# eigenes Bau-Fenster: Hinweis oben, darunter Bauen / Drehen / Abbrechen
