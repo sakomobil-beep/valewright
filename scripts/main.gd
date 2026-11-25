@@ -27,6 +27,7 @@ var builder: Node3D
 
 var terrain: Node3D
 var fps_label: Label
+var rb
 var ui_layer: CanvasLayer
 var toast_box: VBoxContainer
 
@@ -71,6 +72,8 @@ func _ready() -> void:
 	add_child(military)
 	settlers.military = military
 	builder.military = military
+	rb.settlers = settlers
+	rb.military = military
 	missions = Missions.new()
 	missions.name = "Missionen"
 	missions.main = self
@@ -194,45 +197,16 @@ func _setup_ui() -> void:
 	sb.set_corner_radius_all(10)
 	sb.set_content_margin_all(10)
 	panel.add_theme_stylebox_override("panel", sb)
-	panel.position = Vector2(14, 14)
-	layer.add_child(panel)
-	var vb := VBoxContainer.new()
-	panel.add_child(vb)
-	var title := Label.new()
-	title.text = "UI_TITLE"
-	title.add_theme_color_override("font_color", Color(0.91, 0.77, 0.42))
-	title.add_theme_font_size_override("font_size", 20)
-	vb.add_child(title)
-	var info := Label.new()
-	info.text = "UI_STAGE6"
-	vb.add_child(info)
-	info.add_theme_color_override("font_color", Color(0.96, 0.9, 0.78))
-	var mb := Button.new()
-	mb.text = "UI_MENU_BTN"
-	mb.pressed.connect(func(): gameui.pause_menu())
-	vb.add_child(mb)
+	panel.free()
 	fps_label = Label.new()
-	fps_label.add_theme_color_override("font_color", Color(0.7, 0.85, 0.6))
-	vb.add_child(fps_label)
 
 func _setup_stock() -> void:
-	var panel := PanelContainer.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.165, 0.114, 0.07, 0.88)
-	sb.border_color = Color(0.79, 0.64, 0.29)
-	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(10)
-	sb.set_content_margin_all(8)
-	panel.add_theme_stylebox_override("panel", sb)
-	panel.anchor_left = 0.5
-	panel.anchor_right = 0.5
-	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	panel.offset_top = 12
-	ui_layer.add_child(panel)
+	rb = preload("res://scripts/resbar.gd").new()
+	rb.economy = economy
+	rb.settlers = settlers
+	rb.military = military
+	ui_layer.add_child(rb)
 	stock_label = Label.new()
-	stock_label.add_theme_font_size_override("font_size", 20)
-	stock_label.add_theme_color_override("font_color", Color(0.96, 0.9, 0.78))
-	panel.add_child(stock_label)
 	economy.changed.connect(_update_stock)
 	var grass := preload("res://scripts/grass.gd").new()
 	grass.name = "Gras"

@@ -53,19 +53,21 @@ func setup_ui(layer: CanvasLayer) -> void:
 	layer.add_child(bar)
 	var vb := VBoxContainer.new()
 	bar.add_child(vb)
+	type_scroll = ScrollContainer.new()
+	type_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	type_scroll.visible = false
+	vb.add_child(type_scroll)
 	type_row = HBoxContainer.new()
 	type_row.add_theme_constant_override("separation", 6)
-	type_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	type_row.visible = false
-	vb.add_child(type_row)
+	type_scroll.add_child(type_row)
 	var cat_row := HBoxContainer.new()
 	cat_row.add_theme_constant_override("separation", 6)
 	cat_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	vb.add_child(cat_row)
 	for c in economy.data.cats:
 		var cb := Button.new()
-		cb.text = c.key
-		cb.custom_minimum_size = Vector2(110, 36)
+		cb.text = c.icon + " " + tr(c.key)
+		cb.custom_minimum_size = Vector2(118, 40)
 		cb.pressed.connect(func(): _open_cat(c))
 		cat_row.add_child(cb)
 	_refresh_buttons()
@@ -159,35 +161,104 @@ func _open_cat(c: Dictionary) -> void:
 	_buttons.clear()
 	if _open == c.key:
 		_open = ""
-		type_row.visible = false
+		type_scroll.visible = false
 		return
 	_open = c.key
+	var n := 0
 	for t in c.types:
 		if not economy.data.types.has(t):
 			continue
-		var b := Button.new()
-		b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-		b.custom_minimum_size = Vector2(110, 52)
-		b.pressed.connect(func(): start(t))
-		type_row.add_child(b)
-		_buttons[t] = b
-	type_row.visible = true
+		n += 1
+		type_row.add_child(_card(t))
+	# Karten wie im Browser: Bild, Name, Kosten, Rezept – scrollbar, falls zu viele
+	type_scroll.custom_minimum_size = Vector2(mini(n * 126, int(get_viewport().get_visible_rect().size.x) - 60), 182)
+	type_scroll.visible = true
 	_refresh_buttons()
+
+func _card(t: String) -> Button:
+	var b := Button.new()
+	b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	b.custom_minimum_size = Vector2(120, 172)
+	b.pressed.connect(func(): if economy.is_unlocked(t): start(t))
+	var vb := VBoxContainer.new()
+	vb.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vb.offset_left = 4
+	vb.offset_right = -4
+	vb.offset_top = 4
+	vb.offset_bottom = -4
+	vb.add_theme_constant_override("separation", 1)
+	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(vb)
+	var img := TextureRect.new()
+	img.texture = UiIcons.bld_tex(t)
+	img.custom_minimum_size = Vector2(0, 78)
+	img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	img.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(img)
+	var nm := Label.new()
+	nm.text = tr(_key(t))
+	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	nm.add_theme_font_size_override("font_size", 14)
+	nm.add_theme_color_override("font_color", Color(1, 0.93, 0.75))
+	nm.clip_text = true
+	vb.add_child(nm)
+	vb.add_child(UiIcons.cost_row(economy.type_info(t).cost, 18))
+	var rc := RichTextLabel.new()
+	rc.bbcode_enabled = true
+	rc.fit_content = true
+	rc.scroll_active = false
+	rc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rc.add_theme_font_size_override("normal_font_size", 11)
+	rc.text = "[center]" + _recipe(t) + "[/center]"
+	vb.add_child(rc)
+	var lock := Label.new()
+	lock.name = "Lock"
+	lock.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lock.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lock.add_theme_font_size_override("font_size", 11)
+	lock.add_theme_color_override("font_color", Color(1, 0.9, 0.7))
+	lock.position = Vector2(6, 6)
+	lock.size = Vector2(108, 0)
+	var lsb := StyleBoxFlat.new()
+	lsb.bg_color = Color(0.1, 0.07, 0.04, 0.85)
+	lsb.set_corner_radius_all(6)
+	lsb.set_content_margin_all(3)
+	lock.add_theme_stylebox_override("normal", lsb)
+	lock.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(lock)
+	_buttons[t] = b
+	return b
+
+# Rezept als Symbole: Zutaten → Erzeugnis
+func _recipe(t: String) -> String:
+	if not economy.data.io.has(t):
+		return ""
+	var ins: Array = economy.data.io[t][0]
+	var outs: Array = economy.data.io[t][1]
+	var a := " + ".join(ins.map(func(k): return " / ".join(Array(String(k).split("|")).map(func(x): return UiIcons.bb(x, 16)))))
+	var o := " ".join(outs.map(func(k): return UiIcons.bb(String(k), 16)))
+	if a == "":
+		return o
+	return a + " → " + o
 
 func _refresh_buttons() -> void:
 	for t in _buttons:
+		var b: Button = _buttons[t]
+		var lock: Label = b.get_node("Lock")
 		if not economy.is_unlocked(t):
-			_buttons[t].text = "🔒 " + tr(_key(t)) + "\n" + tr("UI_LOCKED_TIER") % tr("HOUSE_%d" % (int(economy.data.unlock[t]) - 1))
-			_buttons[t].modulate = Color(0.6, 0.6, 0.6)
+			lock.text = "🔒\n" + tr("LOCK_%d" % (int(economy.data.unlock[t]) - 1))
+			b.modulate = Color(0.55, 0.55, 0.55)
 			continue
-		_buttons[t].text = economy.type_info(t).icon + " " + tr(_key(t)) + "\n" + economy.cost_text(t)
-		_buttons[t].modulate = Color.WHITE if economy.can_afford(t) else Color(1, 0.6, 0.6)
+		lock.text = ""
+		b.modulate = Color.WHITE if economy.can_afford(t) else Color(1, 0.65, 0.65)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSLATION_CHANGED and economy:
 		_refresh_buttons()
 
 var _span = null
+var type_scroll: ScrollContainer
 
 func model(t: String, lvl := 0) -> Node3D:
 	if t == "bruecke":

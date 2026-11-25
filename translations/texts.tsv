@@ -134,7 +134,7 @@ ST_HOUSE_OK	Zufrieden 😊	Happy 😊
 ST_HOUSE_MISSING	Es fehlt:	Missing:
 ST_HOUSE_NEXT	Zufrieden 😊 · Für den Aufstieg fehlt:	Happy 😊 · To upgrade it needs:
 UI_SATISFACTION	Zufriedenheit:	Satisfaction:
-UI_LOCKED_TIER	ab zufriedenem %s	needs a happy %s
+UI_LOCKED_TIER	ab der ersten zufriedenen Stufe „%s“	needs a happy %s
 MSG_UNLOCKED	🔓 Neue Gebäude freigeschaltet!	🔓 New buildings unlocked!
 MSG_HOUSE_UP	⬆️ Ein Wohnhaus ist zum %s aufgestiegen!	⬆️ A house has become a %s!
 MSG_HOUSE_DOWN	😟 Ein Wohnhaus ist abgestiegen – es fehlen Waren.	😟 A house has declined – goods are missing.
@@ -345,3 +345,17 @@ SETG_HOCH	Viel (schöner)	High (prettier)
 SETG_MITTEL	Mittel	Medium
 SETG_NIEDRIG	Wenig (schneller)	Low (faster)
 SETG_AUS	Aus	Off
+LOCK_0	ab der ersten zufriedenen Hütte	after your first happy hut
+LOCK_1	ab dem ersten zufriedenen Bauernhaus	after your first happy farmhouse
+LOCK_2	ab dem ersten zufriedenen Fachwerkhaus	after your first happy timber house
+LOCK_3	ab dem ersten zufriedenen Bürgerhaus	after your first happy townhouse
+LOCK_4	ab dem ersten zufriedenen Herrenhaus	after your first happy manor
+GRP_BAU	Baustoffe	Building materials
+GRP_ESSEN	Essen	Food
+GRP_LAND	Landwirtschaft	Farming
+GRP_ERZE	Erze	Ores
+GRP_METALL	Metall	Metal
+GRP_HANDWERK	Handwerk	Crafts
+GRP_WAFFEN	Waffen	Weapons
+POP_TIP	👥 Arbeiter · 🧺 Träger · ⚔️ Kämpfer	👥 workers · 🧺 carriers · ⚔️ fighters
+POP_SHORT	⚠️ Träger kommen nicht hinterher (%d Waren warten). Baue Wohnhäuser oder ein Lagerhaus.	⚠️ Carriers can't keep up (%d goods waiting). Build houses or a warehouse.

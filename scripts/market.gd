@@ -78,12 +78,15 @@ func _build() -> void:
 	grid.add_theme_constant_override("h_separation", 10)
 	sc.add_child(grid)
 	for k in VAL:
+		var row := HBoxContainer.new()
+		row.custom_minimum_size = Vector2(220, 0)
+		row.add_child(UiIcons.icon_rect(k, 26))
 		var nl := Label.new()
 		nl.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-		nl.text = "%s %s (%d)" % [e.icon(k), tr("ITEM_" + k.to_upper()), e.stock.get(k, 0)]
-		nl.custom_minimum_size = Vector2(220, 0)
+		nl.text = "%s (%d)" % [tr("ITEM_" + k.to_upper()), e.stock.get(k, 0)]
 		nl.add_theme_color_override("font_color", Color(0.96, 0.9, 0.78))
-		grid.add_child(nl)
+		row.add_child(nl)
+		grid.add_child(row)
 		var bb := Button.new()
 		bb.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		bb.text = tr("MARKET_BUY") % buy_price(k)

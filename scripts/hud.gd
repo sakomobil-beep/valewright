@@ -223,13 +223,18 @@ func open_window(kind: String) -> void:
 	sc.add_child(vb)
 	_fill_window()
 
-func _lbl(vb: Control, txt: String, size := 14, col := Color(0.96, 0.9, 0.78)) -> Label:
-	var l := Label.new()
-	l.text = txt
-	l.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+func _lbl(vb: Control, txt: String, size := 14, col := Color(0.96, 0.9, 0.78)) -> Control:
+	# RichTextLabel, damit Warenbilder ([img]) direkt im Text stehen können
+	var l := RichTextLabel.new()
+	l.bbcode_enabled = true
+	l.fit_content = true
+	l.scroll_active = false
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.add_theme_font_size_override("font_size", size)
-	l.add_theme_color_override("font_color", col)
+	l.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	l.custom_minimum_size = Vector2(300, 0)
+	l.add_theme_font_size_override("normal_font_size", size)
+	l.add_theme_color_override("default_color", col)
+	l.text = txt
 	vb.add_child(l)
 	return l
 
@@ -250,7 +255,7 @@ func _fill_window() -> void:
 			var used: int = e.stats.use.get(k, 0)
 			if e.stock.get(k, 0) == 0 and made == 0 and used == 0:
 				continue
-			_lbl(vb, "%s %-14s  %4d   +%d  −%d" % [e.icon(k), tr("ITEM_" + k.to_upper()), e.stock[k], made, used], 13)
+			_lbl(vb, "%s %s  [b]%d[/b]   [color=#9f9]+%d[/color]  [color=#f99]−%d[/color]" % [UiIcons.bb(k, 20), tr("ITEM_" + k.to_upper()), e.stock[k], made, used], 13)
 	else:
 		_lbl(vb, "🔗 " + tr("UI_CHAINS"), 20, gold)
 		_lbl(vb, tr("CHAINS_HINT"), 12)
@@ -270,10 +275,10 @@ func _fill_window() -> void:
 							any = true
 					if not any:
 						miss.append(String(need).split("|")[0])
-				var in_txt := " ".join(ins.map(func(k): return " / ".join(Array(String(k).split("|")).map(func(x): return e.icon(x))))) if ins.size() else tr("CHAINS_NATURE")
-				var out_txt := " ".join(e.outputs(t).map(func(k): return e.icon(k)))
+				var in_txt := " ".join(ins.map(func(k): return " / ".join(Array(String(k).split("|")).map(func(x): return UiIcons.bb(x, 18))))) if ins.size() else tr("CHAINS_NATURE")
+				var out_txt := " ".join(e.outputs(t).map(func(k): return UiIcons.bb(String(k), 18)))
 				var state := "⚪" if live.is_empty() else ("🟠" if miss.size() else "🟢")
-				var line := "%s %s ➜ %s %s ➜ %s" % [state, in_txt, e.type_info(t).icon, tr("BLD_" + t.to_upper()), out_txt]
+				var line := "%s %s ➜ %s %s ➜ %s" % [state, in_txt, "[img=22]res://icons/buildings/%s.png[/img]" % t, tr("BLD_" + t.to_upper()), out_txt]
 				if live.size():
 					line += "   (%d×, %d %s)" % [live.size(), work, tr("CHAINS_WORKING")]
 				if miss.size() and live.size():

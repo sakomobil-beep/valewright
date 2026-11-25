@@ -14,6 +14,9 @@ func _ready() -> void:
 	if emoji and base:
 		var fb := base.fallbacks.duplicate()
 		fb.append(emoji)
+		var sym: Font = load("res://fonts/symbols.ttf")
+		if sym:
+			fb.append(sym)
 		base.fallbacks = fb
 	var cfg := ConfigFile.new()
 	var lang := ""
