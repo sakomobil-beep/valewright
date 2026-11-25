@@ -229,6 +229,19 @@ func setup_ui(layer: CanvasLayer) -> void:
 func _key(t: String) -> String:
 	return "BLD_" + t.to_upper()
 
+func close_cat() -> void:
+	for ch in type_row.get_children():
+		ch.queue_free()
+	_buttons.clear()
+	_open = ""
+	type_scroll.visible = false
+
+# Rechtsklick schließt eine offene Baumenü-Kategorie (auch über dem Menü selbst)
+func _input(e: InputEvent) -> void:
+	if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_RIGHT and placing == "" and _open != "":
+		close_cat()
+		get_viewport().set_input_as_handled()
+
 func _open_cat(c: Dictionary) -> void:
 	for ch in type_row.get_children():
 		ch.queue_free()
