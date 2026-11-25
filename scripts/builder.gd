@@ -417,9 +417,18 @@ func _action(a: String) -> void:
 # Abreißen: die Hälfte der Baukosten kommt zurück
 func _demolish(b: Dictionary) -> void:
 	var c: Dictionary = economy.type_info(b.type).cost
-	for k in c:
-		# Baustelle: alles zurück (wurde beim Platzieren bezahlt), fertiges Gebäude: die Hälfte
-		economy.add(k, int(c[k]) if b.build < 1.0 else int(c[k]) / 2)
+	# Baustelle: angeliefertes Material zurück; fertiges Gebäude: die Hälfte der Kosten
+	if b.build < 1.0 and b.has("site_need"):
+		for k in b.site_need:
+			economy.add(k, int(b.site_in.get(k, 0)))
+	else:
+		for k in c:
+			economy.add(k, int(c[k]) / 2)
+	economy.bufs(b)
+	for box in [b["in"], b.out]:
+		for k in box:
+			if int(box[k]) > 0:
+				economy.add(k, int(box[k]))
 	b.removed = true
 	if b.has("boat"):
 		var wl = get_parent().get_node_or_null("Tiere")
@@ -429,7 +438,6 @@ func _demolish(b: Dictionary) -> void:
 		b.erase("boat")
 	if b.get("pile") and is_instance_valid(b.pile):
 		b.pile.queue_free()
-	economy.pending = economy.pending.filter(func(j): return j.b != b)
 	b.destroyed = true
 	buildings.erase(b)
 	economy.buildings.erase(b)
@@ -577,6 +585,13 @@ func place_loaded(sv: Dictionary) -> void:
 		rec.merge({"lvl": lvl, "sat": int(sv.get("sat", 0)), "bad": 0, "ht": 0.0, "tax": 0.0, "status": "ST_HOUSE_OK", "miss": []})
 	buildings.append(rec)
 	economy.buildings.append(rec)
+	rec["in"] = sv.get("in", {}).duplicate()
+	rec.inc = {}
+	rec.out = sv.get("out", {}).duplicate()
+	rec.out_res = {}
+	for kk in ["orders", "trS", "trB", "promo"]:
+		rec[kk] = int(sv.get(kk, 0))
+	rec.wo = sv.get("wo", {}).duplicate()
 	if settlers:
 		settlers.block_area(p, settlers.foot(t))
 	if rec.build >= 1.0:
@@ -623,7 +638,6 @@ func confirm() -> void:
 	var rec := {"type": placing, "pos": p, "node": n, "build": 0.0, "s": SCALE, "t": 0.0, "status": "ST_BUILDING"}
 	buildings.append(rec)
 	economy.buildings.append(rec)
-	economy.pay(placing)
 	if settlers:
 		settlers.sfx("place")
 		settlers.on_building_placed(rec)

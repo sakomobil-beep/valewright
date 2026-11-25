@@ -33,7 +33,7 @@ func _process(dt: float) -> void:
 		var b: Dictionary = f.b
 		var g := 0.15
 		if b.get("running", false):
-			g = 0.15 + 0.85 * clampf(b.t / economy.WORK_TIME, 0.0, 1.0)
+			g = 0.15 + 0.85 * clampf(b.t / float(b.get("dur", economy.WORK_TIME)), 0.0, 1.0)
 		for c in f.crops:
 			c.scale.y = lerpf(c.scale.y, g, minf(1.0, dt * 2.0))
 	for a in _animals:

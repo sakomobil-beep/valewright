@@ -17,7 +17,7 @@ const HOUSE_LV := [
 const UPCOST := {3: {"ziegel": 2}, 4: {"ziegel": 4, "bretter": 2}}
 const FOODS := ["brot", "fisch", "schinken"]
 const FINE := ["raeucherfisch", "wurst"]
-const HOUSE_TICK := 45.0
+var HOUSE_TICK := 90.0
 var unl := 0     # Freischalt-Stufe (steigt mit zufriedenen Wohnhäusern)
 
 var BUILD_TIME := 8.0
@@ -34,7 +34,6 @@ var stock := {}
 var stats := {"prod": {}, "use": {}}
 var terrain: Node3D
 var buildings: Array = []
-var pending: Array = []      # Waren, die Träger abholen sollen: {b, item}
 
 func _init() -> void:
 	var f := FileAccess.open("res://data/game.json", FileAccess.READ)
@@ -43,6 +42,7 @@ func _init() -> void:
 		stock[k] = int(round(int(data.start.get(k, 0)) * {"wenig": 0.5, "normal": 1.0, "viel": 2.0}.get(String(Session.cfg.get("start", "normal")), 1.0)))
 	var tk: float = {"gemuetlich": 1.4, "normal": 1.0, "schnell": 0.7}.get(String(Session.cfg.get("tempo", "normal")), 1.0)
 	WORK_TIME = 10.0 * tk
+	HOUSE_TICK = 90.0 * {"gemuetlich": 1.4, "normal": 1.0, "schnell": 0.5}.get(String(Session.cfg.get("tempo", "normal")), 1.0)
 	BUILD_TIME = 8.0 * tk
 
 func type_info(t: String) -> Dictionary:
@@ -53,8 +53,9 @@ func icon(item: String) -> String:
 
 func can_afford(t: String) -> bool:
 	var c: Dictionary = data.types[t].cost
+	var o := site_outstanding()
 	for k in c:
-		if stock.get(k, 0) < c[k]:
+		if int(stock.get(k, 0)) - int(o.get(k, 0)) < int(c[k]):
 			return false
 	return true
 
@@ -94,81 +95,357 @@ func outputs(t: String) -> Array:
 				out.append(o)
 	return out
 
+# ======================================================================
+# Wirtschaft wie in der Browser-Version: jedes Gebäude hat ein Eingangslager (in),
+# einen Ausgang (out); Träger bringen Waren direkt vom Erzeuger zum Verbraucher,
+# Überschüsse ins Lager, und vom Lager zu Gebäuden, die etwas brauchen.
+# ======================================================================
+const RECIPE_IN := {"goldschmied": {"golderz": 1, "kohle": 1}, "kelterei": {"trauben": 2}, "bogenbauer": {"bretter": 2, "sehne": 1, "eisenbarren": 1}, "raeucherei": {"fisch": 1, "stamm": 1}, "kuhstall": {"getreide": 1, "wasser": 1}, "kaeserei": {"milch": 2}, "konditorei": {"mehl": 1, "milch": 1, "honig": 1}, "brauerei": {"getreide": 1, "hopfen": 1, "wasser": 1}, "wirtshaus": {"bier": 2}, "weberei": {"wolle": 1}, "schneider": {"stoff": 1}, "toepfer": {"lehm": 1}, "koehler": {"stamm": 2}, "saegewerk": {"stamm": 1}, "muehle": {"getreide": 1}, "baeckerei": {"mehl": 1, "wasser": 1}, "schmelze": {"eisenerz": 1, "kohle": 1}, "waffenschnitzer": {"bretter": 1}, "metzger": {"schwein": 1}, "schmied": {"eisenbarren": 1}, "muenzpraege": {"golderz": 2, "kohle": 1}, "schweinezucht": {"getreide": 1, "wasser": 1}, "seilerei": {"flachs": 1}, "wagner": {"bretter": 2, "eisenbarren": 1}}
+const MINEFOOD := ["raeucherfisch", "wurst", "brot", "fisch", "schinken"]
+const MINES := ["steinmine", "eisenmine", "kohlemine", "goldmine"]
+const WS_REC := {"schwert": [{"eisenbarren": 1, "kohle": 1}, 1, 7], "schild": [{"bretter": 1, "eisenbarren": 1}, 1, 6]}
+
+func bufs(b: Dictionary) -> void:
+	if not b.has("in"):
+		b["in"] = {}
+		b["inc"] = {}
+		b["out"] = {}
+		b["out_res"] = {}
+
+func prio(b: Dictionary) -> float:
+	return 0.25 if b.get("prio", false) else 1.0
+
+func put_out(b: Dictionary, item: String, n: int) -> void:
+	bufs(b)
+	b.out[item] = int(b.out.get(item, 0)) + n
+	note("prod", item, n)
+	changed.emit()
+
+func has_in(b: Dictionary, inp: Dictionary) -> bool:
+	bufs(b)
+	for k in inp:
+		if int(b["in"].get(k, 0)) < int(inp[k]):
+			return false
+	return true
+
+func take_in(b: Dictionary, inp: Dictionary) -> void:
+	for k in inp:
+		b["in"][k] = int(b["in"].get(k, 0)) - int(inp[k])
+		note("use", k, int(inp[k]))
+
+func out_total(b: Dictionary) -> int:
+	bufs(b)
+	var n := 0
+	for k in b.out:
+		n += int(b.out[k])
+	return n
+
+func _have(b: Dictionary, k: String) -> int:
+	return int(b["in"].get(k, 0)) + int(b.inc.get(k, 0))
+
+func is_active(b: Dictionary) -> bool:
+	return b.build >= 1.0 and not b.get("removed", false) and not b.get("paused", false) and b.get("worker") != null
+
+# Was braucht das Gebäude noch? [[ware, anzahl], …]  (wie wantsOf im Browser)
+func wants_of(b: Dictionary) -> Array:
+	bufs(b)
+	if b.get("removed", false) or b.get("owner", 0) != 0:
+		return []
+	if b.build < 1.0:
+		if not b.has("site_need"):
+			return []
+		var r: Array = []
+		for k in b.site_need:
+			var m: int = int(b.site_need[k]) - int(b.site_in.get(k, 0)) - int(b.site_inc.get(k, 0))
+			if m > 0:
+				r.append([k, m])
+		return r
+	if b.type == "wohnhaus":
+		return house_wants(b)
+	if not is_active(b):
+		return []
+	var res: Array = []
+	if b.type in MINES:
+		var have := 0
+		for f in MINEFOOD:
+			have += _have(b, f)
+		if have < 2:
+			res.append(["*mfood", 2 - have])
+		return res
+	if b.type == "waffenschmied":
+		var need := {}
+		for p in b.get("wo", {}):
+			if int(b.wo[p]) > 0 and WS_REC.has(p):
+				for k in WS_REC[p][0]:
+					need[k] = maxi(int(need.get(k, 0)), int(WS_REC[p][0][k]) * 2)
+		for k in need:
+			if _have(b, k) < need[k]:
+				res.append([k, need[k] - _have(b, k)])
+		return res
+	if b.type == "kaserne":
+		var need2 := {}
+		if int(b.get("trS", 0)) > 0:
+			need2.schwert = 1
+			need2.schild = 1
+		if int(b.get("trB", 0)) > 0:
+			need2.bogen = 1
+			need2.pfeile = 5
+		if int(b.get("promo", 0)) > 0:
+			need2.muenzen = 3
+		for k in need2:
+			if _have(b, k) < need2[k]:
+				res.append([k, need2[k] - _have(b, k)])
+		return res
+	if b.type == "brauerei" and _have(b, "honig") < 2:
+		res.append(["honig", 2 - _have(b, "honig")])
+	if not RECIPE_IN.has(b.type):
+		return res
+	if b.type == "wagner" and int(b.get("orders", 0)) <= 0:
+		return res
+	var rc: Dictionary = RECIPE_IN[b.type]
+	for k in rc:
+		if _have(b, k) < int(rc[k]) * 2:
+			res.append([k, int(rc[k]) * 2 - _have(b, k)])
+	return res
+
+func matches_want(want: String, item: String) -> bool:
+	return want == item or (want == "*mfood" and item in MINEFOOD) or (want == "*food" and item in FOODS) or (want == "*fine" and item in FINE)
+
+func best_consumer(item: String, pos: Vector3, except = null):
+	var best = null
+	var bk := 1e9
+	for b in buildings:
+		if b == except:
+			continue
+		for wv in wants_of(b):
+			if matches_want(wv[0], item):
+				var k: float = prio(b) * 400.0 + Vector2(b.pos.x - pos.x, b.pos.z - pos.z).length()
+				if k < bk:
+					bk = k
+					best = b
+				break
+	return best
+
+# Baustellen ziehen ihr Material erst beim Liefern aus dem Lager – das noch Fehlende ist reserviert
+func site_outstanding() -> Dictionary:
+	var o := {}
+	for b in buildings:
+		if b.get("removed", false) or b.build >= 1.0 or not b.has("site_need"):
+			continue
+		for k in b.site_need:
+			o[k] = int(o.get(k, 0)) + maxi(0, int(b.site_need[k]) - int(b.site_in.get(k, 0)) - int(b.site_inc.get(k, 0)))
+	return o
+
 func _process(dt: float) -> void:
-	# Gebäude mit Vorrang ⭐ bekommen ihre Zutaten zuerst
-	var order: Array = buildings.filter(func(b): return b.get("prio", false)) + buildings.filter(func(b): return not b.get("prio", false))
-	for b in order:
-		if b.build < 1.0:
-			continue   # Baustelle: siehe construction.gd
+	for b in buildings:
+		if b.build < 1.0 or b.get("removed", false):
+			continue
+		bufs(b)
 		if b.type == "wohnhaus":
 			_house(b, dt)
-			continue
-		if not produces(b.type) or not b.get("worker_inside", false) or b.get("paused", false):
-			continue
-		if not b.get("running", false):
-			_try_start(b)
-			continue
-		b.t += dt
-		if b.t >= WORK_TIME:
-			b.t = 0.0
-			b.running = false
-			_finish(b)
+		elif produces(b.type) and b.get("worker_inside", false):
+			_produce(b, dt)
 
-# Eingangswaren nehmen ("a|b" heißt: eine davon reicht)
-func _try_start(b: Dictionary) -> void:
-	var take: Array = []
-	for need in inputs(b.type):
-		var found := ""
-		for alt in String(need).split("|"):
-			if stock.get(alt, 0) > 0:
-				found = alt
+# Rezepte wie planNext im Browser: [Eingang, Ware, Menge, Sekunden]
+const REC := {"goldschmied": [{"golderz": 1, "kohle": 1}, "schmuck", 1, 8], "winzer": [{}, "trauben", 2, 7], "kelterei": [{"trauben": 2}, "wein", 1, 7], "raeucherei": [{"fisch": 1, "stamm": 1}, "raeucherfisch", 2, 7], "kuhstall": [{"getreide": 1, "wasser": 1}, "milch", 2, 6], "kaeserei": [{"milch": 2}, "kaese", 1, 7], "konditorei": [{"mehl": 1, "milch": 1, "honig": 1}, "kuchen", 2, 7], "hopfenbauer": [{}, "hopfen", 1, 6], "schaefer": [{}, "wolle", 1, 6], "weberei": [{"wolle": 1}, "stoff", 1, 6], "schneider": [{"stoff": 1}, "kleidung", 1, 6], "imker": [{}, "honig", 2, 7], "lehmgrube": [{}, "lehm", 1, 5], "toepfer": [{"lehm": 1}, "kruege", 1, 6], "koehler": [{"stamm": 2}, "kohle", 1, 9], "brauerei": [{"getreide": 1, "hopfen": 1, "wasser": 1}, "bier", 2, 6], "saegewerk": [{"stamm": 1}, "bretter", 2, 4], "muehle": [{"getreide": 1}, "mehl", 1, 4], "baeckerei": [{"mehl": 1, "wasser": 1}, "brot", 2, 5], "steinmine": [{}, "stein", 1, 6], "eisenmine": [{}, "eisenerz", 1, 6], "kohlemine": [{}, "kohle", 1, 6], "goldmine": [{}, "golderz", 1, 9], "schmelze": [{"eisenerz": 1, "kohle": 1}, "eisenbarren", 1, 6], "waffenschnitzer": [{"bretter": 1}, "kampfstock", 1, 5], "muenzpraege": [{"golderz": 2, "kohle": 1}, "muenzen", 1, 8], "metzger": [{"schwein": 1}, "schinken", 2, 5], "wagner": [{"bretter": 2, "eisenbarren": 1}, "karren", 1, 9], "flachsbauer": [{}, "flachs", 1, 6], "seilerei": [{"flachs": 1}, "sehne", 1, 5], "schmied": [{"eisenbarren": 1}, "werkzeug", 1, 6], "brunnen": [{}, "wasser", 2, 2.4], "bauernhof": [{}, "getreide", 2, 9], "schweinezucht": [{"getreide": 1, "wasser": 1}, "schwein", 1, 8]}
+
+func tf() -> float:
+	return {"gemuetlich": 1.4, "normal": 1.0, "schnell": 0.5}.get(String(Session.cfg.get("tempo", "normal")), 1.0)
+
+func _sv(k: String) -> int:
+	return int(stock.get(k, 0))
+
+# nächstes Rezept wählen (Alternativen wie im Browser)
+func plan_rec(b: Dictionary):
+	var T: String = b.type
+	if T == "wirtshaus":
+		b.status = "ST_PUB" if int(b["in"].get("bier", 0)) > 0 else "ST_MISSING"
+		b.missing = "bier"
+		return null
+	if T == "waffenschmied":
+		for p in WS_REC:
+			if int(b.get("wo", {}).get(p, 0)) > 0 and has_in(b, WS_REC[p][0]):
+				b.wo[p] -= 1
+				return [WS_REC[p][0], p, WS_REC[p][1], WS_REC[p][2]]
+		b.status = "ST_WAIT_ORDER" if not b.get("wo", {}).values().any(func(n): return int(n) > 0) else "ST_MISSING"
+		return null
+	var r = REC.get(T)
+	if r == null:
+		var o := outputs(T)
+		if o.is_empty():
+			return null
+		var inp := {}
+		for need in inputs(T):
+			inp[String(need).split("|")[0]] = 1
+		r = [inp, o[0], int(AMOUNT.get(T, {}).get(o[0], 1)), 8]
+	r = r.duplicate(true)
+	match T:
+		"metzger":
+			r[1] = "wurst" if _sv("wurst") < _sv("schinken") else "schinken"
+		"toepfer":
+			r[1] = "ziegel" if _sv("ziegel") < _sv("kruege") else "kruege"
+		"brauerei":
+			if int(b["in"].get("honig", 0)) >= 1 and int(b["in"].get("wasser", 0)) >= 1 and (_sv("met") <= _sv("bier") or not has_in(b, r[0])):
+				r = [{"honig": 1, "wasser": 1}, "met", 1, 6]
+		"bogenbauer":
+			var needB := _sv("bogen") < 6
+			var needP := _sv("pfeile") < 30
+			if not needB and not needP:
+				b.status = "ST_ENOUGH"
+				return null
+			var canB := has_in(b, {"bretter": 2, "sehne": 1})
+			var canP := has_in(b, {"bretter": 1, "eisenbarren": 1})
+			var bog: bool = (needB and canB and (not needP or not canP or _sv("bogen") * 5 <= _sv("pfeile"))) or not (needP and canP) and needB
+			r = [{"bretter": 2, "sehne": 1}, "bogen", 1, 7] if bog else [{"bretter": 1, "eisenbarren": 1}, "pfeile", 5, 6]
+		"goldmine":
+			var dp = null
+			var bd := 1e9
+			for d in terrain.deposits if terrain else []:
+				if d.kind == "gold" and d.found:
+					var dd := Vector2(d.pos.x - b.pos.x, d.pos.z - b.pos.z).length()
+					if dd < bd:
+						bd = dd
+						dp = d
+			if dp:
+				if not dp.has("left"):
+					dp["left"] = 100
+				if int(dp.left) <= 0:
+					b.status = "ST_GOLD_EMPTY"
+					return null
+				b.gold_dep = dp
+	if T in MINES:
+		var food := ""
+		for f in MINEFOOD:
+			if int(b["in"].get(f, 0)) > 0:
+				food = f
 				break
-		if found == "":
+		if food == "":
 			b.status = "ST_MISSING"
-			b.missing = String(need).split("|")[0]
-			return
-		take.append(found)
-	for k in take:
-		stock[k] -= 1
-		note("use", k, 1)
-	if take.size():
-		changed.emit()
-	b.running = true
-	b.t = 0.0
-	b.status = "ST_WORKING"
+			b.missing = "brot"
+			return null
+		r[0] = {food: 1}
+		if food == "wurst" or food == "raeucherfisch":
+			r[2] = 2
+	if T == "wagner" and int(b.get("orders", 0)) <= 0:
+		b.status = "ST_WAIT_ORDER"
+		return null
+	if int(b.out.get(r[1], 0)) >= 8:
+		b.status = "ST_OUT_FULL"
+		return null
+	if not has_in(b, r[0]):
+		b.status = "ST_MISSING"
+		for k in r[0]:
+			if int(b["in"].get(k, 0)) < int(r[0][k]):
+				b.missing = k
+				break
+		return null
+	take_in(b, r[0])
+	if T == "wagner":
+		b.orders -= 1
+	return r
 
-func _finish(b: Dictionary) -> void:
-	var outs := outputs(b.type)
-	if outs.is_empty():
+func _produce(b: Dictionary, dt: float) -> void:
+	if b.get("paused", false):
+		b.running = false
+		b.status = "ST_PAUSED"
 		return
-	# Bei mehreren Waren: die nehmen, von der am wenigsten im Lager ist
-	var pick: String = outs[0]
-	for o in outs:
-		if stock.get(o, 0) < stock.get(pick, 0):
-			pick = o
-	var n: int = AMOUNT.get(b.type, {}).get(pick, 1)
-	for i in n:
-		pending.append({"b": b, "item": pick})
+	if not b.get("running", false):
+		b.idle_t = float(b.get("idle_t", 0.0)) - dt
+		if b.idle_t > 0.0:
+			return
+		b.idle_t = 2.0
+		if out_total(b) >= 8:
+			b.status = "ST_OUT_FULL"
+			return
+		var r = plan_rec(b)
+		if r == null:
+			return
+		b.cur = r
+		b.running = true
+		b.t = 0.0
+		b.dur = float(r[3]) * 2.5 * tf()
+		b.status = "ST_WORKING"
+		changed.emit()
+		return
+	b.t += dt
+	if b.t >= float(b.get("dur", WORK_TIME)):
+		b.running = false
+		b.t = 0.0
+		var r: Array = b.cur
+		if b.type == "goldmine" and b.get("gold_dep") != null:
+			b.gold_dep.left = int(b.gold_dep.left) - 1
+		put_out(b, r[1], int(r[2]))
+
+# ---------- Wohnhäuser (Waren werden ins Haus geliefert, Bier im Wirtshaus) ----------
+func near_pub(b: Dictionary):
+	var best = null
+	var bd := 25.0 * 1.5
+	for p in buildings:
+		if p.type != "wirtshaus" or p.build < 1.0 or p.get("removed", false) or p.get("paused", false) or p.get("worker") == null:
+			continue
+		bufs(p)
+		if int(p["in"].get("bier", 0)) <= 0:
+			continue
+		var d := Vector2(p.pos.x - b.pos.x, p.pos.z - b.pos.z).length()
+		if d < bd:
+			bd = d
+			best = p
+	return best
+
+func need_ok(b: Dictionary, k: String) -> bool:
+	bufs(b)
+	if k == "*food":
+		return FOODS.any(func(f): return int(b["in"].get(f, 0)) > 0)
+	if k == "*fine":
+		return FINE.any(func(f): return int(b["in"].get(f, 0)) > 0)
+	if k == "bier":
+		return near_pub(b) != null
+	return int(b["in"].get(k, 0)) > 0
+
+func house_wants(b: Dictionary) -> Array:
+	if b.build < 1.0 or b.get("removed", false):
+		return []
+	var lv: int = int(b.get("lvl", 0))
+	var L: Dictionary = HOUSE_LV[lv]
+	var res: Array = []
+	for k in L.needs:
+		if k == "bier":
+			continue
+		if k == "*fine" or k == "*food":
+			var have := 0
+			for f in (FINE if k == "*fine" else FOODS):
+				have += _have(b, f)
+			if have < 2:
+				res.append([k, 2 - have])
+			continue
+		if _have(b, k) < 2:
+			res.append([k, 2 - _have(b, k)])
+	var uc: Dictionary = UPCOST.get(lv + 1, {})
+	if int(b.get("sat", 0)) >= 1:
+		for k in uc:
+			if int(stock.get(k, 0)) > 0 and _have(b, k) < int(uc[k]):
+				res.append([k, int(uc[k]) - _have(b, k)])
+	if lv < 4:
+		var nx: Dictionary = HOUSE_LV[lv + 1]
+		for k in nx.needs:
+			if k in L.needs or k == "bier" or k == "*food":
+				continue
+			if k == "*fine":
+				var hv := 0
+				for f in FINE:
+					hv += _have(b, f)
+				if hv < 1 and FINE.any(func(f): return int(stock.get(f, 0)) > 0):
+					res.append(["*fine", 1 - hv])
+				continue
+			if int(stock.get(k, 0)) <= 0:
+				continue
+			if _have(b, k) < 1:
+				res.append([k, 1 - _have(b, k)])
+	return res
 
 # ---------- Freischalten ----------
 func is_unlocked(t: String) -> bool:
 	return int(data.unlock.get(t, 0)) <= unl
-
-# ---------- Wohnhäuser ----------
-func _need_ok(k: String) -> bool:
-	if k == "*food":
-		return FOODS.any(func(f): return stock.get(f, 0) > 0)
-	if k == "*fine":
-		return FINE.any(func(f): return stock.get(f, 0) > 0)
-	return stock.get(k, 0) > 0
-
-func _use(k: String) -> void:
-	var list: Array = FOODS if k == "*food" else (FINE if k == "*fine" else [k])
-	for f in list:
-		if stock.get(f, 0) > 0:
-			stock[f] -= 1
-			note("use", f, 1)
-			return
 
 func need_item(k: String) -> String:
 	return "brot" if k == "*food" else ("raeucherfisch" if k == "*fine" else k)
@@ -186,10 +463,25 @@ func _house(b: Dictionary, dt: float) -> void:
 	if b.ht < HOUSE_TICK:
 		return
 	b.ht = 0.0
+	bufs(b)
 	var L: Dictionary = HOUSE_LV[b.lvl]
-	var miss: Array = L.needs.filter(func(k): return not _need_ok(k))
+	var miss: Array = L.needs.filter(func(k): return not need_ok(b, k))
+	# verbrauchen, was im Haus ist (Bier im Wirtshaus)
 	for k in L.needs:
-		_use(k)
+		if k == "*food" or k == "*fine":
+			for f in (FOODS if k == "*food" else FINE):
+				if int(b["in"].get(f, 0)) > 0:
+					b["in"][f] -= 1
+					note("use", f, 1)
+					break
+		elif k == "bier":
+			var pub = near_pub(b)
+			if pub:
+				pub["in"].bier -= 1
+				note("use", "bier", 1)
+		elif int(b["in"].get(k, 0)) > 0:
+			b["in"][k] -= 1
+			note("use", k, 1)
 	if miss.is_empty():
 		b.sat = mini(3, b.sat + 1)
 		b.bad = 0
@@ -197,6 +489,7 @@ func _house(b: Dictionary, dt: float) -> void:
 		if b.tax >= 1.0:
 			b.tax -= 1.0
 			stock.muenzen = stock.get("muenzen", 0) + 1
+			note("prod", "muenzen", 1)
 		b.status = "ST_HOUSE_OK"
 		b.miss = []
 		if b.lvl + 1 > unl:
@@ -206,21 +499,21 @@ func _house(b: Dictionary, dt: float) -> void:
 		if b.lvl < 4 and b.sat >= 3:
 			var nx: Dictionary = HOUSE_LV[b.lvl + 1]
 			var up: Dictionary = UPCOST.get(b.lvl + 1, {})
-			var ok: bool = nx.needs.all(func(k): return _need_ok(k))
+			var ok: bool = nx.needs.all(func(k): return need_ok(b, k))
 			for k in up:
-				if stock.get(k, 0) < up[k]:
+				if int(b["in"].get(k, 0)) < up[k]:
 					ok = false
 			if ok:
 				for k in up:
-					stock[k] -= up[k]
+					b["in"][k] -= up[k]
 				b.lvl += 1
 				b.sat = 0
 				house_level_changed.emit(b)
 				message.emit(tr("MSG_HOUSE_UP") % tr("HOUSE_%d" % b.lvl))
 			else:
-				b.miss = nx.needs.filter(func(k): return not _need_ok(k)).map(func(k): return need_item(k))
+				b.miss = nx.needs.filter(func(k): return not need_ok(b, k)).map(func(k): return need_item(k))
 				for k in up:
-					if stock.get(k, 0) < up[k]:
+					if int(b["in"].get(k, 0)) < up[k]:
 						b.miss.append(k)
 				if not b.miss.is_empty():
 					b.status = "ST_HOUSE_NEXT"

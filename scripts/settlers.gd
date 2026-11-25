@@ -174,11 +174,6 @@ func find_path(a: Vector3, b: Vector3) -> Array:
 # ---------- Aufträge ----------
 func on_building_placed(b: Dictionary) -> void:
 	block_area(b.pos, foot(b.type))
-	# mehr Träger, wenn die Siedlung wächst
-	var carriers := workers.filter(func(x): return x.role == "traeger").size()
-	if carriers < 3 + economy.buildings.size() / 2:
-		var t := spawn("traeger", lager_door())
-		t.role = "traeger"
 	# Baustelle wie im Browser: Einebnen, Fundament, Gerippe, Wände, Dach – Träger bringen das Material
 	get_parent().get_node("Baustellen").start(b, b.get("site_in_load", {}))
 
@@ -186,9 +181,6 @@ func _on_built(b: Dictionary) -> void:
 	sfx("build")
 	if b.type == "lager":
 		b.status = "ST_WORKING"
-		for i in 2:
-			var t := spawn("traeger", door_of(b))
-			t.role = "traeger"
 		return
 	if military and military.is_military(b.type):
 		military.on_player_built(b)
@@ -208,6 +200,7 @@ func _on_built(b: Dictionary) -> void:
 		var w := spawn(job, lager_door())
 		w.job = b.type
 		w.home = b
+		b.worker = w
 		w.q = [{"go": door_of(b)}, {"fn": func(): _next_job(w)}]
 
 func _next_job(w: Dictionary) -> void:
@@ -234,7 +227,7 @@ func _next_job(w: Dictionary) -> void:
 				{"anim": "chop", "wait": 3.0},
 				{"fn": func(): sfx("chop", -8.0); terrain.fell_tree(tr_, w.node.global_position); reserved.erase(tr_.pos); _carry(w, "stamm")},
 				{"go": door_of(b)},
-				{"fn": func(): _carry(w, null); economy.pending.append({"b": b, "item": "stamm"})},
+				{"fn": func(): _carry(w, null); economy.put_out(b, "stamm", 1)},
 				{"wait": 1.5},
 				{"fn": func(): _next_job(w)},
 			]
@@ -252,7 +245,7 @@ func _next_job(w: Dictionary) -> void:
 				{"anim": "chop", "wait": 3.5},
 				{"fn": func(): terrain.mine_rock(rk); reserved.erase(rk.pos); _carry(w, "stein")},
 				{"go": door_of(b)},
-				{"fn": func(): _carry(w, null); economy.pending.append({"b": b, "item": "stein"})},
+				{"fn": func(): _carry(w, null); economy.put_out(b, "stein", 1)},
 				{"wait": 1.5},
 				{"fn": func(): _next_job(w)},
 			]
@@ -397,48 +390,146 @@ func _remove(w: Dictionary) -> void:
 	w.dead = true
 	w.node.queue_free()
 
-# ---------- Träger ----------
+# Trägerzahl wie carrierTarget im Browser
+func carrier_target() -> int:
+	var n := 3
+	var wk := 0
+	var lagers := 0
+	for b in economy.buildings:
+		if b.get("removed", false):
+			continue
+		if b.get("worker") != null:
+			wk += 1
+		if b.build >= 1.0 and b.type == "lager":
+			lagers += 1
+		if b.build >= 1.0 and b.type == "wohnhaus":
+			n += int(b.get("lvl", 0)) + 1
+	return n + wk / 2 + 2 * maxi(0, lagers - 1)
+
+func _carrier_spawn() -> void:
+	var c := workers.filter(func(x): return x.role == "traeger" and not x.get("dead", false)).size()
+	if c < carrier_target():
+		var t := spawn("traeger", lager_door())
+		t.role = "traeger"
+
+# ---------- Träger (wie planCarrier im Browser) ----------
+# Ausgang eines Gebäudes → direkt zum Verbraucher (sonst ins Lager); Lager → Gebäude/Baustellen, die etwas brauchen
 func _carrier_jobs() -> void:
-	var cons = get_parent().get_node_or_null("Baustellen")
 	for w in workers:
-		if w.role != "traeger" or not w.q.is_empty():
+		if w.role != "traeger" or not w.q.is_empty() or w.get("dead", false):
 			continue
-		# zuerst Baumaterial vom Lager zur Baustelle bringen
-		if cons:
-			var job = cons.next_delivery()
-			if job != null:
-				var sb: Dictionary = job[0]
-				var item: String = job[1]
-				w.q = [
-					{"go": nearest_lager(sb.pos)},
-					{"wait": 0.4},
-					{"fn": func(): _carry(w, item)},
-					{"go": door_of(sb)},
-					{"fn": func(): _carry(w, null); cons.delivered(sb, item)},
-				]
+		_plan_carrier(w)
+
+func _inc(b: Dictionary, item: String, n: int) -> void:
+	var key := "site_inc" if b.build < 1.0 else "inc"
+	economy.bufs(b)
+	b[key][item] = int(b[key].get(item, 0)) + n
+
+func _receive(b: Dictionary, item: String, n: int) -> void:
+	if b.build < 1.0:
+		b.site_in[item] = int(b.site_in.get(item, 0)) + n
+	else:
+		b["in"][item] = int(b["in"].get(item, 0)) + n
+	economy.changed.emit()
+
+func _plan_carrier(w: Dictionary) -> void:
+	var p: Vector3 = w.node.position
+	if not w.get("cart", false) and int(economy.stock.get("karren", 0)) > 0:
+		economy.stock.karren -= 1
+		economy.note("use", "karren", 1)
+		w.cart = true
+		w.cap = 4
+		economy.changed.emit()
+	var cap: int = int(w.get("cap", 1))
+	var job = null
+	var jk := 1e9
+	for b in economy.buildings:
+		if b.get("removed", false):
+			continue
+		economy.bufs(b)
+		for item in b.out:
+			var avail: int = int(b.out[item]) - int(b.out_res.get(item, 0))
+			if avail <= 0:
 				continue
-		if economy.pending.is_empty():
-			continue
-		var job: Dictionary = economy.pending.pop_front()
-		var b: Dictionary = job.b
-		var drop := nearest_lager(door_of(b))
-		# weite Wege: Karre nehmen und bis zu 3 gleiche Waren vom selben Gebäude mitnehmen
-		var n := 1
-		var cart: bool = drop.distance_to(door_of(b)) > 35.0
-		if cart:
-			for j in economy.pending.duplicate():
-				if n >= 3:
-					break
-				if j.b == b and j.item == job.item:
-					economy.pending.erase(j)
-					n += 1
-		w.q = [
-			{"go": door_of(b)},
-			{"wait": 0.5},
-			{"fn": func(): _carry(w, "karre" if cart else job.item)},
-			{"go": drop},
-			{"fn": func(): _carry(w, null); economy.add(job.item, n)},
-		]
+			var c = economy.best_consumer(item, b.pos, b)
+			var dest: Vector3 = c.pos if c != null else nearest_lager(b.pos)
+			var k: float = (economy.prio(c) if c != null else 1.5) * 400.0 + Vector2(b.pos.x - p.x, b.pos.z - p.z).length() + Vector2(dest.x - b.pos.x, dest.z - b.pos.z).length() * 0.5 - mini(avail, cap) * 15.0
+			if k < jk:
+				jk = k
+				job = {"from": b, "to": c, "item": item, "n": mini(avail, cap)}
+	for b in economy.buildings:
+		for wv in economy.wants_of(b):
+			var wi: String = wv[0]
+			var item := ""
+			if wi.begins_with("*"):
+				var best := 0
+				for f in (economy.MINEFOOD if wi == "*mfood" else economy.FOODS if wi == "*food" else economy.FINE):
+					if int(economy.stock.get(f, 0)) > best:
+						best = int(economy.stock.get(f, 0))
+						item = f
+			elif int(economy.stock.get(wi, 0)) > 0:
+				item = wi
+			if item == "":
+				continue
+			var l := nearest_lager(b.pos)
+			var k: float = economy.prio(b) * 400.0 + Vector2(l.x - p.x, l.z - p.z).length() + Vector2(b.pos.x - l.x, b.pos.z - l.z).length() * 0.5 + 30.0
+			if k < jk:
+				jk = k
+				job = {"lager": l, "to": b, "item": item, "n": maxi(1, mini(mini(cap, int(economy.stock[item])), int(wv[1])))}
+	if job == null:
+		var l := nearest_lager(p)
+		w.q = [{"go": l}, {"wait": 1.5}] if Vector2(l.x - p.x, l.z - p.z).length() > 3.0 else [{"wait": 1.5}]
+		return
+	var item: String = job.item
+	var n: int = job.n
+	var st := {"n": n, "lost": false}
+	var carry_icon := "karre" if w.get("cart", false) else item
+	if job.to != null:
+		_inc(job.to, item, n)
+	var q: Array = []
+	if job.has("from"):
+		var f: Dictionary = job.from
+		f.out_res[item] = int(f.out_res.get(item, 0)) + n
+		q.append({"go": door_of(f)})
+		q.append({"wait": 0.4})
+		q.append({"fn": func():
+			f.out_res[item] = int(f.out_res.get(item, 0)) - n
+			var got: int = 0 if f.get("removed", false) else mini(n, int(f.out.get(item, 0)))
+			if got > 0:
+				f.out[item] -= got
+				if job.to != null:
+					_inc(job.to, item, got - n)
+				st.n = got
+				_carry(w, carry_icon)
+			else:
+				st.lost = true
+			economy.changed.emit()})
+	else:
+		economy.stock[item] = int(economy.stock[item]) - n
+		economy.changed.emit()
+		q.append({"go": job.lager})
+		q.append({"wait": 0.4})
+		q.append({"fn": func(): _carry(w, carry_icon)})
+	q.append({"fn": func():
+		if st.lost:
+			if job.to != null:
+				_inc(job.to, item, -n)
+			w.q.clear()
+			w.q.append({"wait": 0.1})
+			return
+		var to = job.to
+		var ok: bool = to != null and not to.get("removed", false)
+		var dest: Vector3 = door_of(to) if ok else nearest_lager(w.node.position)
+		w.q.insert(0, {"go": dest})
+		w.q.insert(1, {"fn": func():
+			if to != null:
+				_inc(to, item, -int(st.n))
+			if ok and not to.get("removed", false):
+				_receive(to, item, int(st.n))
+			else:
+				economy.add(item, int(st.n))
+			_carry(w, null)})})
+	w.q = q
 
 # ---------- Ablauf & Animation ----------
 func _process(dt: float) -> void:
@@ -447,6 +538,7 @@ func _process(dt: float) -> void:
 	if _pile_t <= 0.0:
 		_pile_t = 0.5
 		_update_piles()
+		_carrier_spawn()
 	for w in workers.duplicate():
 		if w.get("dead", false):
 			workers.erase(w)
@@ -658,11 +750,8 @@ func _cart() -> Node3D:
 
 # Waren, die auf Abholung warten, liegen als Haufen vor dem Gebäude
 func _update_piles() -> void:
-	var count := {}
-	for j in economy.pending:
-		count[j.b] = count.get(j.b, 0) + 1
 	for b in economy.buildings:
-		var n: int = mini(count.get(b, 0), 8)
+		var n: int = mini(economy.out_total(b), 8)
 		var pile: Node3D = b.get("pile")
 		if n == 0:
 			if pile:
@@ -837,7 +926,7 @@ func _fisher_job(w: Dictionary, b: Dictionary) -> void:
 			{"anim": "fish", "wait": economy.WORK_TIME * 0.7},
 			{"fn": func(): sfx("chop", -18.0); _carry(w, "fisch")},
 			{"go": door_of(b)},
-			{"fn": func(): _carry(w, null); economy.pending.append({"b": b, "item": "fisch"})},
+			{"fn": func(): _carry(w, null); economy.put_out(b, "fisch", 1)},
 			{"wait": 2.0},
 			{"fn": func(): _next_job(w)},
 		]
@@ -873,7 +962,7 @@ func _fisher_job(w: Dictionary, b: Dictionary) -> void:
 		{"until": func(): return boat.goto == null},
 		{"fn": func(): boat.man.visible = false; boat.catch.visible = false; w.node.position = b.boat_shore; w.node.visible = true; _carry(w, "fisch")},
 		{"go": door_of(b)},
-		{"fn": func(): _carry(w, null); economy.pending.append({"b": b, "item": "fisch"})},
+		{"fn": func(): _carry(w, null); economy.put_out(b, "fisch", 1)},
 		{"wait": 2.0},
 		{"fn": func(): _next_job(w)},
 	]

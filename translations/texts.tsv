@@ -384,3 +384,8 @@ SITE_STAGE2	Stufe 2: %s (%d %%)	Stage 2: %s (%d %%)
 SITE_WAIT_MAT	Wartet auf Baumaterial:	Waiting for materials:
 SITE_WAIT_BUILDER	Wartet auf einen Bauarbeiter	Waiting for a builder
 SITE_BUILDER_COMING	Bauarbeiter ist unterwegs	Builder is on the way
+ST_PUB	Schenkt Bier aus 🍺	Serving beer 🍺
+ST_ENOUGH	Genug auf Vorrat (6 Bögen, 30 Pfeile)	Enough in stock (6 bows, 30 arrows)
+ST_GOLD_EMPTY	⚠️ Die Goldader ist erschöpft – suche eine neue	⚠️ The gold vein is exhausted – find a new one
+ST_OUT_FULL	Ausgang voll – Träger holen ab	Output full – carriers are coming
+ST_WAIT_ORDER	Wartet auf Auftrag – Gebäude antippen	Waiting for an order – tap the building

@@ -152,7 +152,9 @@ func _update() -> void:
 		var fig := 0
 		if military:
 			fig = military.soldiers.filter(func(s): return s.owner == 0).size()
-		var waiting: int = economy.pending.size()
+		var waiting := 0
+		for bb in economy.buildings:
+			waiting += economy.out_total(bb)
 		var busy := 0
 		for w in settlers.workers:
 			if w.role == "traeger" and not w.q.is_empty():
