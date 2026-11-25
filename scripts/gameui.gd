@@ -68,6 +68,8 @@ func main_menu() -> void:
 	_button(vb, "MENU_CAMPAIGN", campaign_menu)
 	_button(vb, "MENU_NEW", new_game_menu)
 	_button(vb, "MENU_LOAD", func(): load_menu(false))
+	_button(vb, "MENU_HELP", func(): help_page(false))
+	_button(vb, "MENU_ABOUT", func(): about_page(false))
 	var hb := HBoxContainer.new()
 	hb.alignment = BoxContainer.ALIGNMENT_CENTER
 	vb.add_child(hb)
@@ -215,6 +217,7 @@ func pause_menu() -> void:
 	_button(vb, "MENU_CONTINUE", func(): close(); get_tree().paused = false)
 	_button(vb, "MENU_SAVE", save_menu)
 	_button(vb, "MENU_LOAD", func(): load_menu(true))
+	_button(vb, "MENU_HELP", func(): help_page(true))
 	_button(vb, "MENU_MAIN", func(): get_tree().paused = false; Session.to_menu())
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -257,3 +260,43 @@ func game_end(won: bool) -> void:
 		_label(vb, "MSG_KEEP_PLAYING", 15, TEXT, true)
 		_button(vb, "CH_KEEP", close)
 	_button(vb, "MENU_MAIN", Session.to_menu)
+
+# ---------- Hilfe ----------
+const HELP_TOPICS := ["CONTROLS", "BUILD", "CHAINS", "HOUSES", "MINING", "BRIDGE", "MILITARY", "GOALS", "SAVE"]
+
+func help_page(in_game: bool) -> void:
+	var vb := _window(760)
+	_label(vb, "MENU_HELP", 28, GOLD, true)
+	var sc := ScrollContainer.new()
+	sc.custom_minimum_size = Vector2(720, 520)
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	vb.add_child(sc)
+	var inner := VBoxContainer.new()
+	inner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inner.add_theme_constant_override("separation", 6)
+	sc.add_child(inner)
+	for k in HELP_TOPICS:
+		_label(inner, "HELP_%s_T" % k, 20, GOLD)
+		_label(inner, "HELP_%s" % k, 15)
+		inner.add_child(HSeparator.new())
+	_button(vb, "UI_BACK", pause_menu if in_game else main_menu)
+
+# ---------- Über das Spiel ----------
+func about_page(in_game: bool) -> void:
+	var vb := _window(560)
+	var logo := TextureRect.new()
+	logo.texture = load("res://icon.svg")
+	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	logo.custom_minimum_size = Vector2(0, 140)
+	vb.add_child(logo)
+	_label(vb, "Valewright", 38, GOLD, true)
+	_label(vb, "GAME_SUBTITLE", 17, TEXT, true)
+	var ver := _label(vb, tr("ABOUT_VERSION") % ProjectSettings.get_setting("application/config/version", "0.6"), 13, TEXT, true)
+	ver.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	vb.add_child(HSeparator.new())
+	_label(vb, "ABOUT_TEXT", 15, TEXT, true)
+	vb.add_child(HSeparator.new())
+	_label(vb, "ABOUT_CREDITS_T", 18, GOLD, true)
+	_label(vb, "ABOUT_CREDITS", 14, TEXT, true)
+	_button(vb, "UI_BACK", pause_menu if in_game else main_menu)
