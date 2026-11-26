@@ -151,7 +151,7 @@ func setup_ui(layer: CanvasLayer) -> void:
 	act_box = HBoxContainer.new()
 	act_box.add_theme_constant_override("separation", 4)
 	ivb.add_child(act_box)
-	for a in [["pause", "⏸"], ["prio", "⭐"], ["up", "⬆️"], ["move", "↔️"], ["demolish", "🗑️"]]:
+	for a in [["pause", "⏸"], ["prio", "⭐"], ["up", "⬆️"], ["demolish", "🗑️"]]:
 		var b := Button.new()
 		b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		b.custom_minimum_size = Vector2(44, 34)
@@ -719,11 +719,6 @@ func _action(a: String) -> void:
 			b.prio = not b.get("prio", false)
 		"demolish":
 			_demolish(b)
-		"move":
-			if military and military.is_military(b.type):
-				return
-			moving = b
-			start(b.type, true)
 
 # Abreißen: die Hälfte der Baukosten kommt zurück
 func _demolish(b: Dictionary) -> void:
