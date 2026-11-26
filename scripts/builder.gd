@@ -516,6 +516,11 @@ func model(t: String, lvl := 0) -> Node3D:
 		fm.scale = Vector3.ONE * SCALE
 		_shadows(fm)
 		return fm
+	elif t in Mines3D.TYPES and Mines3D.has(t):
+		var mn: Node3D = Mines3D.build(t)   # Zechen (scripts/mines3d.gd)
+		mn.scale = Vector3.ONE * SCALE
+		_shadows(mn)
+		return mn
 	else:
 		ps = load("res://models/%s.glb" % file)
 	var n: Node3D = ps.instantiate()
