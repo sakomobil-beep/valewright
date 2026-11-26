@@ -156,9 +156,9 @@ func _setup_environment() -> void:
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.8, 0.87, 0.92)
-	env.fog_density = 0.0011          # leichter Dunst in der Ferne
-	env.fog_aerial_perspective = 0.35
-	env.fog_sky_affect = 0.25
+	env.fog_density = 0.0004          # nur ganz leichter Dunst (stärkerer Dunst machte das Bild milchig)
+	env.fog_aerial_perspective = 0.1
+	env.fog_sky_affect = 0.0
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)

@@ -525,7 +525,7 @@ func about_page(in_game: bool) -> void:
 const SETTINGS := "user://settings.cfg"
 var opts := {"volume": 0.8, "shadows": true, "effects": true, "cam_speed": 1.0, "language": "", "grass": "hoch",
 	"preset": "hoch", "window": "vollbild", "res": "1920x1080", "vsync": true, "fps": 0, "scale": 1.0, "aa": "msaa2",
-	"shadow_q": "hoch", "tree_dist": 75, "show_fps": false}
+	"shadow_q": "hoch", "tree_dist": 75, "show_fps": false, "haze": false}
 # Voreinstellungen: ein Klick stellt alles passend ein
 const PRESETS := {
 	"niedrig": {"shadows": true, "effects": false, "grass": "niedrig", "scale": 0.75, "aa": "fxaa", "shadow_q": "niedrig", "tree_dist": 45},
@@ -564,6 +564,10 @@ func apply_settings() -> void:
 		RenderingServer.directional_soft_shadow_filter_set_quality([RenderingServer.SHADOW_QUALITY_HARD, RenderingServer.SHADOW_QUALITY_SOFT_LOW, RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM, RenderingServer.SHADOW_QUALITY_SOFT_HIGH][int(sq[2])])
 	for we in main.find_children("*", "WorldEnvironment", false, false):
 		we.environment.ssao_enabled = opts.effects
+		# Dunst in der Ferne: aus = nur der ganz leichte Grund-Dunst wie früher, an = stärker (wirkt milchiger)
+		we.environment.fog_enabled = true
+		we.environment.fog_density = 0.0011 if opts.haze else 0.0004
+		we.environment.fog_aerial_perspective = 0.35 if opts.haze else 0.1
 		we.environment.glow_enabled = false   # Lichtschein verursachte weißes Flackern an Bäumen/Gras (Forward+)
 	var ef = main.get_node_or_null("Effekte")
 	if ef:
@@ -706,6 +710,9 @@ func settings_menu(in_game: bool) -> void:
 		var fx := CheckButton.new(); fx.text = "SET_EFFECTS"; fx.button_pressed = opts.effects
 		fx.toggled.connect(func(v): set.call("effects", v))
 		vb.add_child(fx)
+		var hz := CheckButton.new(); hz.text = "SET_HAZE"; hz.button_pressed = opts.haze
+		hz.toggled.connect(func(v): set.call("haze", v, false))
+		vb.add_child(hz)
 		var sf := CheckButton.new(); sf.text = "SET_SHOWFPS"; sf.button_pressed = opts.show_fps
 		sf.toggled.connect(func(v): set.call("show_fps", v, false))
 		vb.add_child(sf)

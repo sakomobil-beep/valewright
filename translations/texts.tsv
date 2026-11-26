@@ -689,3 +689,4 @@ SETT_75	75 m	75 m
 SETT_120	120 m	120 m
 SET_SHOWFPS	FPS anzeigen	Show FPS
 SET_EFFECTS	Effekte (Umgebungsverdeckung)	Effects (ambient occlusion)
+SET_HAZE	Dunst in der Ferne	Haze in the distance
