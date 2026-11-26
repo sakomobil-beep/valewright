@@ -257,8 +257,10 @@ func _plots_step(dt: float) -> void:
 
 # Bauernhof-Gatter mit detaillierten, animierten Tieren (scripts/farms.gd)
 func _make_farm_animals(b: Dictionary, info: Dictionary) -> void:
-	var center := _around(b, 7.0, b.node.rotation.y + PI)
-	var pen: Node3D = Farms.pen(b.type, 3.2)
+	# Gatter direkt hinten an den Stall angebaut (Stalltür führt hinein)
+	var back := 1.25 * 1.5 + 3.4 * 0.72
+	var center := _around(b, back, b.node.rotation.y + PI)
+	var pen: Node3D = Farms.pen(b.type, 3.4)
 	pen.position = center
 	var to_b: Vector3 = b.pos - center
 	pen.rotation.y = atan2(to_b.x, to_b.z) - PI / 2   # Tor zeigt zum Hof
@@ -266,7 +268,7 @@ func _make_farm_animals(b: Dictionary, info: Dictionary) -> void:
 	b.pen = pen
 	for k in info.n:
 		var an: Node3D = Farms.animal(b.type)
-		an.position = center + Vector3(randf_range(-1.8, 1.8), 0, randf_range(-1.8, 1.8))
+		an.position = center + Vector3(randf_range(-1.6, 1.6), 0, randf_range(-1.6, 1.6))
 		an.rotation.y = randf() * TAU
 		add_child(an)
 		if b.type == "schweinezucht":
@@ -313,7 +315,7 @@ func _move_farm_animal(a: Dictionary, dt: float) -> void:
 			a.target = n.position   # stehen bleiben und grasen
 		else:
 			var ang := randf() * TAU
-			a.target = a.home + Vector3(cos(ang), 0, sin(ang)) * randf_range(0.0, 2.3)
+			a.target = a.home + Vector3(cos(ang), 0, sin(ang)) * randf_range(0.0, 2.0)
 	var d: Vector3 = a.target - n.position
 	d.y = 0
 	var moving := d.length() > 0.08

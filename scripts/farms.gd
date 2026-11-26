@@ -47,7 +47,7 @@ static func build(t: String) -> Node3D:
 static func _roof(n: Node3D, w: float, d: float, y: float, pitch: float, mat: Material, cz := 0.0, cx := 0.0) -> void:
 	var half := d * 0.5 / cos(pitch)
 	for s in [-1.0, 1.0]:
-		_p(n, _box(w, 0.1, half + 0.12), Vector3(cx, y + sin(pitch) * half * 0.5, cz + s * cos(pitch) * half * 0.5), mat, Vector3(-s * pitch, 0, 0))
+		_p(n, _box(w, 0.1, half + 0.12), Vector3(cx, y + sin(pitch) * half * 0.5, cz + s * cos(pitch) * half * 0.5), mat, Vector3(s * pitch, 0, 0))
 
 # ---------- Schweinezucht ----------
 static func _pigsty(n: Node3D) -> void:
@@ -75,7 +75,10 @@ static func _pigsty(n: Node3D) -> void:
 	for i in 3:
 		_p(n, _box(0.34, 0.45, 0.04), Vector3(0.25 + i * 0.5, 0.25, 0.52), _m(Color(0.16, 0.12, 0.1)))
 		_p(n, _box(0.4, 0.06, 0.06), Vector3(0.25 + i * 0.5, 0.5, 0.53), wood)
-	_roof(n, 1.8, 1.4, 0.8, 0.35, tile, -0.2, 0.75)
+	_fw(n, Vector3(1.6, 0.5, 1.4), Vector3(0.75, 1.05, -0.2), plaster, beam)   # Fachwerk-Obergeschoss
+	_roof(n, 1.8, 1.4, 1.3, 0.55, tile, -0.2, 0.75)
+	_p(n, _prism(1.4, 0.4, 1.62), Vector3(0.75, 1.52, -0.2), plaster, Vector3(0, PI / 2, 0))
+	_p(n, _box(0.5, 0.45, 0.05), Vector3(0.75, 0.23, -0.92), _m(Color(0.14, 0.1, 0.08)))   # Durchgang zum Gatter
 	# Futtertrog und Eimer vor dem Koben
 	_p(n, _box(0.9, 0.2, 0.28), Vector3(0.75, 0.1, 0.85), wood)
 	_p(n, _box(0.82, 0.04, 0.2), Vector3(0.75, 0.19, 0.85), _m(Color(0.62, 0.5, 0.3)))
@@ -83,71 +86,82 @@ static func _pigsty(n: Node3D) -> void:
 	# Mistgabel an der Wand
 	_p(n, _box(0.03, 0.9, 0.03), Vector3(-1.62, 0.5, 0.2), wood, Vector3(0, 0, 0.15))
 
-# ---------- Kuhstall ----------
+# Fachwerkwand: verputzter Kasten mit Ständern, Riegeln und Streben auf allen vier Seiten
+static func _fw(n: Node3D, size: Vector3, c: Vector3, plaster: Material, beam: Material, door_back := false) -> void:
+	_p(n, _box(size.x, size.y, size.z), c, plaster)
+	var t := 0.07
+	for face in 4:
+		var along := size.x if face < 2 else size.z
+		var off := (size.z if face < 2 else size.x) * 0.5 + 0.015
+		var sgn := 1.0 if face % 2 == 0 else -1.0
+		var cnt := maxi(2, int(along / 0.55))
+		for i in cnt + 1:
+			var u := -along * 0.5 + along * i / cnt
+			var pos := Vector3(u, 0, off * sgn) if face < 2 else Vector3(off * sgn, 0, u)
+			_p(n, _box(t if face < 2 else t, size.y, t), c + pos, beam)
+		for hy in [-0.5, 0.0, 0.5]:
+			var pos := Vector3(0, hy * size.y * 0.98, off * sgn) if face < 2 else Vector3(off * sgn, hy * size.y * 0.98, 0)
+			_p(n, _box(along if face < 2 else t, t, t if face < 2 else along), c + pos, beam)
+		# Streben in den Eckfeldern
+		for e in [-1.0, 1.0]:
+			var u: float = e * (along * 0.5 - along / cnt * 0.5)
+			var pos := Vector3(u, -size.y * 0.25, off * sgn) if face < 2 else Vector3(off * sgn, -size.y * 0.25, u)
+			var bl := sqrt(pow(along / cnt, 2) + pow(size.y * 0.5, 2))
+			var ang: float = atan2(along / cnt, size.y * 0.5) * e
+			if face < 2:
+				_p(n, _box(t, bl, t), c + pos, beam, Vector3(0, 0, ang))
+			else:
+				_p(n, _box(t, bl, t), c + pos, beam, Vector3(ang, 0, 0))
+
+# ---------- Kuhstall: großer Fachwerkstall, rote Balken, steiles dunkles Dach, Heuboden ----------
 static func _barn(n: Node3D) -> void:
-	var red := _m(Color(0.62, 0.2, 0.14))
-	var white := _m(Color(0.94, 0.92, 0.86))
+	var plaster := _m(Color(0.95, 0.92, 0.84))
+	var beam := _m(Color(0.55, 0.2, 0.13))
 	var roof := _m(Color(0.3, 0.28, 0.27), 0.8)
 	var stone := _m(Color(0.55, 0.53, 0.5), 0.95)
-	_p(n, _box(2.9, 0.25, 2.1), Vector3(0, 0.12, -0.15), stone)            # Sockel
-	_p(n, _box(2.8, 1.35, 2.0), Vector3(0, 0.92, -0.15), red)
-	# Bretterfugen
-	for i in 14:
-		_p(n, _box(0.02, 1.35, 0.02), Vector3(-1.3 + i * 0.2, 0.92, 0.86), _m(Color(0.48, 0.14, 0.1)))
-	# Mansarddach: steiler unterer und flacher oberer Teil
-	for s in [-1.0, 1.0]:
-		_p(n, _box(3.0, 0.1, 0.75), Vector3(0, 1.85, -0.15 + s * 0.88), roof, Vector3(-s * 1.05, 0, 0))
-		_p(n, _box(3.0, 0.1, 0.72), Vector3(0, 2.36, -0.15 + s * 0.35), roof, Vector3(-s * 0.4, 0, 0))
-	# Giebel vorn/hinten
-	for z in [0.86, -1.16]:
-		_p(n, _box(2.3, 0.6, 0.04), Vector3(0, 1.88, z - signf(z) * 0.06), red)
-		_p(n, _prism(1.5, 0.35, 0.04), Vector3(0, 2.36, z - signf(z) * 0.08), red)
-	# großes Tor mit weißem X-Rahmen
-	_p(n, _box(1.0, 1.1, 0.04), Vector3(0, 0.8, 0.88), _m(Color(0.5, 0.16, 0.11)))
-	for s in [-1.0, 1.0]:
-		_p(n, _box(0.07, 1.1, 0.05), Vector3(s * 0.5, 0.8, 0.9), white)
-		_p(n, _box(0.07, 1.45, 0.05), Vector3(s * 0.25, 0.8, 0.91), white, Vector3(0, 0, s * 0.72))
-	_p(n, _box(1.07, 0.07, 0.05), Vector3(0, 1.36, 0.9), white)
-	# Heuboden-Luke mit Heu
-	_p(n, _box(0.5, 0.42, 0.05), Vector3(0, 1.95, 0.84), white)
+	var white := _m(Color(0.95, 0.94, 0.9))
+	_p(n, _box(2.9, 0.25, 2.1), Vector3(0, 0.12, -0.15), stone)
+	_fw(n, Vector3(2.8, 1.35, 2.0), Vector3(0, 0.92, -0.15), plaster, beam)
+	_roof(n, 3.1, 2.1, 1.6, 0.72, roof, -0.15)
+	for z in [0.85, -1.15]:
+		_p(n, _prism(2.1, 0.95, 0.05), Vector3(0, 2.07, z), plaster, Vector3(0, 0, 0))
+		_p(n, _box(0.07, 0.9, 0.06), Vector3(0, 2.05, z + signf(z) * 0.01), beam)
+		_p(n, _box(1.9, 0.07, 0.06), Vector3(0, 1.62, z + signf(z) * 0.01), beam)
+	# großes Tor vorn
+	_p(n, _box(1.0, 1.1, 0.05), Vector3(0, 0.8, 0.89), _m(Color(0.42, 0.26, 0.14)))
+	for sgn in [-1.0, 1.0]:
+		_p(n, _box(0.07, 1.45, 0.06), Vector3(sgn * 0.25, 0.8, 0.92), white, Vector3(0, 0, sgn * 0.72))
+	# Stalltür hinten zum Gatter
+	_p(n, _box(0.75, 0.9, 0.05), Vector3(0, 0.7, -1.19), _m(Color(0.14, 0.1, 0.08)))
+	# Heuboden-Luke
+	_p(n, _box(0.5, 0.42, 0.05), Vector3(0, 1.95, 0.84), beam)
 	_p(n, _box(0.4, 0.34, 0.06), Vector3(0, 1.95, 0.85), _m(Color(0.85, 0.72, 0.36), 1.0))
-	_p(n, _box(0.06, 0.06, 0.5), Vector3(0, 2.25, 1.05), _m(Color(0.4, 0.28, 0.16)))   # Seilbalken
-	# Eckkanten weiß
-	for x in [-1.4, 1.4]:
-		_p(n, _box(0.07, 1.35, 0.07), Vector3(x, 0.92, 0.85), white)
-	# Fenster seitlich
-	for z in [-0.6, 0.2]:
-		_p(n, _box(0.04, 0.3, 0.36), Vector3(1.41, 1.1, z), white)
-		_p(n, _box(0.05, 0.22, 0.28), Vector3(1.42, 1.1, z), _m(Color(0.2, 0.25, 0.3), 0.2))
-	# Milchkannen und Heuballen
+	_p(n, _box(0.06, 0.06, 0.5), Vector3(0, 2.25, 1.05), _m(Color(0.4, 0.28, 0.16)))
 	for i in 2:
 		_p(n, _cyl(0.1, 0.12, 0.32), Vector3(-1.05 + i * 0.25, 0.16, 1.1), _m(Color(0.75, 0.76, 0.78), 0.35))
 		_p(n, _cyl(0.06, 0.08, 0.06), Vector3(-1.05 + i * 0.25, 0.35, 1.1), _m(Color(0.75, 0.76, 0.78), 0.35))
 	_p(n, _cyl(0.3, 0.3, 0.5), Vector3(1.05, 0.3, 1.15), _m(Color(0.85, 0.72, 0.38), 1.0), Vector3(0, 0, PI / 2))
 
-# ---------- Schäferei ----------
+# ---------- Schäferei: kleines Fachwerkhaus, schwarze Balken, dickes Strohdach, Schäferkarren ----------
 static func _shepherd(n: Node3D) -> void:
-	var stone := _m(Color(0.66, 0.62, 0.55), 0.95)
-	var stone2 := _m(Color(0.55, 0.51, 0.45), 0.95)
+	var plaster := _m(Color(0.93, 0.89, 0.78))
+	var beam := _m(Color(0.16, 0.13, 0.11))
+	var stone := _m(Color(0.58, 0.55, 0.5), 0.95)
 	var thatch := _m(Color(0.78, 0.65, 0.38), 1.0)
 	var wood := _m(Color(0.45, 0.31, 0.18))
 	var green := _m(Color(0.27, 0.4, 0.28))
-	# Bruchsteinhütte
-	_p(n, _box(1.6, 1.1, 1.4), Vector3(-0.6, 0.55, -0.2), stone)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 77
-	for i in 14:
-		_p(n, _box(rng.randf_range(0.18, 0.32), rng.randf_range(0.1, 0.16), 0.03), Vector3(-1.3 + rng.randf() * 1.4, 0.15 + rng.randf() * 0.85, 0.51), stone2)
-	_p(n, _box(0.42, 0.75, 0.05), Vector3(-0.35, 0.38, 0.52), green)
-	_p(n, _box(0.3, 0.26, 0.05), Vector3(-1.0, 0.75, 0.52), _m(Color(0.3, 0.45, 0.58), 0.2))
-	_p(n, _box(0.36, 0.05, 0.08), Vector3(-1.0, 0.6, 0.55), wood)
-	# dickes, weit überstehendes Strohdach
-	for s in [-1.0, 1.0]:
-		_p(n, _box(1.95, 0.22, 1.05), Vector3(-0.6, 1.42, -0.2 + s * 0.42), thatch, Vector3(-s * 0.78, 0, 0))
-	_p(n, _cyl(0.1, 0.1, 1.9), Vector3(-0.6, 1.8, -0.2), thatch, Vector3(0, 0, PI / 2))
-	_p(n, _prism(1.4, 0.65, 1.62), Vector3(-0.6, 1.42, -0.2), stone, Vector3(0, PI / 2, 0))
-	_p(n, _box(0.25, 0.7, 0.25), Vector3(-1.2, 1.9, -0.45), stone2)
-	# Schäferkarren rechts: Holzwagen mit Rundtonnendach auf vier Rädern
+	_p(n, _box(1.7, 0.22, 1.5), Vector3(-0.6, 0.11, -0.2), stone)
+	_fw(n, Vector3(1.6, 1.0, 1.4), Vector3(-0.6, 0.71, -0.2), plaster, beam)
+	_p(n, _box(0.42, 0.7, 0.05), Vector3(-0.35, 0.57, 0.52), green)
+	_p(n, _box(0.3, 0.26, 0.05), Vector3(-1.0, 0.85, 0.52), _m(Color(0.3, 0.45, 0.58), 0.2))
+	_p(n, _box(0.36, 0.05, 0.08), Vector3(-1.0, 0.7, 0.55), wood)
+	_p(n, _box(0.36, 0.12, 0.1), Vector3(-1.0, 0.68, 0.6), _m(Color(0.75, 0.25, 0.3)))   # Blumenkasten
+	_p(n, _box(0.4, 0.65, 0.05), Vector3(-0.6, 0.55, -0.92), _m(Color(0.14, 0.1, 0.08)))   # Tür zum Gatter
+	for sgn in [-1.0, 1.0]:
+		_p(n, _box(1.95, 0.24, 1.05), Vector3(-0.6, 1.52, -0.2 + sgn * 0.42), thatch, Vector3(sgn * 0.78, 0, 0))
+	_p(n, _cyl(0.1, 0.1, 1.9), Vector3(-0.6, 1.9, -0.2), thatch, Vector3(0, 0, PI / 2))
+	_p(n, _prism(1.4, 0.65, 1.62), Vector3(-0.6, 1.52, -0.2), plaster, Vector3(0, PI / 2, 0))
+	_p(n, _box(0.22, 0.6, 0.22), Vector3(-1.2, 2.0, -0.45), stone)
 	var cart := Node3D.new()
 	cart.position = Vector3(1.0, 0, 0.0)
 	cart.rotation.y = -0.25
@@ -155,20 +169,16 @@ static func _shepherd(n: Node3D) -> void:
 	_p(cart, _box(0.75, 0.6, 1.3), Vector3(0, 0.75, 0), _m(Color(0.25, 0.42, 0.33)))
 	_p(cart, _cyl(0.4, 0.4, 1.4, 16), Vector3(0, 1.05, 0), _m(Color(0.4, 0.4, 0.42), 0.6), Vector3(PI / 2, 0, 0), Vector3(1, 1, 0.55))
 	_p(cart, _box(0.25, 0.4, 0.04), Vector3(0, 0.75, 0.66), wood)
-	_p(cart, _cyl(0.06, 0.06, 0.08), Vector3(0, 1.38, -0.4), _m(Color(0.2, 0.2, 0.2), 0.5))
 	for x in [-0.42, 0.42]:
 		for z in [-0.42, 0.42]:
 			_p(cart, _cyl(0.22, 0.22, 0.05, 14), Vector3(x, 0.22, z), wood, Vector3(0, 0, PI / 2))
 			_p(cart, _cyl(0.05, 0.05, 0.07), Vector3(x, 0.22, z), _m(Color(0.25, 0.25, 0.27), 0.5), Vector3(0, 0, PI / 2))
-	_p(cart, _box(0.05, 0.05, 0.6), Vector3(0, 0.4, 0.95), wood, Vector3(0.3, 0, 0))   # Deichsel
-	# Scherbank und Wollsäcke
+	_p(cart, _box(0.05, 0.05, 0.6), Vector3(0, 0.4, 0.95), wood, Vector3(0.3, 0, 0))
 	_p(n, _box(0.7, 0.08, 0.3), Vector3(-0.5, 0.35, 0.95), wood)
 	for x in [-0.75, -0.25]:
 		_p(n, _box(0.06, 0.33, 0.06), Vector3(x, 0.17, 0.95), wood)
 	for i in 2:
 		_p(n, _sph(0.2), Vector3(0.2 + i * 0.35, 0.2, 0.95), _m(Color(0.93, 0.9, 0.8), 1.0), Vector3.ZERO, Vector3(1, 1.15, 1))
-	# Schäferstab an der Hütte
-	_p(n, _cyl(0.02, 0.02, 1.2), Vector3(0.25, 0.6, 0.55), wood, Vector3(0, 0, -0.12))
 
 # ---------- Tiere ----------
 # Gelenke: Node "beine" (4 Hüftpunkte), "kopf", "schwanz"
@@ -298,49 +308,65 @@ static func animate(a: Node3D, moving: bool, t: float, dt: float, graze: bool) -
 # Schafe: geflochtener Weidenzaun (Flechtzaun), Unterstand
 static func pen(t: String, r: float) -> Node3D:
 	var g := Node3D.new()
-	var n := 18
-	var gate := 0   # Pfosten-Abschnitt mit Tor (zum Hof hin)
 	var post_m: Material
 	var rail_m: Material
 	match t:
 		"schweinezucht":
 			post_m = _m(Color(0.38, 0.27, 0.16)); rail_m = _m(Color(0.5, 0.36, 0.22))
-			_p(g, _cyl(r, r, 0.04, 24), Vector3(0, 0.02, 0), _m(Color(0.5, 0.38, 0.25), 1.0))
+			_p(g, _box(r * 1.44, 0.05, r * 2.0), Vector3(0, 0.03, 0), _m(Color(0.5, 0.38, 0.25), 1.0))
 			_p(g, _cyl(r * 0.35, r * 0.4, 0.03, 16), Vector3(r * 0.3, 0.05, -r * 0.25), _m(Color(0.36, 0.26, 0.16), 0.25), Vector3.ZERO, Vector3(1.3, 1, 1))
 		"kuhstall":
 			post_m = _m(Color(0.92, 0.9, 0.85)); rail_m = post_m
-			_p(g, _cyl(r, r, 0.03, 24), Vector3(0, 0.015, 0), _m(Color(0.47, 0.62, 0.28), 1.0))
+			_p(g, _box(r * 1.44, 0.03, r * 2.0), Vector3(0, 0.015, 0), _m(Color(0.47, 0.62, 0.28), 1.0))
 			_p(g, _box(1.0, 0.28, 0.4), Vector3(-r * 0.55, 0.14, r * 0.3), _m(Color(0.45, 0.31, 0.18)))
 			_p(g, _box(0.92, 0.04, 0.32), Vector3(-r * 0.55, 0.27, r * 0.3), _m(Color(0.3, 0.5, 0.65), 0.1))
 			_p(g, _cyl(0.32, 0.32, 0.55), Vector3(r * 0.5, 0.32, -r * 0.45), _m(Color(0.85, 0.72, 0.38), 1.0), Vector3(0, 0, PI / 2))
 		_:
 			post_m = _m(Color(0.42, 0.3, 0.18)); rail_m = _m(Color(0.55, 0.42, 0.26), 1.0)
-			_p(g, _cyl(r, r, 0.03, 24), Vector3(0, 0.015, 0), _m(Color(0.55, 0.66, 0.32), 1.0))
+			_p(g, _box(r * 1.44, 0.03, r * 2.0), Vector3(0, 0.015, 0), _m(Color(0.55, 0.66, 0.32), 1.0))
 			# offener Unterstand
 			for x in [-0.5, 0.5]:
 				for z in [-0.35, 0.35]:
 					_p(g, _box(0.07, 0.8, 0.07), Vector3(-r * 0.45 + x, 0.4, -r * 0.4 + z), post_m)
 			_p(g, _box(1.3, 0.08, 1.0), Vector3(-r * 0.45, 0.85, -r * 0.4), _m(Color(0.78, 0.65, 0.38), 1.0), Vector3(0.2, 0, 0))
-	for k in n:
-		var a0 := k * TAU / n
-		var a1 := (k + 1) * TAU / n
-		var p0 := Vector3(cos(a0), 0, sin(a0)) * r
-		var p1 := Vector3(cos(a1), 0, sin(a1)) * r
-		var ph := 0.75 if t == "kuhstall" else (0.6 if t == "schweinezucht" else 0.55)
-		_p(g, _box(0.1, ph + 0.1, 0.1), p0 + Vector3(0, (ph + 0.1) * 0.5, 0), post_m)
-		if k == gate:
-			continue   # Toröffnung
-		var mid := (p0 + p1) * 0.5
-		var len := p0.distance_to(p1)
-		var yaw := atan2(p1.x - p0.x, p1.z - p0.z)
-		match t:
-			"schweinezucht":
-				for h in [0.15, 0.32, 0.49]:
-					_p(g, _box(0.04, 0.14, len), mid + Vector3(0, h, 0), rail_m, Vector3(0, yaw, 0))
-			"kuhstall":
-				for h in [0.35, 0.65]:
-					_p(g, _box(0.05, 0.07, len + 0.05), mid + Vector3(0, h, 0), rail_m, Vector3(0, yaw, 0))
-			_:
-				for h in 4:
-					_p(g, _box(0.05, 0.1, len), mid + Vector3(0, 0.1 + h * 0.12, 0), rail_m, Vector3(0.0, yaw, (0.08 if h % 2 == 0 else -0.08)))
+	# rechteckiges Gatter: Vorderseite (+x, zum Hof) mit Tor in der Mitte
+	var hw := r * 1.0     # halbe Breite (entlang z)
+	var hd := r * 0.72    # halbe Tiefe (entlang x)
+	var corners := [Vector3(hd, 0, -hw), Vector3(hd, 0, hw), Vector3(-hd, 0, hw), Vector3(-hd, 0, -hw)]
+	var ph := 0.75 if t == "kuhstall" else (0.6 if t == "schweinezucht" else 0.55)
+	for side in 4:
+		var c0: Vector3 = corners[side]
+		var c1: Vector3 = corners[(side + 1) % 4]
+		var segs := maxi(2, int(c0.distance_to(c1) / 1.15))
+		for k in segs:
+			var p0 := c0.lerp(c1, float(k) / segs)
+			var p1 := c0.lerp(c1, float(k + 1) / segs)
+			_p(g, _box(0.11, ph + 0.12, 0.11), p0 + Vector3(0, (ph + 0.12) * 0.5, 0), post_m)
+			if side == 0 and (k == segs / 2 or k == segs / 2 - 1) and segs >= 4:
+				continue   # Durchgang zur Stalltür
+			if side == 1 and k == segs / 2:
+				continue   # Tor an der Seite
+			var mid := (p0 + p1) * 0.5
+			var len := p0.distance_to(p1)
+			var yaw := atan2(p1.x - p0.x, p1.z - p0.z)
+			match t:
+				"schweinezucht":
+					for h in [0.15, 0.32, 0.49]:
+						_p(g, _box(0.04, 0.14, len), mid + Vector3(0, h, 0), rail_m, Vector3(0, yaw, 0))
+				"kuhstall":
+					for h in [0.35, 0.65]:
+						_p(g, _box(0.05, 0.07, len + 0.05), mid + Vector3(0, h, 0), rail_m, Vector3(0, yaw, 0))
+				_:
+					for h in 4:
+						_p(g, _box(0.05, 0.1, len), mid + Vector3(0, 0.1 + h * 0.12, 0), rail_m, Vector3(0.0, yaw, (0.08 if h % 2 == 0 else -0.08)))
+	# offenes Tor: ein Flügel steht angelehnt nach außen
+	var gseg := maxi(2, int(corners[1].distance_to(corners[2]) / 1.15))
+	var gp: Vector3 = corners[1].lerp(corners[2], float(gseg / 2) / gseg)
+	var gate_n := Node3D.new()
+	gate_n.position = gp
+	gate_n.rotation.y = -PI / 2 + 0.9
+	g.add_child(gate_n)
+	for h in [0.2, 0.42, 0.62]:
+		_p(gate_n, _box(0.04, 0.07, 1.05), Vector3(0.0, h, 0.52), rail_m)
+	_p(gate_n, _box(0.04, 0.07, 1.2), Vector3(0.0, 0.41, 0.52), rail_m, Vector3(0.45, 0, 0))
 	return g
