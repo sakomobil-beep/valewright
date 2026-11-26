@@ -58,9 +58,10 @@ static func dress(root: Node3D) -> void:
 	var old: Node3D = root.find_child("worker", true, false)
 	if old == null or old.has_meta("figur"):
 		return
-	var o_up: Node3D = old.get_node_or_null("Node3")
+	# Oberkörper = der Knoten, an dem die Arme hängen (beim Träger heißt er anders als sonst)
+	var o_arm: Node3D = old.find_child("arm_r", true, false)
+	var o_up: Node3D = o_arm.get_parent() if o_arm else null
 	var o_head: Node3D = o_up.get_node_or_null("Node") if o_up else null
-	var o_arm: Node3D = o_up.get_node_or_null("arm_r") if o_up else null
 	var o_leg: Node3D = old.get_node_or_null("leg_l")
 	if o_up == null or o_head == null or o_leg == null:
 		return
@@ -103,6 +104,11 @@ static func dress(root: Node3D) -> void:
 	for i in up_m.size():
 		if i >= 3:
 			up_m[i].reparent(up, false)
+	# weitere Ausrüstung am Rücken (z. B. Kiepe des Trägers) mitnehmen
+	for ch in o_up.get_children():
+		if ch is Node3D and not ch is MeshInstance3D and not ch.name in ["Node", "arm_l", "arm_r"]:
+			ch.name = "Ruecken_" + ch.name
+			ch.reparent(up, false)
 	# Kopf: der alte Kopf mit Gesicht, Haaren, Hut und Bart wird übernommen
 	o_head.reparent(up, false)
 	o_head.position = Vector3(0, SH_Y + 0.08 + HEAD_R, 0)
@@ -131,3 +137,4 @@ static func dress(root: Node3D) -> void:
 		_part(l, _cap(0.055, 0.17), Vector3(0, -ll + 0.04, 0.03), _mat(boots), Vector3(90, 0, 0))
 	old.get_parent().remove_child(old)
 	old.free()
+	w.name = "worker"
