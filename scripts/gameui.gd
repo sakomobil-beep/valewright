@@ -158,6 +158,7 @@ func _button(vb: Control, txt: String, cb: Callable, translate := true) -> Butto
 func main_menu() -> void:
 	var vb := _window(460)
 	_label(vb, "Valewright", 46, GOLD, true)
+	_label(vb, BuildInfo.VERSION + "  ·  Stand: " + BuildInfo.STAMP, 14, TEXT, true)   # TEST: vor dem Release entfernen
 	_label(vb, "GAME_SUBTITLE", 18, TEXT, true)
 	vb.add_child(HSeparator.new())
 	_button(vb, "MENU_TUTORIAL", func(): Session.new_game({"mode": "tutorial", "ais": 0, "diff": "leicht", "seed": 4711, "mission": -1}))
