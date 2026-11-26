@@ -869,6 +869,9 @@ func _plan_carrier(w: Dictionary) -> void:
 				continue
 			var l := nearest_lager(b.pos)
 			var k: float = economy.prio(b) * 400.0 + Vector2(l.x - p.x, l.z - p.z).length() + Vector2(b.pos.x - l.x, b.pos.z - l.z).length() * 0.5 + 30.0
+			# Wohnhäuser zuerst: fehlt dem Haus die Ware gerade ganz, geht die Lieferung vor jedes Abholen
+			if b.type == "wohnhaus" and int(b["in"].get(item, 0)) + int(b.get("inc", {}).get(item, 0)) == 0:
+				k -= 700.0
 			if k < jk:
 				jk = k
 				job = {"lager": l, "to": b, "item": item, "n": maxi(1, mini(mini(cap, int(economy.stock[item])), int(wv[1])))}

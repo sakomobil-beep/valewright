@@ -28,7 +28,7 @@ var residents := 20   # Start: das Haupthaus ist voll bewohnt
 var _grow_t := 0.0
 var pop_src = null   # Siedler-Verwaltung (zählt, wer schon eine Aufgabe hat)
 var builders_n := 2   # Baumeister zu Beginn (mehr nur über die Handwerkskammer)
-var carriers_n := 2   # Träger (mehr nur über die Handwerkskammer)
+var carriers_n := 4   # Träger zu Beginn (mehr nur über die Handwerkskammer)
 const TRAIN_TIME := 300.0   # 5 Minuten Ausbildung
 var unl := 0     # Freischalt-Stufe (steigt mit zufriedenen Wohnhäusern)
 
@@ -448,7 +448,7 @@ func _produce(b: Dictionary, dt: float) -> void:
 		if b.idle_t > 0.0:
 			return
 		b.idle_t = 2.0
-		if out_total(b) >= 8:
+		if out_total(b) >= 6:   # Platz vor dem Haus voll: warten, bis abgeholt wird
 			b.status = "ST_OUT_FULL"
 			return
 		var r = plan_rec(b)
@@ -524,14 +524,16 @@ func house_wants(b: Dictionary) -> Array:
 	if lv < 4:
 		var nx: Dictionary = HOUSE_LV[lv + 1]
 		for k in nx.needs:
-			if k in L.needs or k == "bier" or k == "*food":
+			if k in L.needs or k == "bier":
 				continue
-			if k == "*fine":
+			if k == "*fine" or k == "*food":
+				# Essen für die nächste Stufe schon vorab liefern (sonst kann die Hütte nie aufsteigen)
+				var grp: Array = FINE if k == "*fine" else FOODS
 				var hv := 0
-				for f in FINE:
+				for f in grp:
 					hv += _have(b, f)
-				if hv < 1 and FINE.any(func(f): return int(stock.get(f, 0)) > 0):
-					res.append(["*fine", 1 - hv])
+				if hv < 1 and grp.any(func(f): return int(stock.get(f, 0)) > 0):
+					res.append([k, 1 - hv])
 				continue
 			if int(stock.get(k, 0)) <= 0:
 				continue
