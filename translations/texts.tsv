@@ -627,3 +627,9 @@ CH_MISSING	Rohstoff fehlt	material missing
 CH_NOT_BUILT	noch nicht gebaut	not built yet
 CH_BUILT	%d von %d gebaut	%d of %d built
 CH_COUNT	%d× · %d arbeiten	%d× · %d working
+UI_HK_STAFF	Personal der Siedlung	Settlement staff
+UI_MIN_LEFT	noch %d min	%d min left
+UI_QUEUE	Warteschlange	Queue
+UI_HK_IDLE	Gerade keine Ausbildung – unten 👷 +1 oder 🧺 +1 wählen.	No training right now – pick 👷 +1 or 🧺 +1 below.
+UI_HK_COST	Je Ausbildung 1 Werkzeug · 5 Minuten	Each training: 1 tool · 5 minutes
+UI_IN_STOCK_N	Lager: %d	in stock: %d

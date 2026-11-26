@@ -794,7 +794,10 @@ func _process(_dt: float) -> void:
 		else:
 			var rest := info_label.text.split("\n", true, 1)   # Status steht jetzt in der Arbeits-Karte
 			info_label.text = rest[1] if rest.size() > 1 else ""
-			if military and (military.POSTS.has(b.type) or b.type == "kaserne"):
+			if b.type == "handwerkskammer":
+				info_label.text = ""
+				_hk_panel(b)
+			elif military and (military.POSTS.has(b.type) or b.type == "kaserne"):
 				info_label.text = ""
 				_military_panel(b)
 			else:
@@ -1132,6 +1135,54 @@ func _military_panel(b: Dictionary) -> void:
 		var n := int(b["in"].get(k, 0)) + (int(economy.stock.get(k, 0)) if k == "muenzen" else 0)
 		_lbl(hb, tr("ITEM_" + k.to_upper()), 14, Color(0.96, 0.9, 0.78), 96)
 		_lbl(hb, str(n), 13, C_OK if n > 0 else C_BAD)
+
+# ---------- Handwerkskammer: Personal, laufende Ausbildung mit Balken, Warteschlange, Kosten ----------
+func _hk_panel(b: Dictionary) -> void:
+	var q: Array = b.get("tq", [])
+	var prog := int(100.0 * float(b.get("tq_t", 0.0)) / economy.TRAIN_TIME) if not q.is_empty() else -1
+	var sig := "HK%d|%d|%s|%d|%s|%d|%d" % [int(economy.builders_n), int(economy.carriers_n), str(q), prog, str(b.get("status", "")), int(economy.stock.get("werkzeug", 0)), economy.free_people()]
+	if sig == _chip_sig:
+		return
+	_chip_sig = sig
+	info_label.visible = false
+	for c in info_chips.get_children():
+		c.queue_free()
+	# Personal
+	var c1 := _hpcard(info_chips)
+	_lbl(c1, "👥 " + tr("UI_HK_STAFF"), 14, C_GOLD)
+	var g := GridContainer.new(); g.columns = 2; g.add_theme_constant_override("h_separation", 24); c1.add_child(g)
+	for row in [["👷", tr("HK_BAU"), int(economy.builders_n)], ["🧺", tr("HK_TR"), int(economy.carriers_n)]]:
+		var hb := HBoxContainer.new(); hb.add_theme_constant_override("separation", 8); g.add_child(hb)
+		_lbl(hb, row[0], 20, Color.WHITE)
+		var v := VBoxContainer.new(); v.add_theme_constant_override("separation", -2); hb.add_child(v)
+		_lbl(v, str(row[2]), 20, Color.WHITE)
+		_lbl(v, row[1], 12, C_DIM)
+	# laufende Ausbildung
+	var active := not q.is_empty()
+	var c2 := _hpcard(info_chips, Color(0.1, 0.25, 0.08, 0.35) if active else Color(0, 0, 0, 0.25))
+	_lbl(c2, "🎓 " + tr("UI_TRAINING"), 14, C_GOLD)
+	if active:
+		var hb := HBoxContainer.new(); hb.add_theme_constant_override("separation", 8); c2.add_child(hb)
+		_lbl(hb, ("👷 " if q[0] == "bau" else "🧺 ") + tr("HK_" + String(q[0]).to_upper()), 14, Color.WHITE, 120)
+		_bar(hb, prog, 100, C_OK, 150)
+		var left := int(ceil((economy.TRAIN_TIME - float(b.get("tq_t", 0.0))) / 60.0))
+		_lbl(hb, tr("UI_MIN_LEFT") % left, 13, C_DIM)
+		if q.size() > 1:
+			var wrow := HBoxContainer.new(); wrow.add_theme_constant_override("separation", 4); c2.add_child(wrow)
+			_lbl(wrow, tr("UI_QUEUE") + ":", 13, C_DIM, 120)
+			for k in q.slice(1):
+				_lbl(wrow, "👷" if k == "bau" else "🧺", 16, Color.WHITE)
+		if economy.free_people() < 1:
+			_lbl(c2, "✖ " + tr("ST_NO_PEOPLE"), 13, C_BAD)
+	else:
+		_lbl(c2, tr("UI_HK_IDLE"), 13, C_DIM).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# Kosten
+	var c3 := _hpcard(info_chips)
+	var hb3 := HBoxContainer.new(); hb3.add_theme_constant_override("separation", 8); c3.add_child(hb3)
+	hb3.add_child(UiIcons.icon_rect("werkzeug", 22))
+	var tools := int(economy.stock.get("werkzeug", 0))
+	_lbl(hb3, tr("UI_HK_COST"), 13, C_DIM, 230)
+	_lbl(hb3, tr("UI_IN_STOCK_N") % tools, 13, C_OK if tools > 0 else C_BAD)
 
 func _enemy_panel(e: Dictionary) -> void:
 	var sig := "E%d|%s" % [int(e.garrison), str(e.get("owner", 0))]
@@ -1626,11 +1677,126 @@ func confirm() -> void:
 	if economy.can_afford(t):
 		start(t)    # gleich das nächste Gebäude derselben Art platzieren können
 
+# Hausaufstieg als Umbau: Gerüst wächst hoch, zwei Bauarbeiter hämmern, Staub steigt auf,
+# das alte Haus wird abgetragen, das neue wächst von unten nach oben, dann kommt das Gerüst weg
+const RENO_T := 9.0
+
 func _swap_house(b: Dictionary) -> void:
+	var old: Node3D = b.node
 	var n := model("wohnhaus", b.lvl)
-	n.position = b.node.position
-	n.rotation = b.node.rotation
-	n.scale = b.node.scale
+	n.position = old.position
+	n.rotation = old.rotation
+	n.scale = Vector3(old.scale.x, 0.02, old.scale.z)
+	n.visible = false
 	add_child(n)
-	b.node.queue_free()
 	b.node = n
+	b.renovating = true
+	# Größe von altem und neuem Haus fürs Gerüst
+	var top := 2.5
+	var half := Vector2(1.6, 1.6)
+	for src in [old, n]:
+		for mi in src.find_children("*", "MeshInstance3D", true, false):
+			var bx: AABB = mi.get_aabb()
+			var tr3: Transform3D = src.global_transform.affine_inverse() * mi.global_transform
+			var lb: AABB = tr3 * bx
+			top = maxf(top, lb.end.y * src.scale.x)
+			half.x = maxf(half.x, maxf(absf(lb.position.x), absf(lb.end.x)) * src.scale.x)
+			half.y = maxf(half.y, maxf(absf(lb.position.z), absf(lb.end.z)) * src.scale.x)
+	half = Vector2(minf(half.x, 3.2), minf(half.y, 3.2)) + Vector2(0.45, 0.45)
+	top = minf(top, 7.5)
+	var sc := _scaffold(half, top)
+	sc.position = old.position
+	sc.rotation = old.rotation
+	sc.scale = Vector3(1, 0.01, 1)
+	add_child(sc)
+	# Staub und Bauarbeiter
+	var fxn = get_parent().get_node_or_null("Effekte")
+	var dust: CPUParticles3D = null
+	if fxn:
+		dust = fxn._dust(Color(0.85, 0.8, 0.7), 0.55)
+		dust.amount = 40
+		dust.emission_sphere_radius = maxf(half.x, half.y)
+		dust.position = old.position + Vector3(0, 1.0, 0)
+		add_child(dust)
+	var men: Array = []
+	if settlers:
+		for k in 2:
+			var side := Vector3((k * 2 - 1) * (half.x + 0.5), 0, half.y + 0.3).rotated(Vector3.UP, old.rotation.y)
+			var p: Vector3 = old.position + side
+			var w: Dictionary = settlers.spawn("bauarbeiter", p)
+			w.role = "bauarbeiter"
+			w.q = [{"face": old.position}, {"anim": "build", "wait": RENO_T - 1.5}]
+			men.append(w)
+	var old_s: Vector3 = old.scale
+	var tw := create_tween()
+	tw.tween_property(sc, "scale", Vector3.ONE, 1.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func(): if dust: dust.emitting = true)
+	tw.tween_property(old, "scale", Vector3(old_s.x, old_s.y * 0.02, old_s.z), 2.4).set_trans(Tween.TRANS_SINE)
+	tw.tween_callback(func():
+		old.queue_free()
+		n.visible = true)
+	tw.tween_property(n, "scale", old_s, 3.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func(): if dust: dust.emitting = false)
+	tw.tween_property(sc, "scale", Vector3(1, 0.01, 1), 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.tween_callback(func():
+		sc.queue_free()
+		b.erase("renovating")
+		if settlers:
+			settlers.sfx("place")
+			for w in men:
+				settlers._remove(w)
+		if dust:
+			get_tree().create_timer(2.5).timeout.connect(func(): if is_instance_valid(dust): dust.queue_free()))
+
+# Holzgerüst rund ums Haus: Stangen, Bretterböden auf jeder Etage, Querstreben, Leiter, Plane
+func _scaffold(half: Vector2, top: float) -> Node3D:
+	var g := Node3D.new()
+	g.name = "Geruest"
+	var wood := StandardMaterial3D.new()
+	wood.albedo_color = Color(0.62, 0.46, 0.28)
+	var plank := StandardMaterial3D.new()
+	plank.albedo_color = Color(0.74, 0.58, 0.36)
+	var tarp := StandardMaterial3D.new()
+	tarp.albedo_color = Color(0.85, 0.82, 0.72, 0.85)
+	tarp.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	tarp.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var box := func(sz: Vector3, pos: Vector3, m: Material, rot := Vector3.ZERO):
+		var mi := MeshInstance3D.new()
+		var bm := BoxMesh.new(); bm.size = sz
+		mi.mesh = bm; mi.material_override = m; mi.position = pos; mi.rotation = rot
+		g.add_child(mi)
+	var hx := half.x
+	var hz := half.y
+	var levels := maxi(2, int(top / 1.6))
+	# Stangen alle ~1,4 m entlang der vier Seiten
+	var nx := maxi(2, int(hx * 2.0 / 1.4) + 1)
+	var nz := maxi(2, int(hz * 2.0 / 1.4) + 1)
+	var posts := []
+	for i in nx:
+		var x := -hx + hx * 2.0 * i / (nx - 1)
+		posts.append(Vector2(x, hz)); posts.append(Vector2(x, -hz))
+	for i in range(1, nz - 1):
+		var z := -hz + hz * 2.0 * i / (nz - 1)
+		posts.append(Vector2(hx, z)); posts.append(Vector2(-hx, z))
+	for p in posts:
+		box.call(Vector3(0.09, top + 0.6, 0.09), Vector3(p.x, (top + 0.6) * 0.5, p.y), wood)
+	# Bretterböden und Geländer je Etage (außen umlaufend)
+	for l in range(1, levels + 1):
+		var y := top * l / float(levels) - 0.3
+		for s in [-1.0, 1.0]:
+			box.call(Vector3(hx * 2.0 + 0.5, 0.05, 0.45), Vector3(0, y, s * (hz + 0.2)), plank)
+			box.call(Vector3(0.45, 0.05, hz * 2.0), Vector3(s * (hx + 0.2), y, 0), plank)
+			box.call(Vector3(hx * 2.0 + 0.5, 0.05, 0.05), Vector3(0, y + 0.55, s * (hz + 0.42)), wood)
+			box.call(Vector3(0.05, 0.05, hz * 2.0 + 0.5), Vector3(s * (hx + 0.42), y + 0.55, 0), wood)
+	# Diagonalstreben vorne und hinten
+	for s in [-1.0, 1.0]:
+		var ln := sqrt(hx * hx * 4.0 + top * top)
+		box.call(Vector3(0.06, ln, 0.06), Vector3(0, top * 0.5, s * (hz + 0.05)), wood, Vector3(0, 0, atan2(hx * 2.0, top)))
+	# Leiter an der rechten Seite
+	box.call(Vector3(0.05, top, 0.05), Vector3(hx + 0.55, top * 0.5, 0.25), wood)
+	box.call(Vector3(0.05, top, 0.05), Vector3(hx + 0.55, top * 0.5, -0.15), wood)
+	for k in int(top / 0.35):
+		box.call(Vector3(0.05, 0.04, 0.4), Vector3(hx + 0.55, 0.3 + k * 0.35, 0.05), wood)
+	# Plane an der Rückseite
+	box.call(Vector3(hx * 2.0, top * 0.75, 0.02), Vector3(0, top * 0.55, -(hz + 0.5)), tarp)
+	return g
