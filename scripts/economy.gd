@@ -21,10 +21,10 @@ const FINE := ["raeucherfisch", "wurst"]
 var HOUSE_TICK := 90.0
 # Einwohner: Haupthaus bietet Platz für BASE_HOMES, jedes Wohnhaus je nach Stufe mehr.
 # Alle Berufe, Träger, Baumeister und Soldaten kommen aus diesem Vorrat.
-const BASE_HOMES := 10
+const BASE_HOMES := 20   # Platz im Haupthaus
 const HOUSE_PEOPLE := [3, 5, 7, 9, 12]   # Bewohner je Stufe
 const GROW_TIME := 45.0
-var residents := 8
+var residents := 20   # Start: das Haupthaus ist voll bewohnt
 var _grow_t := 0.0
 var pop_src = null   # Siedler-Verwaltung (zählt, wer schon eine Aufgabe hat)
 var builders_n := 1   # Baumeister (mehr nur über die Handwerkskammer)

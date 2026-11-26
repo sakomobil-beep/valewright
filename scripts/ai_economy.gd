@@ -44,7 +44,7 @@ func setup(ai: Dictionary) -> void:
 	var st := {}
 	for k in data.items:
 		st[k] = int(round(int(data.start.get(k, 0)) * {"wenig": 0.5, "normal": 1.0, "viel": 2.0}.get(String(Session.cfg.get("start", "normal")), 1.0)))
-	ai.eco = {"stock": st, "residents": 8, "builders": 1, "carriers": 2, "unl": 0, "plan": 0, "think": randf() * 4.0,
+	ai.eco = {"stock": st, "residents": eco.BASE_HOMES, "builders": 1, "carriers": 2, "unl": 0, "plan": 0, "think": randf() * 4.0,
 		"grow_t": 0.0, "found": [], "searched": [], "tq": [], "tq_t": 0.0, "stuck": 0}
 	ai.lager.build = 1.0
 
