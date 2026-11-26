@@ -274,7 +274,12 @@ func _setup_stock() -> void:
 	sfx.name = "Sfx"
 	sfx.terrain = terrain
 	sfx.rig = $Kamera
+	sfx.economy = economy
 	add_child(sfx)
+	var ach := preload("res://scripts/achievements.gd").new()
+	ach.name = "Erfolge"
+	ach.main = self
+	add_child(ach)
 	economy.message.connect(_toast)
 	_update_stock()
 

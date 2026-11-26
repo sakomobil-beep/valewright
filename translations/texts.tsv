@@ -705,3 +705,43 @@ UI_WALL_BONUS	Verteidiger am Haupthaus +%d %% stärker · %d Wächterplätze	Hea
 UI_WALL_BUILD	Ausbau starten	Start upgrade
 UI_WALL_MAX	Die Mauer ist voll ausgebaut.	The wall is fully upgraded.
 MSG_WALL_DONE	🧱 %s ums Haupthaus ist fertig!	🧱 %s around the headquarters is finished!
+SET_AMBIENT	🐦 Umgebungsgeräusche (Vögel, Wind, Arbeit)	🐦 Ambient sounds (birds, wind, work)
+MENU_ACH	🏆 Erfolge	🏆 Achievements
+ACH_COUNT	%d von %d freigeschaltet	%d of %d unlocked
+ACH_UNLOCKED	Erfolg freigeschaltet!	Achievement unlocked!
+ACH_ERSTE_ZECHE	Glück auf!	Good luck down below!
+ACHD_ERSTE_ZECHE	Baue deine erste Zeche.	Build your first mine.
+ACH_EINW_50	Ein kleines Dorf	A little village
+ACHD_EINW_50	Erreiche 50 Einwohner.	Reach 50 residents.
+ACH_EINW_100	Marktflecken	Market town
+ACHD_EINW_100	Erreiche 100 Einwohner.	Reach 100 residents.
+ACH_EINW_250	Stolze Stadt	Proud city
+ACHD_EINW_250	Erreiche 250 Einwohner.	Reach 250 residents.
+ACH_GEBAEUDE_25	Fleißige Baumeister	Busy builders
+ACHD_GEBAEUDE_25	Besitze 25 fertige Gebäude.	Own 25 finished buildings.
+ACH_GEBAEUDE_50	Baumeister des Odenwalds	Master builder of the Odenwald
+ACHD_GEBAEUDE_50	Besitze 50 fertige Gebäude.	Own 50 finished buildings.
+ACH_HAUS_STUFE	Gut eingerichtet	Nicely furnished
+ACHD_HAUS_STUFE	Ein Wohnhaus steigt auf Stufe 3 auf.	A house reaches level 3.
+ACH_BROT	Unser täglich Brot	Our daily bread
+ACHD_BROT	Backe das erste Brot.	Bake the first bread.
+ACH_WERKZEUG	Handwerk hat goldenen Boden	Craft pays off
+ACHD_WERKZEUG	Schmiede das erste Werkzeug.	Forge the first tool.
+ACH_BIER	Prost!	Cheers!
+ACHD_BIER	Braue das erste Bier.	Brew the first beer.
+ACH_SCHMUCK	Was glänzt, ist Gold	All that glitters
+ACHD_SCHMUCK	Fertige das erste Schmuckstück.	Craft the first piece of jewellery.
+ACH_MUENZEN_100	Volle Truhe	Full chest
+ACHD_MUENZEN_100	Habe 100 Münzen im Lager.	Have 100 coins in stock.
+ACH_MAUER_1	Hinter Pfählen sicher	Safe behind stakes
+ACHD_MAUER_1	Baue die Holzpalisade ums Haupthaus.	Build the wooden palisade around the headquarters.
+ACH_MAUER_2	Feste Burg	Mighty fortress
+ACHD_MAUER_2	Baue die Steinmauer ums Haupthaus.	Build the stone wall around the headquarters.
+ACH_ABWEHR	Standgehalten	Held the line
+ACHD_ABWEHR	Überstehe einen feindlichen Angriff.	Survive an enemy attack.
+ACH_SIEG_KI	Herr des Tals	Lord of the valley
+ACHD_SIEG_KI	Besiege einen Gegner.	Defeat an opponent.
+ACH_SPIELZEIT	Siedler aus Leidenschaft	Settler at heart
+ACHD_SPIELZEIT	Spiele insgesamt 2 Stunden.	Play for 2 hours in total.
+ACH_ALLE_KETTEN	Meister der Ketten	Master of chains
+ACHD_ALLE_KETTEN	Besitze Mühle, Bäckerei, Schmelze, Schmied, Brauerei, Goldschmied, Münzpräge, Weberei und Schneider.	Own a mill, bakery, smelter, smithy, brewery, goldsmith, mint, weaving mill and tailor.

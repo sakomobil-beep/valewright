@@ -286,6 +286,7 @@ func main_menu() -> void:
 	_button(vb, "MENU_NEW", new_game_menu)
 	_button(vb, "MENU_LOAD", func(): load_menu(false))
 	_button(vb, "MENU_SETTINGS", func(): settings_menu(false))
+	_button(vb, "MENU_ACH", func(): achievements_page(false))
 	_button(vb, "MENU_HELP", func(): help_page(false))
 	_button(vb, "MENU_ABOUT", func(): about_page(false))
 	var hb := HBoxContainer.new()
@@ -559,6 +560,7 @@ func pause_menu() -> void:
 	_button(vb, "MENU_SAVE", save_menu)
 	_button(vb, "MENU_LOAD", func(): load_menu(true))
 	_button(vb, "MENU_SETTINGS", func(): settings_menu(true))
+	_button(vb, "MENU_ACH", func(): achievements_page(true))
 	_button(vb, "MENU_HELP", func(): help_page(true))
 	_button(vb, "MENU_MAIN", func(): get_tree().paused = false; Session.to_menu())
 
@@ -624,6 +626,59 @@ func help_page(in_game: bool) -> void:
 	_button(vb, "UI_BACK", pause_menu if in_game else main_menu)
 
 # ---------- Über das Spiel ----------
+func achievements_page(in_game: bool) -> void:
+	var vb := _window(760)
+	var A = preload("res://scripts/achievements.gd")
+	var done: Dictionary = {}
+	var node = main.get_node_or_null("Erfolge") if main else null
+	if node:
+		done = node.done
+	else:
+		var c := ConfigFile.new()
+		if c.load(A.FILE) == OK and c.has_section("erfolge"):
+			for k in c.get_section_keys("erfolge"):
+				done[k] = c.get_value("erfolge", k)
+	_label(vb, "MENU_ACH", 30, GOLD, true)
+	_label(vb, tr("ACH_COUNT") % [done.size(), A.LIST.size()], 15, TEXT, true).auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	var sc := ScrollContainer.new()
+	sc.custom_minimum_size = Vector2(740, 440)
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	vb.add_child(sc)
+	var gr := GridContainer.new()
+	gr.columns = 2
+	gr.add_theme_constant_override("h_separation", 10)
+	gr.add_theme_constant_override("v_separation", 10)
+	gr.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.add_child(gr)
+	for e in A.LIST:
+		var id: String = e[0]
+		var ok := done.has(id)
+		var pc := PanelContainer.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.25, 0.18, 0.07, 0.85) if ok else Color(0.12, 0.12, 0.12, 0.6)
+		sb.border_color = GOLD if ok else Color(0.3, 0.3, 0.3)
+		sb.set_border_width_all(2)
+		sb.set_corner_radius_all(8)
+		sb.content_margin_left = 10; sb.content_margin_right = 10; sb.content_margin_top = 6; sb.content_margin_bottom = 6
+		pc.add_theme_stylebox_override("panel", sb)
+		pc.custom_minimum_size = Vector2(360, 70)
+		gr.add_child(pc)
+		var hb := HBoxContainer.new()
+		hb.add_theme_constant_override("separation", 10)
+		pc.add_child(hb)
+		var ic := Label.new()
+		ic.text = e[1] if ok else "🔒"
+		ic.add_theme_font_size_override("font_size", 32)
+		ic.modulate = Color.WHITE if ok else Color(1, 1, 1, 0.5)
+		hb.add_child(ic)
+		var tv := VBoxContainer.new()
+		tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		hb.add_child(tv)
+		_label(tv, "ACH_" + id.to_upper(), 16, GOLD if ok else Color(0.7, 0.7, 0.7))
+		var d := _label(tv, "ACHD_" + id.to_upper(), 12, TEXT if ok else Color(0.6, 0.6, 0.6))
+		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_button(vb, "UI_BACK", pause_menu if in_game else main_menu)
+
 func about_page(in_game: bool) -> void:
 	var vb := _window(560)
 	var logo := TextureRect.new()
@@ -645,7 +700,7 @@ func about_page(in_game: bool) -> void:
 
 # ---------- Einstellungen ----------
 const SETTINGS := "user://settings.cfg"
-var opts := {"music": 0.6, "volume": 0.8, "shadows": true, "effects": true, "cam_speed": 1.0, "language": "", "grass": "hoch",
+var opts := {"music": 0.6, "ambient": 0.8, "volume": 0.8, "shadows": true, "effects": true, "cam_speed": 1.0, "language": "", "grass": "hoch",
 	"preset": "hoch", "window": "vollbild", "res": "1920x1080", "vsync": true, "fps": 0, "scale": 1.0, "aa": "msaa2",
 	"shadow_q": "hoch", "tree_dist": 75, "show_fps": false, "haze": false}
 # Voreinstellungen: ein Klick stellt alles passend ein
@@ -678,6 +733,9 @@ func apply_settings() -> void:
 	var mus = main.get_node_or_null("Musik") if main else null
 	if mus:
 		mus.set_volume(float(opts.music))
+	var sf = main.get_node_or_null("Sfx") if main else null
+	if sf:
+		sf.ambient = float(opts.get("ambient", 0.8))
 	if main == null:
 		return
 	var sun: DirectionalLight3D = main.get_node_or_null("Sonne")
@@ -795,6 +853,11 @@ func settings_menu(in_game: bool) -> void:
 		mv.min_value = 0.0; mv.max_value = 1.0; mv.step = 0.05; mv.value = opts.music
 		mv.value_changed.connect(func(v): set.call("music", v, false))
 		vb.add_child(mv)
+		_label(vb, "SET_AMBIENT")
+		var av := HSlider.new()
+		av.min_value = 0.0; av.max_value = 1.0; av.step = 0.05; av.value = float(opts.get("ambient", 0.8))
+		av.value_changed.connect(func(v): set.call("ambient", v, false))
+		vb.add_child(av)
 		_label(vb, "SET_CAMSPEED")
 		var cs := HSlider.new()
 		cs.min_value = 0.4; cs.max_value = 2.0; cs.step = 0.1; cs.value = opts.cam_speed

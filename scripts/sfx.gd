@@ -33,12 +33,77 @@ func _ready() -> void:
 		var p := AudioStreamPlayer.new()
 		add_child(p)
 		_players.append(p)
+	_amb_load()
 
 var _water: AudioStreamPlayer
 var _wind: AudioStreamPlayer
 var _bird_t := 1.0
+var _gust_t := 6.0
+var _work_t := 0.5
 var terrain
 var rig
+var economy
+var ambient := 0.8   # Lautstärke Umgebung (Einstellungen)
+var _amb: Dictionary = {}       # Name → AudioStream (sounds/*.ogg)
+var _p3d: Array = []            # Lautsprecher im Raum für Arbeitsgeräusche
+var _p2d: Array = []            # Vögel und Wind (nicht ortsgebunden)
+var _cool: Dictionary = {}      # Gebäude → Zeit bis zum nächsten Geräusch
+
+# Arbeitsgeräusche je Gebäude: [Klang, Pause min, Pause max, Lautstärke dB]
+const WORK := {
+	"schmied": ["amboss", 1.2, 2.2, -4.0], "waffenschmied": ["amboss", 1.2, 2.2, -4.0], "goldschmied": ["amboss", 2.0, 3.5, -9.0],
+	"muenzpraege": ["muenzen", 2.0, 3.5, -6.0], "saegewerk": ["saege", 1.5, 2.5, -6.0], "holzfaeller": ["holzhammer", 3.0, 6.0, -10.0],
+	"wagner": ["holzhammer", 1.8, 3.2, -6.0], "bogenbauer": ["saege", 3.0, 5.0, -10.0], "waffenschnitzer": ["holzhammer", 2.0, 3.5, -8.0],
+	"steinmine": ["spitzhacke", 1.4, 2.6, -5.0], "eisenmine": ["spitzhacke", 1.4, 2.6, -5.0], "kohlemine": ["spitzhacke", 1.4, 2.6, -5.0],
+	"goldmine": ["spitzhacke", 1.4, 2.6, -5.0], "steinmetz": ["spitzhacke", 1.8, 3.2, -7.0], "lehmgrube": ["spitzhacke", 3.0, 5.0, -12.0],
+	"schmelze": ["feuer", 0.2, 0.6, -6.0], "koehler": ["feuer", 0.4, 1.2, -9.0], "baeckerei": ["feuer", 1.5, 3.0, -12.0], "raeucherei": ["feuer", 1.0, 2.5, -11.0],
+	"brauerei": ["brodeln", 0.3, 1.0, -8.0], "kaeserei": ["brodeln", 2.0, 4.0, -13.0], "kelterei": ["knarren", 1.5, 3.0, -7.0],
+	"weberei": ["webstuhl", 0.4, 1.0, -7.0], "seilerei": ["knarren", 2.5, 4.5, -10.0], "brunnen": ["knarren", 3.0, 6.0, -9.0], "muehle": ["knarren", 2.0, 4.0, -8.0],
+	"metzger": ["messer", 1.5, 3.0, -7.0], "toepfer": ["drehscheibe", 0.6, 1.5, -10.0], "konditorei": ["messer", 3.0, 5.0, -14.0],
+	"schaefer": ["schaf", 4.0, 9.0, -9.0], "kuhstall": ["kuh", 6.0, 12.0, -8.0], "schweinezucht": ["schwein", 3.0, 7.0, -8.0], "imker": ["bienen", 0.5, 1.5, -12.0],
+}
+const BIRDS := ["amsel", "amsel", "meise", "meise", "fink", "fink", "kuckuck", "specht"]
+
+func _amb_load() -> void:
+	for f in ["amsel", "meise", "fink", "kuckuck", "specht", "blaetter", "bach", "amboss", "saege", "holzhammer", "spitzhacke", "feuer", "brodeln", "webstuhl", "knarren", "messer", "drehscheibe", "muenzen", "schaf", "kuh", "schwein", "bienen"]:
+		var st = load("res://sounds/%s.ogg" % f)
+		if st:
+			_amb[f] = st
+	for i in 10:
+		var p := AudioStreamPlayer3D.new()
+		p.unit_size = 9.0
+		p.max_distance = 140.0
+		p.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
+		p.panning_strength = 0.8
+		add_child(p)
+		_p3d.append(p)
+	for i in 3:
+		var p := AudioStreamPlayer.new()
+		add_child(p)
+		_p2d.append(p)
+
+func _amb_play2d(name: String, db: float) -> void:
+	if not _amb.has(name):
+		return
+	for p in _p2d:
+		if not p.playing:
+			p.stream = _amb[name]
+			p.volume_db = db + linear_to_db(maxf(0.001, ambient))
+			p.pitch_scale = randf_range(0.94, 1.06)
+			p.play()
+			return
+
+func _amb_play3d(name: String, pos: Vector3, db: float) -> void:
+	if not _amb.has(name):
+		return
+	for p in _p3d:
+		if not p.playing:
+			p.stream = _amb[name]
+			p.global_position = pos + Vector3(0, 1.5, 0)
+			p.volume_db = db + linear_to_db(maxf(0.001, ambient))
+			p.pitch_scale = randf_range(0.93, 1.07)
+			p.play()
+			return
 
 func _loop(st: AudioStreamWAV) -> AudioStreamPlayer:
 	st.loop_mode = AudioStreamWAV.LOOP_FORWARD
@@ -74,8 +139,32 @@ func _process(dt: float) -> void:
 	for l in terrain.lakes:
 		wd = minf(wd, Vector2(t.x, t.z).distance_to(l.p) - l.r)
 	var zoom_k := clampf(1.5 - rig.dist / 70.0, 0.1, 1.0)
-	_water.volume_db = linear_to_db(maxf(0.0005, maxf(0.0, 1.0 - wd / 35.0) * 0.5 * zoom_k))
-	_wind.volume_db = linear_to_db(0.05 + clampf(rig.dist / 140.0, 0.0, 1.0) * 0.15)
+	_water.volume_db = linear_to_db(maxf(0.0005, maxf(0.0, 1.0 - wd / 35.0) * 0.5 * zoom_k * ambient))
+	_wind.volume_db = linear_to_db(maxf(0.0005, (0.05 + clampf(rig.dist / 140.0, 0.0, 1.0) * 0.15) * ambient))
+	# Windböen rauschen durchs Laub
+	_gust_t -= dt
+	if _gust_t < 0.0:
+		_gust_t = randf_range(7.0, 16.0)
+		_amb_play2d("blaetter", -15.0 + randf_range(-3, 2))
+	# Arbeitsgeräusche der Gebäude in der Nähe der Kamera (im Raum verortet)
+	_work_t -= dt
+	if _work_t < 0.0 and economy:
+		_work_t = 0.3
+		var r: float = rig.dist * 0.9 + 18.0
+		for b in economy.buildings:
+			if not WORK.has(b.type) or b.get("owner", 0) != 0 or b.build < 1.0 or b.get("removed", false):
+				continue
+			if not b.get("running", false) or b.get("paused", false):
+				continue
+			if Vector2(b.pos.x - t.x, b.pos.z - t.z).length() > r:
+				continue
+			var cd: float = float(_cool.get(b, 0.0)) - 0.3
+			_cool[b] = cd
+			if cd > 0.0:
+				continue
+			var wk: Array = WORK[b.type]
+			_cool[b] = randf_range(float(wk[1]), float(wk[2])) + 1.0
+			_amb_play3d(String(wk[0]), b.pos, float(wk[3]))
 	# Vogelgezwitscher, wenn Bäume in der Nähe sind
 	_bird_t -= dt
 	if _bird_t < 0.0:
