@@ -235,6 +235,11 @@ func _setup_stock() -> void:
 	wildlife.terrain = terrain
 	wildlife.economy = economy
 	add_child(wildlife)
+	var cats := preload("res://scripts/cats.gd").new()   # Hauskatzen an den Wohnhäusern
+	cats.name = "Katzen"
+	cats.terrain = terrain
+	cats.economy = economy
+	add_child(cats)
 	var cons := preload("res://scripts/construction.gd").new()
 	cons.name = "Baustellen"
 	cons.economy = economy
