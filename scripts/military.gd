@@ -3,8 +3,8 @@ extends Node3D
 ## Spieler = Besitzer 0, KI-Gegner = 1..3.
 
 const CELL := 4.0
-const START_RADIUS := 36.0   # Anfangsgebiet um das Haupthaus (+20 %)
-const CLAIM := {"lager": 36.0, "wachstube": 30.0, "wachturm": 34.0, "wehrturm": 40.0, "burg": 48.0}
+const START_RADIUS := 43.2   # Anfangsgebiet um das Haupthaus (2× +20 %)
+const CLAIM := {"lager": 43.2, "wachstube": 30.0, "wachturm": 34.0, "wehrturm": 40.0, "burg": 48.0}
 # Plätze je Turm wie POSTS im Browser (Schwert / Bogen getrennt)
 const POSTS := {"wachstube": {"schwert": 2}, "wachturm": {"bogen": 4}, "wehrturm": {"schwert": 3, "bogen": 2}, "burg": {"schwert": 6, "bogen": 4}}
 const GARRISON := {"wachstube": 2, "wachturm": 4, "wehrturm": 5, "burg": 10}

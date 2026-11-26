@@ -622,3 +622,8 @@ UI_PROMOTIONS	Beförderungen	Promotions
 UI_ORDERED	%d bestellt	%d ordered
 UI_EQUIPMENT	Ausrüstung	Equipment
 UI_ENEMY_HINT	Wähle unten, wie viele Kämpfer angreifen – mehr als die Besatzung erhöht die Chance.	Choose below how many fighters attack – more than the garrison raises your chances.
+CH_RUNS	läuft	running
+CH_MISSING	Rohstoff fehlt	material missing
+CH_NOT_BUILT	noch nicht gebaut	not built yet
+CH_BUILT	%d von %d gebaut	%d of %d built
+CH_COUNT	%d× · %d arbeiten	%d× · %d working

@@ -361,33 +361,117 @@ func _fill_window() -> void:
 				continue
 			_lbl(vb, "%s %s  [b]%d[/b]   [color=#9f9]+%d[/color]  [color=#f99]−%d[/color]" % [UiIcons.bb(k, 20), tr("ITEM_" + k.to_upper()), e.stock[k], made, used], 13)
 	else:
-		_lbl(vb, "🔗 " + tr("UI_CHAINS"), 20, gold)
-		_lbl(vb, tr("CHAINS_HINT"), 12)
-		for grp in CHAINS:
-			_lbl(vb, tr(grp[0]), 16, gold)
-			for t in grp[1]:
-				if not e.data.types.has(t):
-					continue
-				var live: Array = e.buildings.filter(func(b): return b.type == t)
-				var work: int = live.filter(func(b): return b.get("status", "") == "ST_WORKING").size()
-				var ins: Array = e.inputs(t)
-				var miss: Array = []
-				for need in ins:
-					var any := false
-					for alt in String(need).split("|"):
-						if e.stock.get(alt, 0) > 0:
-							any = true
-					if not any:
-						miss.append(String(need).split("|")[0])
-				var in_txt := " ".join(ins.map(func(k): return " / ".join(Array(String(k).split("|")).map(func(x): return UiIcons.bb(x, 18))))) if ins.size() else tr("CHAINS_NATURE")
-				var out_txt := " ".join(e.outputs(t).map(func(k): return UiIcons.bb(String(k), 18)))
-				var state := "⚪" if live.is_empty() else ("🟠" if miss.size() else "🟢")
-				var line := "%s %s ➜ %s %s ➜ %s" % [state, in_txt, "[img=22]res://icons/buildings/%s.png[/img]" % t, tr("BLD_" + t.to_upper()), out_txt]
-				if live.size():
-					line += "   (%d×, %d %s)" % [live.size(), work, tr("CHAINS_WORKING")]
-				if miss.size() and live.size():
-					line += "  · " + tr("ST_MISSING") + " " + ", ".join(miss.map(func(k): return tr("ITEM_" + String(k).to_upper())))
-				_lbl(vb, line, 13, Color(0.75, 0.72, 0.65) if live.is_empty() else Color(0.96, 0.9, 0.78))
+		_fill_chains(vb, e, gold)
+
+
+# ---------- Produktionsketten im modernen Stil: je Kette eine Karte, je Gebäude eine Zeile ----------
+func _ch_card(par: Control, col := Color(0, 0, 0, 0.25)) -> VBoxContainer:
+	var pc := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = col
+	sb.set_corner_radius_all(8)
+	sb.content_margin_left = 10; sb.content_margin_right = 10; sb.content_margin_top = 6; sb.content_margin_bottom = 8
+	pc.add_theme_stylebox_override("panel", sb)
+	par.add_child(pc)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 4)
+	pc.add_child(v)
+	return v
+
+func _ch_text(par: Control, t: String, sz := 13, col := Color(0.96, 0.9, 0.78), w := 0.0) -> Label:
+	var l := Label.new()
+	l.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	l.text = t
+	l.add_theme_font_size_override("font_size", sz)
+	l.add_theme_color_override("font_color", col)
+	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	if w > 0.0:
+		l.custom_minimum_size.x = w
+	par.add_child(l)
+	return l
+
+func _ch_pill(par: Control, t: String, bg: Color) -> void:
+	var pc := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = bg
+	sb.set_corner_radius_all(9)
+	sb.content_margin_left = 8; sb.content_margin_right = 8; sb.content_margin_top = 1; sb.content_margin_bottom = 1
+	pc.add_theme_stylebox_override("panel", sb)
+	pc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	par.add_child(pc)
+	_ch_text(pc, t, 12, Color.WHITE)
+
+func _fill_chains(vb: Control, e: Node, gold: Color) -> void:
+	_lbl(vb, "🔗 " + tr("UI_CHAINS"), 20, gold)
+	var lg := HBoxContainer.new()
+	lg.add_theme_constant_override("separation", 8)
+	vb.add_child(lg)
+	_ch_pill(lg, "● " + tr("CH_RUNS"), Color(0.25, 0.5, 0.2, 0.85))
+	_ch_pill(lg, "● " + tr("CH_MISSING"), Color(0.6, 0.35, 0.1, 0.85))
+	_ch_pill(lg, "○ " + tr("CH_NOT_BUILT"), Color(0.3, 0.27, 0.24, 0.85))
+	for grp in CHAINS:
+		var types: Array = grp[1].filter(func(t): return e.data.types.has(t))
+		var built := types.filter(func(t): return e.buildings.any(func(b): return b.type == t and int(b.get("owner", 0)) == 0)).size()
+		var card := _ch_card(vb)
+		var head := HBoxContainer.new()
+		head.add_theme_constant_override("separation", 8)
+		card.add_child(head)
+		_ch_text(head, tr(grp[0]), 16, gold)
+		var sp := Control.new(); sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL; head.add_child(sp)
+		_ch_text(head, tr("CH_BUILT") % [built, types.size()], 12, Color(0.75, 0.7, 0.62))
+		for t in types:
+			var live: Array = e.buildings.filter(func(b): return b.type == t and int(b.get("owner", 0)) == 0 and not b.get("removed", false))
+			var work: int = live.filter(func(b): return b.get("running", false) or String(b.get("status", "")) == "ST_WORKING").size()
+			var ins: Array = e.inputs(t)
+			var miss: Array = []
+			for need in ins:
+				var any := false
+				for alt in String(need).split("|"):
+					if e.stock.get(alt, 0) > 0:
+						any = true
+				if not any:
+					miss.append(String(need).split("|")[0])
+			var row := HBoxContainer.new()
+			row.add_theme_constant_override("separation", 6)
+			row.modulate.a = 0.55 if live.is_empty() else 1.0
+			card.add_child(row)
+			var dot := "○" if live.is_empty() else "●"
+			_ch_text(row, dot, 16, Color(0.6, 0.58, 0.55) if live.is_empty() else (Color(1, 0.6, 0.2) if miss.size() else Color(0.5, 0.95, 0.4)), 16)
+			# Eingänge
+			var inb := HBoxContainer.new(); inb.add_theme_constant_override("separation", 2); inb.custom_minimum_size.x = 92; inb.alignment = BoxContainer.ALIGNMENT_END
+			row.add_child(inb)
+			if ins.is_empty():
+				_ch_text(inb, "🌿", 15)
+			for need in ins:
+				var alts := String(need).split("|")
+				for ai in alts.size():
+					var ic := UiIcons.icon_rect(alts[ai], 22)
+					ic.tooltip_text = tr("ITEM_" + alts[ai].to_upper())
+					if alts[0] in miss and not live.is_empty():
+						ic.modulate = Color(1, 0.45, 0.4)
+					inb.add_child(ic)
+					if ai < alts.size() - 1:
+						_ch_text(inb, "/", 12, Color(0.75, 0.7, 0.62))
+			_ch_text(row, "➜", 14, Color(0.75, 0.7, 0.62))
+			var bi := TextureRect.new()
+			bi.texture = UiIcons.bld_tex(t)
+			bi.custom_minimum_size = Vector2(30, 30)
+			bi.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			bi.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			row.add_child(bi)
+			_ch_text(row, tr("BLD_" + t.to_upper()), 14, Color(0.96, 0.9, 0.78), 130)
+			_ch_text(row, "➜", 14, Color(0.75, 0.7, 0.62))
+			var outb := HBoxContainer.new(); outb.add_theme_constant_override("separation", 2); outb.custom_minimum_size.x = 60
+			row.add_child(outb)
+			for k in e.outputs(t):
+				var oc := UiIcons.icon_rect(String(k), 22)
+				oc.tooltip_text = tr("ITEM_" + String(k).to_upper())
+				outb.add_child(oc)
+			var sp2 := Control.new(); sp2.size_flags_horizontal = Control.SIZE_EXPAND_FILL; row.add_child(sp2)
+			if not live.is_empty():
+				_ch_pill(row, tr("CH_COUNT") % [live.size(), work], Color(0.25, 0.5, 0.2, 0.85) if work > 0 else Color(0.3, 0.27, 0.24, 0.85))
+			if miss.size() and not live.is_empty():
+				_ch_pill(row, "✖ " + ", ".join(miss.map(func(k): return tr("ITEM_" + String(k).to_upper()))), Color(0.6, 0.15, 0.1, 0.85))
 
 
 # ---------- Wirtschaftsbilanz: Erzeugung und Verbrauch je Minute ----------
