@@ -149,7 +149,7 @@ func _setup_environment() -> void:
 	env.adjustment_contrast = 1.08
 	env.ssao_enabled = true            # Umgebungsverdeckung wie im Browser
 	env.ssao_radius = 1.5
-	env.glow_enabled = true            # Bloom: Sonne, Lampen, Glut leuchten leicht nach
+	env.glow_enabled = false           # Bloom aus: erzeugte flackernde weiße Lichthöfe
 	env.glow_intensity = 0.55
 	env.glow_bloom = 0.0
 	env.glow_hdr_threshold = 1.3   # nur wirklich Helles leuchtet (Lampen, Glut), keine hellen Baumstämme

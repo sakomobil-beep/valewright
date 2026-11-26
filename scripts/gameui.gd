@@ -546,7 +546,7 @@ func apply_settings() -> void:
 		sun.shadow_enabled = opts.shadows
 	for we in main.find_children("*", "WorldEnvironment", false, false):
 		we.environment.ssao_enabled = opts.effects
-		we.environment.glow_enabled = opts.effects
+		we.environment.glow_enabled = false   # Lichtschein verursachte weißes Flackern an Bäumen/Gras (Forward+)
 	var ef = main.get_node_or_null("Effekte")
 	if ef:
 		ef.enabled = opts.effects
