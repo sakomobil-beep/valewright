@@ -407,7 +407,7 @@ func _build_trees() -> void:
 			mmi.visibility_range_end = pair[3]
 			mmi.visibility_range_begin_margin = 6.0
 			mmi.visibility_range_end_margin = 6.0
-			mmi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+			mmi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_DISABLED   # Überblenden ließ Bäume weiß aufblitzen
 			add_child(mmi)
 			pair[1][key] = mm
 	for o in order:
