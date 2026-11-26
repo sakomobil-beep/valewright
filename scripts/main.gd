@@ -317,6 +317,9 @@ func _update_stock() -> void:
 	stock_label.text = s.strip_edges() + ("\n" + extra.strip_edges() if extra != "" else "")
 
 func _notification(what: int) -> void:
+	# beim Schließen des Fensters noch schnell automatisch speichern
+	if what == NOTIFICATION_WM_CLOSE_REQUEST and Session.started and savegame:
+		savegame.save("auto")
 	if what == NOTIFICATION_TRANSLATION_CHANGED and stock_label:
 		_update_stock()
 
@@ -326,7 +329,7 @@ func _process(dt: float) -> void:
 		rig.yaw += dt * 0.05
 		return
 	_autosave += dt
-	if _autosave > 180.0:
+	if _autosave > 300.0:
 		_autosave = 0.0
 		savegame.save("auto")
 		var tex := get_viewport().get_texture()

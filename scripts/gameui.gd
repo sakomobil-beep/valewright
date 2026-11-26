@@ -505,9 +505,11 @@ func campaign_menu() -> void:
 func load_menu(in_game: bool) -> void:
 	var vb := _window(480)
 	_label(vb, "MENU_LOAD", 28, GOLD, true)
-	for slot in ["auto", "1", "2", "3"]:
+	for slot in ["auto", "auto2", "auto3", "1", "2", "3"]:
 		var info = Session.slot_info(slot)
-		var name: String = tr("SLOT_AUTO") if slot == "auto" else tr("SLOT_N") % int(slot)
+		if slot in ["auto2", "auto3"] and info == null:
+			continue
+		var name: String = tr("SLOT_AUTO") if slot == "auto" else (tr("SLOT_AUTO_OLD") % (2 if slot == "auto2" else 3) if slot.begins_with("auto") else tr("SLOT_N") % int(slot))
 		var txt := "%s – %s" % [name, tr("SLOT_EMPTY") if info == null else String(info.get("date", ""))]
 		var b := _button(vb, txt, func(): Session.load_game(slot), false)
 		b.disabled = info == null
@@ -632,7 +634,7 @@ func about_page(in_game: bool) -> void:
 	vb.add_child(logo)
 	_label(vb, "Valewright", 38, GOLD, true)
 	_label(vb, "GAME_SUBTITLE", 17, TEXT, true)
-	var ver := _label(vb, tr("ABOUT_VERSION") % ProjectSettings.get_setting("application/config/version", "0.6"), 13, TEXT, true)
+	var ver := _label(vb, tr("ABOUT_VERSION") % (BuildInfo.VERSION + " · " + BuildInfo.STAMP), 13, TEXT, true)
 	ver.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	vb.add_child(HSeparator.new())
 	_label(vb, "ABOUT_TEXT", 15, TEXT, true)

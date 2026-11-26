@@ -221,6 +221,7 @@ G_CASTLE	Eine Burg besetzt	A castle manned
 UI_TUTORIAL	Tutorial	Tutorial
 TUT_DONE	Geschafft!	Done!
 SLOT_AUTO	Automatisch	Autosave
+SLOT_AUTO_OLD	Automatisch (älter, %d)	Autosave (older, %d)
 SLOT_N	Spielstand %d	Save %d
 SLOT_EMPTY	leer	empty
 MSG_SAVED	💾 Gespeichert	💾 Saved
@@ -243,7 +244,7 @@ AI_PEACEFUL	🕊️ friedlich	🕊️ peaceful
 NG_AI_HINT	Friedliche Gegner wachsen und bauen Türme, greifen dich aber nie an. Du kannst sie trotzdem angreifen.	Peaceful opponents grow and build towers but never attack you. You can still attack them.
 MENU_HELP	❓ Hilfe	❓ Help
 MENU_ABOUT	ℹ️ Über das Spiel	ℹ️ About the game
-ABOUT_VERSION	Version %s – Godot-Ausgabe	Version %s – Godot edition
+ABOUT_VERSION	Version %s	Version %s
 ABOUT_TEXT	Valewright ist ein Aufbau- und Strategiespiel im Odenwälder Fachwerkstil. Gründe eine Siedlung in einem stillen Tal, baue Warenketten von der Holzfällerhütte bis zur Goldschmiede auf, lass deine Wohnhäuser von der Hütte zum Herrenhaus wachsen und verteidige dein Gebiet gegen rivalisierende Herren. Die Gebäude sind von echten Fachwerkhäusern aus dem Odenwald inspiriert.	Valewright is a city-building and strategy game in the half-timbered style of the Odenwald. Found a settlement in a quiet valley, build production chains from the woodcutter's hut to the goldsmith, grow your houses from hut to manor and defend your land against rival lords. The buildings are inspired by real timber-framed houses from the Odenwald.
 ABOUT_CREDITS_T	Mitwirkende	Credits
 ABOUT_CREDITS	Ein Spiel von Odenforge 2026\nProgrammierung: mit Unterstützung von Claude (Anthropic)\nSpiel-Engine: Godot Engine 4.7 (MIT-Lizenz)\n\nMUSIK (alle CC0 / gemeinfrei, via OpenGameArt.org)\nRandomMind: The Old Tower Inn · The Bard's Tale · Minstrel Dance · King's Feast · Lament for a Warrior's Soul\nCethiel: Lament of the War\n\nSCHRIFTEN\nDejaVu Sans (freie Lizenz, Bitstream Vera)\nNoto Color Emoji von Google (SIL Open Font License)\n\nVielen Dank an alle, die ihre Werke frei teilen!\n\n© 2026 Odenforge – Games aus dem Odenwald	A game by Odenforge 2026\nProgramming: with support from Claude (Anthropic)\nGame engine: Godot Engine 4.7 (MIT license)\n\nMUSIC (all CC0 / public domain, via OpenGameArt.org)\nRandomMind: The Old Tower Inn · The Bard's Tale · Minstrel Dance · King's Feast · Lament for a Warrior's Soul\nCethiel: Lament of the War\n\nFONTS\nDejaVu Sans (free license, Bitstream Vera)\nNoto Color Emoji by Google (SIL Open Font License)\n\nThanks to everyone who shares their work freely!\n\n© 2026 Odenforge – Games from the Odenwald
@@ -693,3 +694,14 @@ SET_HAZE	Dunst in der Ferne	Haze in the distance
 INTRO_PRESENTS	präsentiert	presents
 INTRO_SUBTITLE	Ein Aufbauspiel aus dem Odenwald	A settlement game from the Odenwald
 SET_MUSIC	🎵 Musik-Lautstärke	🎵 Music volume
+UI_HQ_TAB_WALL	Mauer	Wall
+UI_WALL	Wehrmauer	Defensive wall
+WALL_0	keine	none
+WALL_1	Holzpalisade	Wooden palisade
+WALL_2	Steinmauer	Stone wall
+WALL_1_D	Ein Ring aus angespitzten Pfählen ums Haupthaus. Verteidiger kämpfen um %d %% stärker, +%d Wächterplätze am Tor.	A ring of sharpened stakes around the headquarters. Defenders fight %d %% stronger, +%d guard slots at the gate.
+WALL_2_D	Massive Steinmauer mit Türmen. Verteidiger kämpfen um %d %% stärker, +%d weitere Wächterplätze.	Massive stone wall with towers. Defenders fight %d %% stronger, +%d more guard slots.
+UI_WALL_BONUS	Verteidiger am Haupthaus +%d %% stärker · %d Wächterplätze	Headquarters defenders +%d %% stronger · %d guard slots
+UI_WALL_BUILD	Ausbau starten	Start upgrade
+UI_WALL_MAX	Die Mauer ist voll ausgebaut.	The wall is fully upgraded.
+MSG_WALL_DONE	🧱 %s ums Haupthaus ist fertig!	🧱 %s around the headquarters is finished!

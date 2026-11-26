@@ -542,8 +542,129 @@ func _sash(node: Node3D, col: Color) -> void:
 	node.add_child(m)
 
 # ---------- Wache am Haupthaus ----------
-const HQ_SLOTS := 4          # so viele Wächter passen ans Tor
+const HQ_SLOTS := 4          # so viele Wächter passen ans Tor (ohne Mauer)
 const HQ_START_GUARDS := 2   # ab Spielbeginn zugeteilt
+
+# ---------- Wehrmauer ums Haupthaus (teurer Ausbau in 2 Stufen) ----------
+const WALL := [
+	{},
+	{"name": "WALL_1", "cost": {"stamm": 40, "bretter": 30, "muenzen": 25}, "time": 90.0, "slots": 2, "def": 0.35},
+	{"name": "WALL_2", "cost": {"stein": 80, "ziegel": 40, "eisenbarren": 10, "muenzen": 80}, "time": 180.0, "slots": 4, "def": 0.8},
+]
+var wall := 0          # fertige Stufe
+var wall_t := 0.0      # Restzeit des laufenden Ausbaus (0 = keiner)
+var _wall_node: Node3D
+
+func hq_slots() -> int:
+	var n := HQ_SLOTS
+	for i in range(1, wall + 1):
+		n += int(WALL[i].slots)
+	return n
+
+func wall_def() -> float:
+	return 1.0 + (float(WALL[wall].def) if wall > 0 else 0.0)
+
+func wall_can_build() -> bool:
+	if wall >= WALL.size() - 1 or wall_t > 0.0:
+		return false
+	for k in WALL[wall + 1].cost:
+		if int(economy.stock.get(k, 0)) < int(WALL[wall + 1].cost[k]):
+			return false
+	return true
+
+func wall_start() -> bool:
+	if not wall_can_build():
+		return false
+	for k in WALL[wall + 1].cost:
+		economy.stock[k] = int(economy.stock.get(k, 0)) - int(WALL[wall + 1].cost[k])
+	economy.changed.emit()
+	wall_t = float(WALL[wall + 1].time)
+	_wall_mesh(wall, true)
+	return true
+
+func _wall_tick(dt: float) -> void:
+	if wall_t <= 0.0:
+		return
+	wall_t -= dt * float(economy.tf())
+	if wall_t <= 0.0:
+		wall_t = 0.0
+		wall += 1
+		_wall_mesh(wall, false)
+		economy.message.emit(tr("MSG_WALL_DONE") % tr(WALL[wall].name))
+
+func set_wall(level: int, rest := 0.0) -> void:
+	wall = clampi(level, 0, WALL.size() - 1)
+	wall_t = rest
+	_wall_mesh(wall, rest > 0.0)
+
+# Ring um das Haupthaus mit Tor zur Tür (+Z). Stufe 1 Holzpalisade, Stufe 2 Steinmauer mit Türmen.
+func _wall_mesh(level: int, building: bool) -> void:
+	if _wall_node:
+		_wall_node.queue_free()
+		_wall_node = null
+	if level <= 0 and not building:
+		return
+	_wall_node = Node3D.new()
+	_wall_node.name = "Wehrmauer"
+	add_child(_wall_node)
+	var stone := level >= 2 or (building and level >= 1)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.47, 0.45, 0.41) if stone else Color(0.45, 0.31, 0.18)
+	mat.roughness = 0.95
+	if building:
+		mat.albedo_color = mat.albedo_color.lerp(Color(0.8, 0.75, 0.6), 0.35)
+	var R := 9.5
+	var gate := 0.42   # halbe Torbreite (Winkel)
+	var n := 44
+	for i in n:
+		var a := TAU * (float(i) + 0.5) / n
+		var d := wrapf(a - PI / 2.0, -PI, PI)   # +Z liegt bei a = PI/2
+		if absf(d) < gate:
+			continue
+		var p := Vector3(cos(a) * R, 0, sin(a) * R)
+		p.y = terrain.height(p.x, p.z)
+		var m := MeshInstance3D.new()
+		if stone:
+			var bx := BoxMesh.new()
+			bx.size = Vector3(1.45, 2.2 if not building else 1.1, 0.7)
+			m.mesh = bx
+			m.position = p + Vector3(0, bx.size.y / 2.0 - 0.1, 0)
+		else:
+			var cy := CylinderMesh.new()
+			cy.top_radius = 0.14; cy.bottom_radius = 0.2
+			cy.height = 2.4 if not building else 1.2
+			m.mesh = cy
+			m.position = p + Vector3(0, cy.height / 2.0 - 0.1, 0)
+		m.material_override = mat
+		_wall_node.add_child(m)
+		m.look_at_from_position(m.position, Vector3(0, m.position.y, 0), Vector3.UP)
+		if not stone:
+			# Palisade: dichte Pfähle, je Segment drei
+			for k in [-0.45, 0.45]:
+				var m2 := m.duplicate()
+				m2.position = m.position + m.global_transform.basis.x * k if m.is_inside_tree() else m.position
+				_wall_node.add_child(m2)
+				m2.translate_object_local(Vector3(k, 0, 0))
+		elif not building and i % 11 == 5:
+			var t := MeshInstance3D.new()
+			var tc := CylinderMesh.new()
+			tc.top_radius = 1.0; tc.bottom_radius = 1.15; tc.height = 3.6
+			t.mesh = tc
+			t.material_override = mat
+			t.position = p + Vector3(0, 1.7, 0)
+			_wall_node.add_child(t)
+	# Torpfosten
+	for sgn in [-1.0, 1.0]:
+		var a: float = PI / 2.0 + sgn * gate
+		var p := Vector3(cos(a) * R, 0, sin(a) * R)
+		p.y = terrain.height(p.x, p.z)
+		var g := MeshInstance3D.new()
+		var gb := BoxMesh.new()
+		gb.size = Vector3(1.2, 3.4 if not building else 1.6, 1.2)
+		g.mesh = gb
+		g.material_override = mat
+		g.position = p + Vector3(0, gb.size.y / 2.0 - 0.1, 0)
+		_wall_node.add_child(g)
 
 func hq_guards() -> Array:
 	return soldiers.filter(func(x): return x.owner == 0 and x.state == "hq")
@@ -559,7 +680,7 @@ func hq_post(s: Dictionary) -> void:
 	_place_hq_guards()
 
 func hq_call_up() -> bool:
-	if hq_guards().size() >= HQ_SLOTS:
+	if hq_guards().size() >= hq_slots():
 		return false
 	var best = null
 	for x in soldiers:
@@ -840,6 +961,7 @@ func _door(b: Dictionary) -> Vector3:
 	return p
 
 func _fight(dt: float) -> void:
+	_wall_tick(dt)
 	for s in soldiers.duplicate():
 		if s.state != "arrived":
 			continue
@@ -865,6 +987,8 @@ func _fight(dt: float) -> void:
 		var dfn: float = 1.2   # gleiche Regeln: kein Verteidigungsbonus für die KI
 		if b.owner == 0:
 			dfn = 1.2 * _best_defender(b)
+			if b.type == "lager":
+				dfn *= wall_def()   # Wehrmauer stärkt die Verteidiger am Haupthaus
 		if randf() < att / (att + dfn):
 			b.garrison -= 1
 			if b.owner != 0:

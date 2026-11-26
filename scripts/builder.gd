@@ -1194,7 +1194,7 @@ func _hq_panel() -> void:
 		return
 	var g: Array = military.hq_guards()
 	var idle: int = military.soldiers.filter(func(x): return x.owner == 0 and x.state == "idle").size()
-	var sig := "HQ%s|%s|%d|%s" % [_hq_tab, str(g.map(func(x): return [x.kind, x.rank])), idle, str(_stock_sections()) if _hq_tab == "lager" else ""]
+	var sig := "HQ%s|%s|%d|%s|%d|%d|%s" % [_hq_tab, str(g.map(func(x): return [x.kind, x.rank])), idle, str(_stock_sections()) if _hq_tab == "lager" else "", military.wall, int(military.wall_t), str(military.wall_can_build())]
 	if sig == _chip_sig:
 		return
 	if _hq_tab == "lager":
@@ -1209,7 +1209,7 @@ func _hq_panel() -> void:
 	tabs.add_theme_constant_override("separation", 6)
 	info_chips.add_child(tabs)
 	info_chips.move_child(tabs, 0)
-	for tb in [["lager", "📦 " + tr("UI_HQ_TAB_STOCK")], ["wache", "🛡️ " + tr("UI_HQ_TAB_GUARD") + " %d/%d" % [g.size(), military.HQ_SLOTS]]]:
+	for tb in [["lager", "📦 " + tr("UI_HQ_TAB_STOCK")], ["wache", "🛡️ " + tr("UI_HQ_TAB_GUARD") + " %d/%d" % [g.size(), military.hq_slots()]], ["mauer", "🧱 " + tr("UI_HQ_TAB_WALL")]]:
 		var b := Button.new()
 		b.text = tb[1]
 		b.toggle_mode = true
@@ -1222,17 +1222,20 @@ func _hq_panel() -> void:
 		tabs.add_child(b)
 	if _hq_tab == "lager":
 		return
+	if _hq_tab == "mauer":
+		_wall_panel()
+		return
 	var c := _hpcard(info_chips, Color(0.1, 0.18, 0.3, 0.45))
 	var hb := HBoxContainer.new(); hb.add_theme_constant_override("separation", 8); c.add_child(hb)
 	_lbl(hb, "🛡️ " + tr("UI_HQ_GUARD"), 14, C_GOLD, 150)
-	_bar(hb, g.size(), military.HQ_SLOTS, C_OK if g.size() >= 2 else (C_BAD if g.is_empty() else C_GOLD), 120)
-	_lbl(hb, "%d/%d" % [g.size(), military.HQ_SLOTS], 13, C_DIM)
-	for i in military.HQ_SLOTS:
+	_bar(hb, g.size(), military.hq_slots(), C_OK if g.size() >= 2 else (C_BAD if g.is_empty() else C_GOLD), 120)
+	_lbl(hb, "%d/%d" % [g.size(), military.hq_slots()], 13, C_DIM)
+	for i in military.hq_slots():
 		_slot_row(c, "schwert", g[i] if i < g.size() else null)
 	var bh := HBoxContainer.new(); bh.add_theme_constant_override("separation", 8); c.add_child(bh)
 	var up := Button.new()
 	up.text = "⬆ " + tr("UI_HQ_CALL") + " (%d)" % idle
-	up.disabled = idle == 0 or g.size() >= military.HQ_SLOTS
+	up.disabled = idle == 0 or g.size() >= military.hq_slots()
 	up.tooltip_text = tr("UI_HQ_CALL_TIP")
 	up.pressed.connect(func():
 		if military.hq_call_up():
@@ -1250,6 +1253,46 @@ func _hq_panel() -> void:
 		_chip_sig = "")
 	bh.add_child(dn)
 	_lbl(c, tr("UI_HQ_GUARD_HINT"), 12, C_DIM).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+func _wall_panel() -> void:
+	var W: Array = military.WALL
+	var lv: int = military.wall
+	var c := _hpcard(info_chips, Color(0.25, 0.2, 0.12, 0.45))
+	var hb := HBoxContainer.new(); hb.add_theme_constant_override("separation", 8); c.add_child(hb)
+	_lbl(hb, "🧱 " + tr("UI_WALL"), 14, C_GOLD, 150)
+	_bar(hb, lv, W.size() - 1, C_OK if lv >= W.size() - 1 else C_GOLD, 120)
+	_lbl(hb, tr(W[lv].name) if lv > 0 else tr("WALL_0"), 13, C_DIM)
+	if lv > 0:
+		_lbl(c, tr("UI_WALL_BONUS") % [int(round(float(W[lv].def) * 100.0)), military.hq_slots()], 12, C_OK).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	if military.wall_t > 0.0:
+		var nx: Dictionary = W[lv + 1]
+		var ph := HBoxContainer.new(); ph.add_theme_constant_override("separation", 8); c.add_child(ph)
+		_lbl(ph, "🔨 " + tr(nx.name), 13, C_GOLD, 150)
+		_bar(ph, int(nx.time - military.wall_t), int(nx.time), C_GOLD, 120)
+		_lbl(ph, "%d s" % int(military.wall_t), 12, C_DIM)
+		return
+	if lv >= W.size() - 1:
+		_lbl(c, tr("UI_WALL_MAX"), 12, C_DIM)
+		return
+	var nx2: Dictionary = W[lv + 1]
+	var c2 := _hpcard(info_chips, Color(0.1, 0.18, 0.3, 0.45))
+	_lbl(c2, "⬆ " + tr(nx2.name), 14, C_GOLD)
+	_lbl(c2, tr(nx2.name + "_D") % [int(round(float(nx2.def) * 100.0)), int(nx2.slots)], 12, C_DIM).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	for k in nx2.cost:
+		var have := int(economy.stock.get(k, 0))
+		var need := int(nx2.cost[k])
+		var rh := HBoxContainer.new(); rh.add_theme_constant_override("separation", 8); c2.add_child(rh)
+		_lbl(rh, tr("ITEM_" + String(k).to_upper()), 13, C_DIM, 150)
+		_bar(rh, mini(have, need), need, C_OK if have >= need else C_BAD, 120)
+		_lbl(rh, "%d/%d" % [have, need], 12, C_OK if have >= need else C_BAD)
+	var b := Button.new()
+	b.text = "🧱 " + tr("UI_WALL_BUILD")
+	b.disabled = not military.wall_can_build()
+	b.pressed.connect(func():
+		if military.wall_start():
+			if settlers: settlers.sfx("place")
+		_chip_sig = "")
+	c2.add_child(b)
 
 func _enemy_panel(e: Dictionary) -> void:
 	var sig := "E%d|%s" % [int(e.garrison), str(e.get("owner", 0))]

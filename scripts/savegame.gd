@@ -41,14 +41,25 @@ func save(slot: String) -> void:
 		if t.deposits[i].found:
 			dep.append(i)
 	d.deposits = dep
+	d.hq_wall = [m.wall, m.wall_t]
 	d.soldiers = m.soldiers.filter(func(s): return s.owner == 0 and s.state != "garrison").map(func(s): return [s.kind, s.rank, s.state == "hq"])
 	d.ais = m.ais.map(func(a): return {"id": a.id, "diff": a.diff, "alive": a.alive, "pos": _v(a.pos),
 		"lager": a.lager.garrison, "peaceful": a.get("peaceful", false), "t_grow": a.t_grow, "t_expand": a.t_expand, "t_attack": a.t_attack,
 		"towers": a.buildings.filter(func(b): return b.type == "wachturm").map(func(b): return {"pos": _v(b.pos), "g": b.garrison}),
 		"eco": m.aie.save(a) if a.alive and a.has("eco") else {}})
-	var f := FileAccess.open(Session.save_path(slot), FileAccess.WRITE)
+	# Absturzschutz: erst in eine Temp-Datei schreiben, dann umbenennen –
+	# so bleibt bei einem Absturz mitten im Speichern der alte Stand heil.
+	var path := Session.save_path(slot)
+	if slot == "auto":
+		_rotate_auto()
+	var tmp := path + ".tmp"
+	var f := FileAccess.open(tmp, FileAccess.WRITE)
+	if f == null:
+		return
 	f.store_string(JSON.stringify(d))
-	if slot != "auto":
+	f.close()
+	DirAccess.rename_absolute(tmp, path)
+	if not slot.begins_with("auto"):
 		main._toast(tr("MSG_SAVED"))
 
 func apply(d: Dictionary) -> void:
@@ -79,6 +90,8 @@ func apply(d: Dictionary) -> void:
 		bld.place_bridge({"a": _p(br.a), "b": _p(br.b), "y": float(br.y), "len": float(br.len)}, false)
 	for b in d.buildings:
 		bld.place_loaded(b)
+	if d.has("hq_wall"):
+		m.set_wall(int(d.hq_wall[0]), float(d.hq_wall[1]))
 	for st in d.soldiers:
 		if st is Array:
 			var ns: Dictionary = m._new_soldier(0, main.settlers.lager_door(), int(st[1]), String(st[0]))
@@ -94,3 +107,14 @@ func apply(d: Dictionary) -> void:
 	main.missions.done = bool(d.get("mission_done", false))
 	main.missions.won = bool(d.get("won", false))
 	e.changed.emit()
+
+# drei automatische Spielstände im Wechsel: auto (neu) → auto2 → auto3 (alt)
+func _rotate_auto() -> void:
+	for pair in [["auto2", "auto3"], ["auto", "auto2"]]:
+		for ext in [".json", ".png"]:
+			var a: String = Session.save_path(pair[0]).replace(".json", ext)
+			var b: String = Session.save_path(pair[1]).replace(".json", ext)
+			if FileAccess.file_exists(a):
+				if FileAccess.file_exists(b):
+					DirAccess.remove_absolute(b)
+				DirAccess.rename_absolute(a, b)
