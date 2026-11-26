@@ -1626,6 +1626,15 @@ func _show_prop(b: Dictionary, st: Dictionary, out) -> void:
 			k = out
 		if b.props.has(sh[0]):
 			b.props[sh[0]].queue_free()
+		if st.get("m3d", false) and Items3D.has(k):
+			# echtes 3D-Modell der Ware statt Bildchen (z. B. Stamm auf der Sägebank)
+			var mi: Node3D = Items3D.make(k)
+			mi.scale = Vector3.ONE * 1.1
+			mi.position = Vector3(float(sh[2]), float(sh[3]) + 0.02, float(sh[4]))
+			mi.rotation.y = PI / 2
+			b.node.add_child(mi)
+			b.props[sh[0]] = mi
+			return
 		var tex := UiIcons.item_tex(k)
 		if tex == null:
 			return
