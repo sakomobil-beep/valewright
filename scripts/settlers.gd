@@ -59,6 +59,91 @@ func spawn(job: String, at: Vector3) -> Dictionary:
 	return w
 
 # Oberkörper bekommt ein Hüftgelenk, damit sich die Siedler beugen, drehen und knien können
+# Saatkörner fliegen beim Säen aus der rechten Hand
+func _seed_fx(w: Dictionary, throw: bool) -> void:
+	var fx = w.get("seed_fx")
+	if fx == null:
+		var p := CPUParticles3D.new()
+		var bm := BoxMesh.new()
+		bm.size = Vector3.ONE * 0.025
+		var m := StandardMaterial3D.new()
+		m.albedo_color = Color(0.9, 0.78, 0.45)
+		bm.material = m
+		p.mesh = bm
+		p.local_coords = false
+		p.amount = 40
+		p.lifetime = 0.9
+		p.explosiveness = 0.7
+		p.one_shot = true
+		p.direction = Vector3(0.6, 0.4, 1)
+		p.spread = 35.0
+		p.initial_velocity_min = 1.5
+		p.initial_velocity_max = 2.6
+		p.gravity = Vector3(0, -6, 0)
+		p.position = Vector3(0.25, 0.95, 0.25)
+		w.node.add_child(p)
+		w.seed_fx = p
+		fx = p
+	if throw and not fx.emitting:
+		fx.restart()
+
+func _tool_hidden(w: Dictionary, hide: bool) -> void:
+	var ar = w.get("arm_r")
+	if ar == null:
+		return
+	for c in ar.get_children():
+		if c is Node3D and not c is MeshInstance3D and c != w.get("sickle"):
+			c.visible = not hide
+
+# Sichel in die rechte Hand, solange geerntet wird
+func _sickle(w: Dictionary, on: bool) -> void:
+	var s = w.get("sickle")
+	if s == null and on:
+		var ar: Node3D = w.arm_r
+		if ar == null:
+			return
+		s = Node3D.new()
+		var hand_y := -0.36
+		for c in ar.get_children():
+			if c is Node3D and not c is MeshInstance3D:
+				hand_y = c.position.y
+		s.position = Vector3(0, hand_y, 0.02)
+		var wood := StandardMaterial3D.new()
+		wood.albedo_color = Color(0.5, 0.33, 0.18)
+		var iron := StandardMaterial3D.new()
+		iron.albedo_color = Color(0.72, 0.74, 0.78)
+		iron.metallic = 0.6
+		iron.roughness = 0.35
+		var grip := MeshInstance3D.new()
+		var gm := CylinderMesh.new()
+		gm.top_radius = 0.018
+		gm.bottom_radius = 0.018
+		gm.height = 0.16
+		gm.material = wood
+		grip.mesh = gm
+		grip.rotation.x = PI / 2
+		grip.position = Vector3(0, 0, 0.06)
+		s.add_child(grip)
+		var blade := MeshInstance3D.new()
+		var tm := TorusMesh.new()
+		tm.inner_radius = 0.1
+		tm.outer_radius = 0.125
+		tm.rings = 12
+		tm.ring_segments = 3
+		tm.material = iron
+		blade.mesh = tm
+		blade.position = Vector3(0, 0, 0.24)
+		blade.scale = Vector3(1, 0.25, 1)
+		s.add_child(blade)
+		ar.add_child(s)
+		w.sickle = s
+	if s != null:
+		s.visible = on
+		# Werkzeug des Berufs (Hacke o. Ä.) solange ausblenden
+		for c in w.arm_r.get_children():
+			if c != s and c is Node3D and not c is MeshInstance3D:
+				c.visible = not on
+
 func _rig(w: Dictionary) -> void:
 	var n: Node3D = w.node
 	var up: Node3D = n.find_child("Node3", true, false)
@@ -329,8 +414,9 @@ func _next_job(w: Dictionary) -> void:
 				w.q = [
 					{"go": _beside(ripe.pos, b.pos)},
 					{"face": ripe.pos},
-					{"anim": "plant", "wait": 3.0 * wf},
-					{"fn": func(): ripe.state = "leer"; ripe.growth = 0.0; ripe.reserved = false; _carry(w, "getreide")},
+					{"fn": func(): _sickle(w, true)},
+					{"anim": "reap", "wait": 3.0 * wf},
+					{"fn": func(): _sickle(w, false); ripe.state = "leer"; ripe.growth = 0.0; ripe.reserved = false; _carry(w, "getreide")},
 					{"go": door_of(b)},
 					{"fn": func(): _carry(w, null); economy.put_out(b, "getreide", 2)},
 					{"wait": 1.0},
@@ -342,7 +428,9 @@ func _next_job(w: Dictionary) -> void:
 				w.q = [
 					{"go": _beside(empty.pos, b.pos)},
 					{"face": empty.pos},
-					{"anim": "plant", "wait": 2.5 * wf},
+					{"fn": func(): _tool_hidden(w, true)},
+					{"anim": "sow", "wait": 2.5 * wf},
+					{"fn": func(): _tool_hidden(w, false)},
 					{"fn": func(): empty.state = "wächst"; empty.growth = 0.0; empty.reserved = false},
 					{"go": door_of(b)},
 					{"fn": func(): _next_job(w)},
@@ -1014,6 +1102,33 @@ func _animate(w: Dictionary, dt: float) -> void:
 			P.arx = -0.75 + k3 * 0.4
 			P.alx = -0.75 - k3 * 0.4
 			P.ty = k3 * 0.1
+		"sow":
+			# säen wie früher: Saatbeutel links, mit rechts im weiten Bogen werfen, langsame Schritte
+			var k5 := sin(t * 2.6)
+			P.llx = sin(t * 1.3) * 0.25
+			P.lrx = -sin(t * 1.3) * 0.25
+			P.tx = 0.12
+			P.ty = k5 * 0.35
+			P.hy = k5 * 0.2
+			P.alx = -0.7
+			P.alz = 0.25
+			P.arx = -1.0 - maxf(0.0, k5) * 0.5
+			P.arz = -0.2 - k5 * 0.9
+			snap = 9.0
+			_seed_fx(w, k5 > 0.85)
+		"reap":
+			# Ernte mit der Sichel: tief gebeugt, rechter Arm schwingt quer, linke Hand fasst die Halme
+			var k6 := sin(t * 4.2)
+			P.bob = -0.1
+			P.llx = -0.45
+			P.lrx = 0.3
+			P.tx = 0.75
+			P.hx = 0.2
+			P.ty = k6 * 0.25
+			P.arx = -1.1
+			P.arz = -0.15 + k6 * 0.85
+			P.alx = -1.0
+			P.alz = 0.2
 		"shovel":
 			# einstechen, Erde anheben, über die Schulter werfen
 			var k4 := fmod(t * 1.1, 1.0)

@@ -186,6 +186,14 @@ func make_plots(b: Dictionary, saved: Array = []) -> void:
 		p.y = terrain.height(p.x, p.z)
 		if p.y < terrain.WATER_Y + 0.3 or absf(p.y - by) > 1.6 * sc:
 			continue
+		var wet := false
+		for k in 8:   # ganzes Feld trocken und nicht zu schräg
+			var q := p + Vector3(cos(k * TAU / 8), 0, sin(k * TAU / 8)) * PLOT * 0.75
+			var hq: float = terrain.height(q.x, q.z)
+			if hq < terrain.WATER_Y + 0.35 or absf(hq - p.y) > 1.0:
+				wet = true
+		if wet:
+			continue
 		if b.plots.any(func(q): return Vector2(q.pos.x - p.x, q.pos.z - p.z).length() < 2.3 * sc):
 			continue
 		var blocked := false
@@ -203,31 +211,125 @@ func make_plots(b: Dictionary, saved: Array = []) -> void:
 		b.plots[i].state = String(saved[i][0])
 		b.plots[i].growth = float(saved[i][1])
 
+# Feld wie in der Browser-Version: Ackerboden folgt dem Gelände (liegt nie im Boden oder schwebt),
+# mit Furchen und Rand; Getreide als Halmbüschel mit Ähren, wächst und färbt sich von grün zu gold
+const PLOT := 3.0
+var _stalk_mesh: Mesh
+var _ear_mesh: Mesh
+
 func _create_plot(p: Vector3) -> Dictionary:
+	# Bäume auf dem Feld fällen
+	for k in 6:
+		var tr_ = terrain.nearest_tree(p, PLOT * 0.8, true)
+		if tr_ == null:
+			break
+		terrain.fell_tree(tr_, null, true)
 	var g := Node3D.new()
 	add_child(g)
 	g.position = p
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var NX := 10
+	var NZ := 40
+	var half := PLOT * 0.5
+	var pts := []
+	var cols := []
+	var cA := Color(0.54, 0.34, 0.2)
+	var cB := Color(0.37, 0.22, 0.13)
+	var cR := Color(0.43, 0.29, 0.16)
+	for j in NZ + 1:
+		for i in NX + 1:
+			var vx := -half + PLOT * i / NX
+			var vz := -half + PLOT * j / NZ
+			var m := maxf(absf(vx), absf(vz))
+			var rim := m > half * 0.9
+			var edge := m > half * 0.98
+			var ridge := 0.5 + 0.5 * cos((vz + 0.8) / 0.4 * TAU)
+			var y: float = terrain.height(p.x + vx, p.z + vz) - p.y + (0.02 if edge else (0.1 if rim else 0.06 + ridge * 0.09))
+			pts.append(Vector3(vx, y, vz))
+			var c := (cR if rim else cB).lerp(cA, 0.3 if rim else ridge)
+			cols.append(c)
+	for j in NZ:
+		for i in NX:
+			var i0 := j * (NX + 1) + i
+			for tri in [[i0, i0 + NX + 1, i0 + 1], [i0 + 1, i0 + NX + 1, i0 + NX + 2]]:
+				for k in tri:
+					st.set_color(cols[k])
+					st.add_vertex(pts[k])
+	st.generate_normals()
 	var soil := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = Vector3(2.6, 0.12, 2.6)
-	soil.mesh = bm
+	soil.mesh = st.commit()
+	if _plot_mat == null or not _plot_mat.vertex_color_use_as_albedo:
+		_plot_mat = StandardMaterial3D.new()
+		_plot_mat.vertex_color_use_as_albedo = true
+		_plot_mat.roughness = 1.0
+		_plot_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	soil.material_override = _plot_mat
-	soil.position.y = 0.02
 	g.add_child(soil)
-	var cm := StandardMaterial3D.new()
-	cm.albedo_color = Color(0.45, 0.65, 0.25)
-	var crops: Array = []
-	for i in 9:
-		var c := MeshInstance3D.new()
-		var cb := BoxMesh.new()
-		cb.size = Vector3(0.5, 0.8, 0.5)
-		c.mesh = cb
-		c.material_override = cm
-		c.position = Vector3((i % 3 - 1) * 0.8, 0.1, (i / 3 - 1) * 0.8)
-		c.scale = Vector3(1, 0.01, 1)
-		g.add_child(c)
-		crops.append(c)
-	return {"pos": p, "g": g, "crops": crops, "mat": cm, "state": "leer", "growth": 0.0, "reserved": false}
+	# Getreide: 25 Büschel × 5 Halme mit Ähre (als MultiMesh, je Feld eigene Farbe)
+	if _stalk_mesh == null:
+		var c := CylinderMesh.new()
+		c.top_radius = 0.012
+		c.bottom_radius = 0.018
+		c.height = 1.0
+		c.radial_segments = 3
+		c.rings = 1
+		_stalk_mesh = c
+		var e := CapsuleMesh.new()
+		e.radius = 0.022
+		e.height = 0.12
+		e.radial_segments = 5
+		e.rings = 2
+		_ear_mesh = e
+	var sm := StandardMaterial3D.new()
+	sm.albedo_color = Color(0.44, 0.66, 0.23)
+	var em := StandardMaterial3D.new()
+	em.albedo_color = Color(0.61, 0.77, 0.35)
+	var mms := MultiMeshInstance3D.new()
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = _stalk_mesh
+	mm.instance_count = 125
+	mms.multimesh = mm
+	mms.material_override = sm
+	g.add_child(mms)
+	var mme := MultiMeshInstance3D.new()
+	var mm2 := MultiMesh.new()
+	mm2.transform_format = MultiMesh.TRANSFORM_3D
+	mm2.mesh = _ear_mesh
+	mm2.instance_count = 125
+	mme.multimesh = mm2
+	mme.material_override = em
+	g.add_child(mme)
+	var stalks := []
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(p.x * 31.0 + p.z * 17.0)
+	for i in 25:
+		var px := -1.1 + (i % 5) * 0.55 + rng.randf_range(-0.08, 0.08)
+		var pz := -1.1 + (i / 5) * 0.55 + rng.randf_range(-0.08, 0.08)
+		var gy: float = terrain.height(p.x + px, p.z + pz) - p.y + 0.12
+		for k in 5:
+			var a := k / 5.0 * TAU + rng.randf() * 0.4
+			stalks.append({"base": Vector3(px + cos(a) * 0.05, gy, pz + sin(a) * 0.05), "lean": Vector3(sin(a), 0, -cos(a)) * rng.randf_range(0.12, 0.22), "h": rng.randf_range(0.75, 1.0), "rot": rng.randf() * TAU})
+	var pl := {"pos": p, "g": g, "mm": mm, "mm2": mm2, "sm": sm, "em": em, "stalks": stalks, "state": "leer", "growth": 0.0, "reserved": false, "shown": -1.0}
+	_update_plot(pl)
+	return pl
+
+func _update_plot(pl: Dictionary) -> void:
+	var s: float = 0.0 if pl.state == "leer" else 0.08 + pl.growth * 0.92
+	var ripe := smoothstep(0.55, 1.0, pl.growth)
+	pl.sm.albedo_color = Color(0.44, 0.66, 0.23).lerp(Color(0.88, 0.72, 0.29), ripe)
+	pl.em.albedo_color = Color(0.61, 0.77, 0.35).lerp(Color(0.91, 0.75, 0.31), ripe)
+	var ear_s := clampf((pl.growth - 0.45) * 2.5, 0.0, 1.0) * (1.0 + ripe * 0.3) if pl.state != "leer" else 0.0
+	for i in pl.stalks.size():
+		var d: Dictionary = pl.stalks[i]
+		var h: float = maxf(0.001, s * d.h * 0.85)
+		var up: Vector3 = (Vector3.UP + d.lean * (1.0 + ripe * 0.6)).normalized()
+		var basis := Basis(Vector3.UP, d.rot)
+		basis = Basis(Quaternion(Vector3.UP, up)) * basis
+		pl.mm.set_instance_transform(i, Transform3D(basis.scaled(Vector3(1, h, 1)), d.base + up * h * 0.5))
+		pl.mm2.set_instance_transform(i, Transform3D(basis.scaled(Vector3.ONE * maxf(0.001, ear_s)), d.base + up * (h + 0.06)))
+	pl.shown = pl.growth if pl.state != "leer" else -1.0
 
 func _plots_step(dt: float) -> void:
 	var tf: float = economy.tf()
@@ -244,11 +346,9 @@ func _plots_step(dt: float) -> void:
 				pl.growth = minf(1.0, pl.growth + dt / (60.0 * tf))
 				if pl.growth >= 1.0:
 					pl.state = "reif"
-			var h: float = 0.01 if pl.state == "leer" else maxf(0.05, pl.growth)
-			for c in pl.crops:
-				c.scale.y = h
-				c.position.y = 0.08 + 0.4 * h
-			pl.mat.albedo_color = Color(0.86, 0.72, 0.3) if pl.state == "reif" else Color(0.45, 0.65, 0.25).lerp(Color(0.75, 0.7, 0.3), pl.growth)
+			var want: float = pl.growth if pl.state != "leer" else -1.0
+			if absf(want - float(pl.shown)) > 0.02 or (want < 0.0) != (float(pl.shown) < 0.0):
+				_update_plot(pl)
 	# Schweine zeigen ihre Größe
 	for b in economy.buildings:
 		for pg in b.get("pigs", []):

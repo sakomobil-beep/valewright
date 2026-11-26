@@ -69,6 +69,9 @@ func _process(_dt: float) -> void:
 		return
 	var c := Vector2(rig.target.x, rig.target.z)
 	var nb: int = economy.buildings.size() if economy else 0
+	if economy:
+		for b in economy.buildings:
+			nb += b.get("plots", []).size() * 1000
 	if c.distance_to(_center) > 14.0 or nb != _nb:
 		_center = c
 		_nb = nb
@@ -90,6 +93,11 @@ func _scatter() -> void:
 			var p: Vector3 = b.pos
 			if Vector2(p.x, p.z).distance_to(_center) < RADIUS + 8.0:
 				blocks.append(Vector3(p.x, p.z, 4.2 if b.type != "wohnhaus" else 3.4))
+				for pl in b.get("plots", []):
+					blocks.append(Vector3(pl.pos.x, pl.pos.z, 1.6))   # kein Gras im Acker
+				if b.type in Farms.TYPES and is_instance_valid(b.node):
+					var pc: Vector3 = Farms.pen_points(p, b.node.rotation.y)[0]
+					blocks.append(Vector3(pc.x, pc.z, 2.6))
 	_rng.seed = int(_center.x * 7.0 + _center.y * 13.0)
 	var n := 0
 	var f := 0
