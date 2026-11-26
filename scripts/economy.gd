@@ -564,9 +564,6 @@ func _house(b: Dictionary, dt: float) -> void:
 		b.bad += 1
 		b.status = "ST_HOUSE_MISSING"
 		b.miss = miss.map(func(k): return need_item(k))
-		if b.bad >= 3 and b.lvl > 0:
-			b.lvl -= 1
-			b.bad = 0
-			house_level_changed.emit(b)
-			message.emit(tr("MSG_HOUSE_DOWN"))
+		# Kein Abstieg mehr: ein unzufriedenes Haus behält seine Stufe,
+		# zahlt aber keine Steuern, bis wieder alle Waren da sind.
 	changed.emit()
