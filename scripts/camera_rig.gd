@@ -18,6 +18,10 @@ var terrain: Node3D
 var _touches := {}
 
 func _unhandled_input(e: InputEvent) -> void:
+	# Mausrad/Gesten über einem Fenster (Statistik, Infos, Menüs) gehören dem Fenster, nicht der Karte
+	if (e is InputEventMouseButton and (e.button_index == MOUSE_BUTTON_WHEEL_UP or e.button_index == MOUSE_BUTTON_WHEEL_DOWN)) or e is InputEventPanGesture or e is InputEventMagnifyGesture:
+		if get_viewport().gui_get_hovered_control() != null:
+			return
 	# beim Bauen dreht das Mausrad das Gebäude (Umschalt = zoomen), wie im Browser
 	if e is InputEventMouseButton and e.pressed and (e.button_index == MOUSE_BUTTON_WHEEL_UP or e.button_index == MOUSE_BUTTON_WHEEL_DOWN) and not e.shift_pressed:
 		var bld = get_tree().get_first_node_in_group("builder")
