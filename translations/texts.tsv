@@ -573,3 +573,8 @@ ORD_HK_NOW	In Ausbildung: %s – noch %d min	Training: %s – %d min left
 ORD_HK_QUEUE	Warteschlange: 👷 %d · 🧺 %d	Queue: 👷 %d · 🧺 %d
 HK_BAU	Baumeister	Builder
 HK_TR	Träger	Carrier
+TIP_COST	Kosten:	Cost:
+TIP_RECIPE	Ware:	Goods:
+TIP_TERRITORY	Gebiet (Radius):	Territory (radius):
+TIP_NEEDS	Braucht:	Needs:
+TIP_MAKES	Stellt her:	Produces:

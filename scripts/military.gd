@@ -4,7 +4,7 @@ extends Node3D
 
 const CELL := 4.0
 const START_RADIUS := 30.0
-const CLAIM := {"lager": 30.0, "wachstube": 14.0, "wachturm": 18.0, "wehrturm": 24.0, "burg": 32.0}
+const CLAIM := {"lager": 30.0, "wachstube": 30.0, "wachturm": 34.0, "wehrturm": 40.0, "burg": 48.0}
 # Plätze je Turm wie POSTS im Browser (Schwert / Bogen getrennt)
 const POSTS := {"wachstube": {"schwert": 2}, "wachturm": {"bogen": 4}, "wehrturm": {"schwert": 3, "bogen": 2}, "burg": {"schwert": 6, "bogen": 4}}
 const GARRISON := {"wachstube": 2, "wachturm": 4, "wehrturm": 5, "burg": 10}

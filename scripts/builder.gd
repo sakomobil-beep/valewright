@@ -320,6 +320,8 @@ func _card(t: String) -> Button:
 	b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	b.custom_minimum_size = Vector2(120, 130)
 	b.pressed.connect(func(): if economy.is_unlocked(t): start(t))
+	b.mouse_entered.connect(func(): _show_tip(t, b))
+	b.mouse_exited.connect(func(): _hide_tip(t))
 	var vb := VBoxContainer.new()
 	vb.set_anchors_preset(Control.PRESET_FULL_RECT)
 	vb.offset_left = 4
@@ -375,6 +377,90 @@ func _card(t: String) -> Button:
 	b.add_child(lock)
 	_buttons[t] = b
 	return b
+
+# ---------- Tooltip-Fenster im Baumenü ----------
+var _tip: PanelContainer
+var _tip_title: Label
+var _tip_body: RichTextLabel
+var _tip_for := ""
+
+func _make_tip() -> void:
+	_tip = PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.13, 0.09, 0.055, 0.96)
+	sb.border_color = Color(0.79, 0.64, 0.29)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(8)
+	sb.set_content_margin_all(12)
+	_tip.add_theme_stylebox_override("panel", sb)
+	_tip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tip.visible = false
+	_tip.z_index = 50
+	var vb := VBoxContainer.new()
+	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_theme_constant_override("separation", 4)
+	_tip.add_child(vb)
+	_tip_title = Label.new()
+	_tip_title.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	_tip_title.add_theme_font_size_override("font_size", 19)
+	_tip_title.add_theme_color_override("font_color", Color(0.94, 0.77, 0.4))
+	vb.add_child(_tip_title)
+	_tip_body = RichTextLabel.new()
+	_tip_body.bbcode_enabled = true
+	_tip_body.fit_content = true
+	_tip_body.scroll_active = false
+	_tip_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tip_body.custom_minimum_size = Vector2(320, 0)
+	_tip_body.add_theme_font_size_override("normal_font_size", 14)
+	_tip_body.add_theme_color_override("default_color", Color(0.96, 0.9, 0.78))
+	vb.add_child(_tip_body)
+	build_bar.get_parent().add_child(_tip)
+
+func _show_tip(t: String, btn: Control) -> void:
+	if _tip == null:
+		_make_tip()
+	_tip_for = t
+	var info: Dictionary = economy.type_info(t)
+	_tip_title.text = (info.get("icon", "") + " " + tr(_key(t))).strip_edges()
+	var desc := tr("DESC_" + t.to_upper())
+	if desc == "DESC_" + t.to_upper():
+		desc = String(info.get("desc", ""))
+	var txt := desc
+	var cost := []
+	for k in info.cost:
+		cost.append("%s %s %d" % [UiIcons.bb(k, 16), tr("ITEM_" + String(k).to_upper()), int(info.cost[k])])
+	if not cost.is_empty():
+		txt += "\n\n[color=#f0c466]" + tr("TIP_COST") + "[/color]  " + "   ".join(cost)
+	if economy.data.io.has(t):
+		var nm := func(k): return " / ".join(Array(String(k).split("|")).map(func(x): return (UiIcons.bb(x, 16) + " " + tr("ITEM_" + String(x).to_upper())) if economy.data.items.has(x) else String(x)))
+		var ins: Array = economy.data.io[t][0]
+		var outs: Array = economy.data.io[t][1]
+		if not ins.is_empty():
+			txt += "\n[color=#f0c466]" + tr("TIP_NEEDS") + "[/color]  " + "  +  ".join(ins.map(nm))
+		if not outs.is_empty():
+			txt += "\n[color=#f0c466]" + tr("TIP_MAKES") + "[/color]  " + "  ·  ".join(outs.map(nm))
+	if military and military.CLAIM.has(t):
+		txt += "\n[color=#f0c466]" + tr("TIP_TERRITORY") + "[/color]  " + str(int(military.CLAIM[t]))
+	if not economy.is_unlocked(t):
+		txt += "\n\n🔒 " + tr("UI_LOCKED_TIER") % tr("HOUSE_%d" % (int(economy.data.unlock[t]) - 1))
+	elif not economy.can_afford(t):
+		txt += "\n\n[color=#e07a5f]" + tr("UI_NOT_ENOUGH") + "[/color]"
+	_tip_body.text = txt
+	_tip.visible = true
+	_tip.reset_size()
+	await get_tree().process_frame
+	if _tip_for != t or _tip == null:
+		return
+	var r := btn.get_global_rect()
+	var vs := get_viewport().get_visible_rect().size
+	var x := clampf(r.position.x + r.size.x / 2.0 - _tip.size.x / 2.0, 8.0, vs.x - _tip.size.x - 8.0)
+	var bar_top := build_bar.get_global_rect().position.y
+	_tip.global_position = Vector2(x, bar_top - _tip.size.y - 10.0)
+
+func _hide_tip(t: String) -> void:
+	if _tip and _tip_for == t:
+		_tip.visible = false
+		_tip_for = ""
 
 # Rezept als Symbole: Zutaten → Erzeugnis
 func _recipe(t: String) -> String:
@@ -587,6 +673,8 @@ func _process(_dt: float) -> void:
 	var in_place := placing != ""
 	if build_bar:
 		build_bar.visible = not in_place
+		if _tip and (in_place or not build_bar.is_visible_in_tree()):
+			_tip.visible = false
 		confirm_box.visible = in_place
 		_ok_btn.visible = chosen
 		_rot_btn.visible = placing != "bruecke"
