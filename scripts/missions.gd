@@ -7,6 +7,8 @@ var main: Node3D
 var mission := 0            # 0 = keine, -1 = Tutorial, 1..4 = Kapitel
 var done := false
 var step := 0               # Tutorial-Schritt
+var next_btn: Button
+var _manual_ok := false
 var panel: PanelContainer
 var label: Label
 var _t := 0.0
@@ -62,18 +64,24 @@ func goals(id: int) -> Array:
 			]
 	return []
 
-# Tutorial: Schritt für Schritt durch die Grundlagen
+# Tutorial: 12 Schritte in drei Kapiteln (ca. 20–25 Minuten)
+# Eintrag: [Text, Bedingung (null = „Weiter“-Knopf), Gebäude zum Hervorheben (in Reihenfolge)]
 func tutorial_steps() -> Array:
 	var e: Node = main.economy
 	var built := func(t: String): return e.buildings.filter(func(b): return b.type == t and b.build >= 1.0).size()
 	return [
-		["TUT_1", func(): return built.call("holzfaeller") >= 1],
-		["TUT_2", func(): return built.call("saegewerk") >= 1],
-		["TUT_3", func(): return built.call("steinmetz") >= 1],
-		["TUT_4", func(): return built.call("brunnen") >= 1 and built.call("bauernhof") >= 1],
-		["TUT_5", func(): return built.call("wohnhaus") >= 1],
-		["TUT_6", func(): return e.buildings.any(func(b): return b.type == "wachturm" and b.get("claimed", false))],
-		["TUT_7", func(): return false],
+		["TUT_1", null, []],
+		["TUT_2", func(): return built.call("holzfaeller") >= 1, ["holzfaeller"]],
+		["TUT_3", func(): return built.call("saegewerk") >= 1, ["saegewerk"]],
+		["TUT_4", func(): return built.call("steinmetz") >= 1, ["steinmetz"]],
+		["TUT_5", func(): return built.call("brunnen") >= 1 and e.buildings.any(func(b): return b.type == "wohnhaus" and int(b.get("sat", 0)) > 0), ["brunnen", "wohnhaus"]],
+		["TUT_6", func(): return main.builder.selected != null and not main.builder.selected.get("hq", false), []],
+		["TUT_7", func(): return built.call("bauernhof") >= 1 and built.call("muehle") >= 1 and built.call("baeckerei") >= 1, ["bauernhof", "muehle", "baeckerei"]],
+		["TUT_8", func(): return built.call("handwerkskammer") >= 1 and (e.builders_n >= 2 or e.buildings.any(func(b): return b.type == "handwerkskammer" and not b.get("tq", []).is_empty())), ["handwerkskammer"]],
+		["TUT_9", func(): return e.buildings.any(func(b): return b.type in ["wachstube", "wachturm"] and int(b.get("garrison", 0)) > 0), ["wachstube"]],
+		["TUT_10", func(): return built.call("rutengaenger") >= 1 and main.terrain.deposits.any(func(d): return d.found), ["rutengaenger"]],
+		["TUT_11", func(): return e.buildings.any(func(b): return b.type in ["kohlemine", "eisenmine", "steinmine", "goldmine"] and b.build >= 1.0), ["kohlemine"]],
+		["TUT_12", func(): return false, []],
 	]
 
 func setup(layer: CanvasLayer) -> void:
@@ -92,7 +100,22 @@ func setup(layer: CanvasLayer) -> void:
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.custom_minimum_size = Vector2(280, 0)
 	label.add_theme_color_override("font_color", Color(0.96, 0.9, 0.78))
-	panel.add_child(label)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 8)
+	panel.add_child(vb)
+	vb.add_child(label)
+	if mission == -1:
+		var hb := HBoxContainer.new()
+		hb.add_theme_constant_override("separation", 8)
+		vb.add_child(hb)
+		next_btn = Button.new()
+		next_btn.text = tr("TUT_NEXT")
+		next_btn.pressed.connect(func(): _manual_ok = true)
+		hb.add_child(next_btn)
+		var skip := Button.new()
+		skip.text = tr("TUT_SKIP")
+		skip.pressed.connect(func(): _manual_ok = true; step = mini(step + 1, tutorial_steps().size() - 1))
+		hb.add_child(skip)
 
 func _victory() -> String:
 	return String(Session.cfg.get("victory", "conquest"))
@@ -154,16 +177,17 @@ func _process(dt: float) -> void:
 		finished.emit(mission)
 
 # was im jeweiligen Schritt gebaut werden soll (Karte leuchtet) und wohin der 3D-Pfeil zeigt
-const TUT_BUILD := ["holzfaeller", "saegewerk", "steinmetz", "brunnen", "wohnhaus", "wachturm", ""]
 var _arrow: Node3D
 var _arrow_at = null
 
 func _tut_target(i: int):
 	var e: Node = main.economy
-	var t: String = TUT_BUILD[i]
-	if i == 3 and e.buildings.any(func(b): return b.type == "brunnen" and b.build >= 1.0):
-		t = "bauernhof"
-	main.builder.tut_hl = "" if e.buildings.any(func(b): return b.type == t) else t
+	var t := ""
+	for k in tutorial_steps()[i][2]:
+		if not e.buildings.any(func(b): return b.type == k and b.build >= 1.0):
+			t = k
+			break
+	main.builder.tut_hl = "" if t == "" or e.buildings.any(func(b): return b.type == t) else t
 	# Pfeil: auf die neue Baustelle, sonst auf die Felsen (Steinmetz), sonst aufs Lager
 	for b in e.buildings:
 		if b.type == t and b.build < 1.0:
@@ -172,6 +196,10 @@ func _tut_target(i: int):
 		var rk = main.terrain.nearest_rock(main.settlers.lager_door(), 60.0)
 		if rk:
 			return rk.pos + Vector3(0, 3.5, 0)
+	if t == "rutengaenger" or t == "kohlemine":
+		for d in main.terrain.deposits:
+			if Vector2(d.pos.x, d.pos.z).length() < 60.0 and (t == "rutengaenger" or d.found):
+				return d.pos + Vector3(0, 4.0, 0)
 	if i == 0:
 		return main.settlers.lager_door() + Vector3(0, 12.0, -2.0)
 	return null
@@ -210,9 +238,17 @@ func _tut_arrow(at) -> void:
 
 func _tutorial() -> void:
 	var steps := tutorial_steps()
-	while step < steps.size() - 1 and steps[step][1].call():
+	while step < steps.size() - 1:
+		var cond = steps[step][1]
+		var done: bool = _manual_ok if cond == null else cond.call()
+		if not done:
+			break
+		_manual_ok = false
 		step += 1
 		main._toast("✅ " + tr("TUT_DONE"))
+	if next_btn:
+		next_btn.visible = steps[step][1] == null
 	_arrow_at = _tut_target(step)
 	_tut_arrow(_arrow_at)
-	label.text = "🎓 %s  %d / %d\n\n%s" % [tr("UI_TUTORIAL"), step + 1, steps.size(), tr(steps[step][0])]
+	var chap := 1 if step < 4 else (2 if step < 8 else 3)
+	label.text = "🎓 %s  ·  %s %d  ·  %d / %d\n\n%s" % [tr("UI_TUTORIAL"), tr("TUT_CHAPTER"), chap, step + 1, steps.size(), tr(steps[step][0])]

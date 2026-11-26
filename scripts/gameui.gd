@@ -161,7 +161,7 @@ func main_menu() -> void:
 	_label(vb, BuildInfo.VERSION + "  ·  Stand: " + BuildInfo.STAMP, 14, TEXT, true)   # TEST: vor dem Release entfernen
 	_label(vb, "GAME_SUBTITLE", 18, TEXT, true)
 	vb.add_child(HSeparator.new())
-	_button(vb, "MENU_TUTORIAL", func(): Session.new_game({"mode": "tutorial", "ais": 0, "diff": "leicht", "seed": 4711, "mission": -1}))
+	_button(vb, "MENU_TUTORIAL", func(): Session.new_game({"mode": "tutorial", "ais": 0, "diff": "leicht", "seed": 4711, "mission": -1, "tempo": "schnell"}))
 	_button(vb, "MENU_CAMPAIGN", campaign_menu)
 	_button(vb, "MENU_NEW", new_game_menu)
 	_button(vb, "MENU_LOAD", func(): load_menu(false))
