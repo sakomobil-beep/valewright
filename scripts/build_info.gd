@@ -2,5 +2,5 @@ class_name BuildInfo
 # Stand der Spielversion (deutsche Zeit) – wird bei jeder Änderung mit hochgeladen.
 # Nur zum Testen im Hauptmenü sichtbar; vor dem Release entfernen.
 # Versionsnummer: bei jedem Update die letzte Stelle um 1 erhöhen
-const VERSION := "Alpha 0.0.0.2.3"
-const STAMP := "26.11.2026, 21:40 Uhr"
+const VERSION := "Alpha 0.0.0.2.4"
+const STAMP := "26.11.2026, 22:00 Uhr"

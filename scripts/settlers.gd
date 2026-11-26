@@ -31,6 +31,27 @@ func nearest_lager(from: Vector3) -> Vector3:
 				best = d
 	return best
 
+# Träger gehen ins Haupthaus/Lager hinein (nicht vor der Tür abladen): rein, kurz drinnen, wieder raus
+func _lager_center(door: Vector3) -> Vector3:
+	var hq = get_parent().get_node_or_null("Haupthaus")
+	var best: Vector3 = hq.global_position if hq else Vector3.ZERO
+	var bd := best.distance_to(door)
+	for b in economy.buildings:
+		if b.type == "lager" and b.build >= 1.0 and b.pos.distance_to(door) < bd:
+			bd = b.pos.distance_to(door)
+			best = b.pos
+	return best
+
+func _inside_steps(w: Dictionary, door: Vector3, mid := []) -> Array:
+	var c := _lager_center(door)
+	var dir := Vector3(c.x - door.x, 0, c.z - door.z)
+	var inside := door + (dir.normalized() * minf(2.2, dir.length() * 0.8) if dir.length() > 0.1 else Vector3.ZERO)
+	inside.y = terrain.walk_height(inside.x, inside.z)
+	var steps: Array = [{"walk": inside, "checked": true}, {"fn": func(): w.node.visible = false}]
+	steps.append_array(mid)
+	steps.append_array([{"wait": 0.6}, {"fn": func(): w.node.visible = true}, {"walk": door, "checked": true}])
+	return steps
+
 func door_of(b: Dictionary) -> Vector3:
 	var p: Vector3 = b.pos + Vector3(0, 0, 3.4).rotated(Vector3.UP, b.node.rotation.y)
 	p.y = terrain.height(p.x, p.z)
@@ -843,12 +864,9 @@ func _receive(b: Dictionary, item: String, n: int) -> void:
 
 func _plan_carrier(w: Dictionary) -> void:
 	var p: Vector3 = w.node.position
-	if not w.get("cart", false) and int(economy.stock.get("karren", 0)) > 0:
-		economy.stock.karren -= 1
-		economy.note("use", "karren", 1)
-		w.cart = true
-		w.cap = 4
-		economy.changed.emit()
+	# Karren abholen: vom Parkplatz vor dem Wagner (oder aus dem Lager, falls dort noch einer steht)
+	if not w.get("cart", false) and _fetch_cart(w):
+		return
 	var cap: int = int(w.get("cap", 1))
 	var job = null
 	var jk := 1e9
@@ -857,6 +875,8 @@ func _plan_carrier(w: Dictionary) -> void:
 			continue
 		economy.bufs(b)
 		for item in b.out:
+			if item == "karren":
+				continue   # Karren bleiben auf dem Parkplatz am Wagner und werden dort abgeholt
 			var avail: int = int(b.out[item]) - int(b.out_res.get(item, 0))
 			if avail <= 0:
 				continue
@@ -920,8 +940,7 @@ func _plan_carrier(w: Dictionary) -> void:
 		economy.stock[item] = int(economy.stock[item]) - n
 		economy.changed.emit()
 		q.append({"go": job.lager})
-		q.append({"wait": 0.4})
-		q.append({"fn": func(): _carry(w, carry_icon)})
+		q.append_array(_inside_steps(w, job.lager, [{"fn": func(): _carry(w, carry_icon)}]))
 	q.append({"fn": func():
 		if st.lost:
 			if job.to != null:
@@ -932,15 +951,21 @@ func _plan_carrier(w: Dictionary) -> void:
 		var to = job.to
 		var ok: bool = to != null and not to.get("removed", false)
 		var dest: Vector3 = door_of(to) if ok else nearest_lager(w.node.position)
-		w.q.insert(0, {"go": dest})
-		w.q.insert(1, {"fn": func():
+		var drop := func():
 			if to != null:
 				_inc(to, item, -int(st.n))
 			if ok and not to.get("removed", false):
 				_receive(to, item, int(st.n))
 			else:
 				economy.add(item, int(st.n))
-			_carry(w, null)})})
+			_carry(w, null)
+		var steps: Array = [{"go": dest}]
+		if ok:
+			steps.append({"fn": drop})
+		else:
+			steps.append_array(_inside_steps(w, dest, [{"fn": drop}]))   # ins Lager hineintragen
+		for i in steps.size():
+			w.q.insert(i, steps[i])})
 	w.q = q
 
 # ---------- Ablauf & Animation ----------
@@ -1381,7 +1406,7 @@ func sfx(n: String, vol := 0.0) -> void:
 	if s:
 		s.play(n, vol)
 
-func _cart() -> Node3D:
+func _cart(cargo := true) -> Node3D:
 	var g := Node3D.new()
 	var raeder: Array = []
 	g.set_meta("karre", true)
@@ -1479,7 +1504,7 @@ func _cart() -> Node3D:
 	# Ladung: Säcke und eine Kiste
 	var sack := StandardMaterial3D.new()
 	sack.albedo_color = Color(0.82, 0.72, 0.5)
-	for i in 2:
+	for i in (2 if cargo else 0):
 		var sm := MeshInstance3D.new()
 		var sp := SphereMesh.new()
 		sp.radius = 0.17
@@ -1489,20 +1514,116 @@ func _cart() -> Node3D:
 		sm.position = Vector3(-0.14 + i * 0.28, 0.55, cz + 0.2)
 		sm.scale = Vector3(1, 0.8, 1.2)
 		g.add_child(sm)
-	add.call(g, Vector3(0.3, 0.22, 0.28), Vector3(0, 0.5, cz - 0.22), dark)
-	add.call(g, Vector3(0.32, 0.03, 0.3), Vector3(0, 0.62, cz - 0.22), iron)
+	if cargo:
+		add.call(g, Vector3(0.3, 0.22, 0.28), Vector3(0, 0.5, cz - 0.22), dark)
+		add.call(g, Vector3(0.32, 0.03, 0.3), Vector3(0, 0.62, cz - 0.22), iron)
 	g.scale = Vector3.ONE / WORKER_SCALE
 	return g
 
 # Waren, die auf Abholung warten, liegen als Haufen vor dem Gebäude
+# ---------- Karren-Parkplatz am Wagner ----------
+const PARK_SLOTS := 4
+
+func park_spot(b: Dictionary, i: int) -> Vector3:
+	var local := Vector3(-2.9 - (i % 2) * 1.2, 0, 1.0 + (i / 2) * 1.9)   # links vor dem Haus, 2 × 2 Stellplätze
+	var p: Vector3 = b.pos + local.rotated(Vector3.UP, b.node.rotation.y)
+	p.y = terrain.height(p.x, p.z)
+	return p
+
+func _fetch_cart(w: Dictionary) -> bool:
+	var p: Vector3 = w.node.position
+	var best = null
+	var bd := 1e9
+	for b in economy.buildings:
+		if b.type != "wagner" or b.get("removed", false) or int(b.get("owner", 0)) != 0:
+			continue
+		economy.bufs(b)
+		var avail: int = int(b.out.get("karren", 0)) - int(b.out_res.get("karren", 0))
+		if avail > 0:
+			var d := p.distance_to(b.pos)
+			if d < bd:
+				bd = d
+				best = b
+	if best != null:
+		var b: Dictionary = best
+		b.out_res.karren = int(b.out_res.get("karren", 0)) + 1
+		var slot := maxi(0, int(b.out.karren) - 1)
+		w.q = [
+			{"go": park_spot(b, slot) + Vector3(0, 0, 0.6).rotated(Vector3.UP, b.node.rotation.y)},
+			{"wait": 0.5},
+			{"fn": func():
+				b.out_res.karren = maxi(0, int(b.out_res.get("karren", 0)) - 1)
+				if int(b.out.get("karren", 0)) > 0 and not b.get("removed", false):
+					b.out.karren -= 1
+					economy.note("use", "karren", 1)
+					w.cart = true
+					w.cap = 4
+					_carry(w, "karre")
+					economy.changed.emit()},
+			{"wait": 0.4},
+			{"fn": func(): _carry(w, null)},
+		]
+		return true
+	if int(economy.stock.get("karren", 0)) > 0:
+		economy.stock.karren -= 1
+		var l := nearest_lager(p)
+		w.q = [{"go": l}]
+		w.q.append_array(_inside_steps(w, l, [{"fn": func():
+				economy.note("use", "karren", 1)
+				w.cart = true
+				w.cap = 4
+				economy.changed.emit()}]))
+		return true
+	return false
+
+func _update_parking(b: Dictionary) -> void:
+	var n: int = mini(int(b.get("out", {}).get("karren", 0)), PARK_SLOTS)
+	var pk: Node3D = b.get("parking")
+	if pk == null or not is_instance_valid(pk):
+		pk = Node3D.new()
+		get_parent().add_child(pk)
+		b.parking = pk
+		# Kiesfläche mit Holzbegrenzung und weißen Markierungen
+		var gravel := StandardMaterial3D.new(); gravel.albedo_color = Color(0.66, 0.62, 0.55); gravel.roughness = 1.0
+		var wood := StandardMaterial3D.new(); wood.albedo_color = Color(0.45, 0.3, 0.18)
+		var white := StandardMaterial3D.new(); white.albedo_color = Color(0.92, 0.9, 0.85)
+		var c0 := park_spot(b, 0)
+		var c5 := park_spot(b, PARK_SLOTS - 1)
+		var mid := (c0 + c5) * 0.5
+		pk.position = mid
+		pk.rotation.y = b.node.rotation.y
+		var pad := MeshInstance3D.new(); var bm := BoxMesh.new(); bm.size = Vector3(3.0, 0.06, 4.4); pad.mesh = bm; pad.material_override = gravel; pad.position.y = 0.03; pk.add_child(pad)
+		for sx in [-1.0, 1.0]:
+			var e := MeshInstance3D.new(); var eb := BoxMesh.new(); eb.size = Vector3(0.1, 0.14, 4.4); e.mesh = eb; e.material_override = wood; e.position = Vector3(sx * 1.5, 0.07, 0); pk.add_child(e)
+		var l := MeshInstance3D.new(); var lb := BoxMesh.new(); lb.size = Vector3(2.4, 0.01, 0.05); l.mesh = lb; l.material_override = white; l.position = Vector3(0, 0.065, 0); pk.add_child(l)
+		var sep := MeshInstance3D.new(); var sb := BoxMesh.new(); sb.size = Vector3(0.05, 0.01, 3.8); sep.mesh = sb; sep.material_override = white; sep.position = Vector3(0, 0.065, 0); pk.add_child(sep)
+		# Schild „Karren“
+		var post := MeshInstance3D.new(); var pb := BoxMesh.new(); pb.size = Vector3(0.06, 0.9, 0.06); post.mesh = pb; post.material_override = wood; post.position = Vector3(1.35, 0.45, -1.9); pk.add_child(post)
+		var sign := MeshInstance3D.new(); var sgb := BoxMesh.new(); sgb.size = Vector3(0.45, 0.28, 0.04); sign.mesh = sgb; sign.material_override = wood; sign.position = Vector3(1.35, 0.95, -1.9); pk.add_child(sign)
+		var carts := Node3D.new(); carts.name = "Karren"; pk.add_child(carts)
+		for i in PARK_SLOTS:
+			var cart := _cart(false)   # leerer Karren
+			cart.scale = Vector3.ONE
+			var lp: Vector3 = (park_spot(b, i) - mid).rotated(Vector3.UP, -b.node.rotation.y)
+			# Modell ist für das Schieben vor dem Träger gebaut: auf den Stellplatz zentrieren, Räder auf den Boden
+			cart.position = Vector3(lp.x, 0.46 * WORKER_SCALE * 0.67 + 0.06, lp.z)
+			carts.add_child(cart)
+	var cs: Node3D = pk.get_node("Karren")
+	for i in cs.get_child_count():
+		cs.get_child(i).visible = i < n
+
 func _update_piles() -> void:
 	# Fertige Waren liegen sichtbar vor dem Haus – als echtes Produkt (Stämme, Bretter, Säcke, Körbe, Kisten …)
 	for b in economy.buildings:
-		var n: int = mini(economy.out_total(b), 8)
+		if b.type == "wagner" and b.build >= 1.0 and int(b.get("owner", 0)) == 0:
+			_update_parking(b)
+		if b.get("removed", false) and b.get("parking") != null and is_instance_valid(b.parking):
+			b.parking.queue_free()
+		var n: int = mini(economy.out_total(b) - int(b.get("out", {}).get("karren", 0)), 8)
 		var pile: Node3D = b.get("pile")
 		var item := ""
 		for k in b.get("out", {}):
-			if int(b.out[k]) > 0:
+			if int(b.out[k]) > 0 and k != "karren":
 				item = String(k)
 				break
 		if n == 0 or item == "":

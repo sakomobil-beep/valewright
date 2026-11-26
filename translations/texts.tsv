@@ -642,3 +642,5 @@ MSG_HQ_NO_SOLDIER	Kein freier Soldat – bilde in der Kaserne Kämpfer aus.	No f
 UI_HQ_GUARD_HINT	Greifen Feinde das Haupthaus an, kämpfen zuerst die Wächter, danach deine freien Soldaten – immer mit ihrem Rang. Fällt der letzte, ist das Spiel verloren.	If enemies attack the town hall, the guards fight first, then your free soldiers – always with their rank. If the last one falls, the game is lost.
 UI_HQ_TAB_STOCK	Lager	Stock
 UI_HQ_TAB_GUARD	Wache	Guard
+MSG_WARN_MARCH	⚔️ Angriff auf %s! %d Kämpfer von %s marschieren heran – noch ca. %d s	⚔️ Attack on %s! %d fighters of %s are marching in – about %d s left
+MSG_WARN_FIGHT	⚔️ Kampf um %s gegen %s!	⚔️ Battle for %s against %s!

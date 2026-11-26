@@ -1139,6 +1139,59 @@ func _ai_send(ai: Dictionary, target: Dictionary, n: int) -> void:
 		s.ai_out = true
 		_send(s, target)
 	economy.message.emit(tr("MSG_AI_ATTACK") % tr(ai.name))
+	if int(target.get("owner", 0)) == 0:
+		_attack_warning(ai, target, n)
+
+# ---------- Angriffswarnung: roter Balken oben mit Countdown + Kriegshorn ----------
+var _warn_layer: CanvasLayer
+var _warns: Array = []   # {panel, label, text_key, args, eta, until}
+
+func _attack_warning(ai: Dictionary, target: Dictionary, n: int) -> void:
+	if _warn_layer == null:
+		_warn_layer = CanvasLayer.new()
+		_warn_layer.layer = 5
+		add_child(_warn_layer)
+	var dist: float = Vector2(_door(ai.lager).x - target.pos.x, _door(ai.lager).z - target.pos.z).length()
+	var eta: float = dist / (settlers.SPEED * 0.85) + 2.0
+	var hq: bool = target.type == "lager"
+	var what: String = tr("BLD_HAUPTHAUS") if hq else tr("BLD_" + String(target.type).to_upper())
+	var pc := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.62, 0.07, 0.04, 0.93)
+	sb.border_color = Color(1, 0.85, 0.6)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(10)
+	sb.content_margin_left = 18; sb.content_margin_right = 18; sb.content_margin_top = 8; sb.content_margin_bottom = 8
+	pc.add_theme_stylebox_override("panel", sb)
+	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pc.anchor_left = 0.5; pc.anchor_right = 0.5
+	pc.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	pc.offset_top = 92 + 52 * _warns.size()
+	var l := Label.new()
+	l.add_theme_font_size_override("font_size", 20)
+	l.add_theme_color_override("font_color", Color.WHITE)
+	pc.add_child(l)
+	_warn_layer.add_child(pc)
+	_warns.append({"panel": pc, "label": l, "n": n, "who": tr(ai.name), "what": what, "hq": hq, "eta": eta, "until": eta + 25.0})
+	settlers.sfx("horn")
+	get_tree().create_timer(1.2).timeout.connect(func(): settlers.sfx("horn"))
+
+func _warn_step(dt: float) -> void:
+	for w in _warns.duplicate():
+		w.eta -= dt
+		w.until -= dt
+		var pc: PanelContainer = w.panel
+		if w.until <= 0.0:
+			pc.queue_free()
+			_warns.erase(w)
+			continue
+		if w.eta > 0.0:
+			w.label.text = tr("MSG_WARN_MARCH") % [w.what, int(w.n), w.who, int(ceil(w.eta))]
+		else:
+			w.label.text = tr("MSG_WARN_FIGHT") % [w.what, w.who]
+		pc.modulate.a = 0.75 + 0.25 * sin(Time.get_ticks_msec() * 0.008)   # pulsiert
+	for i in _warns.size():
+		_warns[i].panel.offset_top = 92 + 52 * i
 
 # Angriffslogik je Schwierigkeit wie aiWar im Browser
 func peace() -> bool:
@@ -1184,6 +1237,7 @@ func _process(dt: float) -> void:
 	if game_over:
 		return
 	time += dt
+	_warn_step(dt)
 	_barracks(dt)
 	_fight(dt)
 	for ai in ais:
