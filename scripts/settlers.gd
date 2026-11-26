@@ -849,7 +849,25 @@ func _animate(w: Dictionary, dt: float) -> void:
 			P.ty = k * 0.07
 			P.hy = -k * 0.05
 			P.tx = 0.07
-			if carrying:
+			var cart = w.get("carry")
+			if cart != null and cart.has_meta("karre"):
+				# Handkarre schieben: nach vorn gelehnt, beide Hände fest an den Griffen,
+				# kürzere, ruhige Schritte, Arme federn nur leicht mit
+				P.llx = k * 0.42
+				P.lrx = -k * 0.42
+				P.tx = 0.24 + absf(k) * 0.03
+				P.ty = k * 0.03
+				P.hx = -0.12
+				P.hy = 0.0
+				P.alx = -0.78 + k * 0.04
+				P.arx = -0.78 - k * 0.04
+				P.alz = 0.12
+				P.arz = -0.12
+				P.bob *= 0.6
+				for wh in cart.get_meta("raeder"):
+					wh.rotation.x -= dt * 7.0
+				cart.rotation.x = sin(t * 18.0) * 0.012   # leichtes Rumpeln über den Weg
+			elif carrying:
 				# Last mit beiden Händen vor dem Bauch, leicht nach hinten gelehnt
 				P.alx = -1.15
 				P.arx = -1.15
@@ -1101,6 +1119,9 @@ func sfx(n: String, vol := 0.0) -> void:
 
 func _cart() -> Node3D:
 	var g := Node3D.new()
+	var raeder: Array = []
+	g.set_meta("karre", true)
+	g.set_meta("raeder", raeder)
 	var wood := StandardMaterial3D.new()
 	wood.albedo_color = Color(0.55, 0.38, 0.2)
 	var box := MeshInstance3D.new()
@@ -1130,6 +1151,7 @@ func _cart() -> Node3D:
 		wh.rotation.z = PI / 2
 		wh.position = Vector3(sx, 0.25, 0.75)
 		g.add_child(wh)
+		raeder.append(wh)
 	# Handkarre: der Träger schiebt sie an zwei Griffen
 	for sx in [-0.28, 0.28]:
 		var hd := MeshInstance3D.new()
