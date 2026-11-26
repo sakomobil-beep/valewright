@@ -54,7 +54,7 @@ func _ready() -> void:
 		s.btn.pressed.connect(func(): _toggle(i))
 		_groups.append(s.btn)
 	_gap(hb)
-	for p in [["pop_idle", "🧑", "POP_IDLE"], ["pop_free", "🏠", "POP_FREE"], ["pop_work", "👥", "POP_WORKERS"], ["pop_car", "🧺", "POP_CARRIERS"], ["pop_bau", "👷", "POP_BUILDERS"], ["pop_sold", "⚔️", "POP_SOLDIERS"]]:
+	for p in [["pop_free", "🏠", "POP_FREE"], ["pop_idle", "🧑", "POP_IDLE"], ["pop_work", "👥", "POP_WORKERS"], ["pop_car", "🧺", "POP_CARRIERS"], ["pop_bau", "👷", "POP_BUILDERS"], ["pop_sold", "⚔️", "POP_SOLDIERS"]]:
 		_slot(hb, p[0], "", tr(p[2]), false, p[1])
 	var fill := Control.new()
 	fill.size_flags_horizontal = Control.SIZE_EXPAND_FILL

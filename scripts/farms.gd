@@ -7,6 +7,27 @@ class_name Farms
 # Materialien sitzen am Mesh (nicht material_override), damit die Baustelle sie von unten aufbauen kann.
 
 const TYPES := ["schweinezucht", "kuhstall", "schaefer"]
+const PEN_R := 3.4
+const PEN_BACK := 1.25 * 1.5 + 3.4 * 0.72   # Abstand Hausmitte → Gattermitte (Welt-Meter, hinter dem Stall)
+
+# Gatter als Teil der Bauvorschau (im Modell-Raum, Modell ist 1,5-fach skaliert)
+static func pen_preview(t: String) -> Node3D:
+	var g := pen(t, PEN_R)
+	g.name = "GatterVorschau"
+	g.scale = Vector3.ONE / 1.5
+	g.position = Vector3(0, 0, -PEN_BACK / 1.5)
+	g.rotation.y = -PI / 2
+	return g
+
+# Weltpunkte, die das Gatter belegt (für die Bauplatz-Prüfung)
+static func pen_points(pos: Vector3, rot_y: float) -> Array:
+	var back := Vector3(0, 0, -PEN_BACK).rotated(Vector3.UP, rot_y)
+	var c := pos + back
+	var out: Array = [c]
+	for dx in [-1.0, 1.0]:
+		for dz in [-1.0, 1.0]:
+			out.append(c + Vector3(dx * PEN_R * 0.72, 0, dz * PEN_R).rotated(Vector3.UP, rot_y))
+	return out
 
 static func _m(c: Color, r := 0.85) -> StandardMaterial3D:
 	var s := StandardMaterial3D.new()

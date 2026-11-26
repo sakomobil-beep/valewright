@@ -554,6 +554,8 @@ func start(t: String, move := false) -> void:
 		return
 	placing = t
 	ghost = model(t)
+	if t in Farms.TYPES:
+		ghost.add_child(Farms.pen_preview(t))   # Gatter gehört zur Vorschau
 	add_child(ghost)
 	ghost.rotation.y = 0.0 if t == "bruecke" else ghost_rot
 	_ghostify(ghost)
@@ -640,6 +642,16 @@ func can_place(p: Vector3) -> bool:
 		return false
 	if Vector2(p.x, p.z).length() < 9.5:
 		return false   # Haupthaus
+	if placing in Farms.TYPES and ghost:
+		# das Gatter hinter dem Stall braucht auch Platz: trocken, nicht zu steil, eigenes Gebiet, frei
+		for q in Farms.pen_points(p, ghost.rotation.y):
+			var hq: float = terrain.height(q.x, q.z)
+			if hq < terrain.WATER_Y + 0.4 or absf(hq - p.y) > 2.2 or terrain.mountain(q.x, q.z) > 3.0:
+				return false
+			if military and military.owner_at(q) != 0:
+				return false
+			if not _no_overlap(q, 1.2):
+				return false
 	if military and military.owner_at(p) != 0:
 		return false   # nur im eigenen Gebiet
 	return _no_overlap(p, r)
@@ -652,6 +664,10 @@ func _no_overlap(p: Vector3, r: float) -> bool:
 			continue
 		if Vector2(b.pos.x - p.x, b.pos.z - p.z).length() < r + float(economy.data.types[b.type].r) * SCALE + 0.6:
 			return false
+		if b.type in Farms.TYPES and is_instance_valid(b.node):
+			var c: Vector3 = Farms.pen_points(b.pos, b.node.rotation.y)[0]   # bestehendes Gatter freihalten
+			if Vector2(c.x - p.x, c.z - p.z).length() < r + Farms.PEN_R:
+				return false
 	return true
 
 func _water_near(p: Vector3, r: float) -> bool:

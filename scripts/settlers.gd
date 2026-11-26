@@ -1321,26 +1321,41 @@ func _cart() -> Node3D:
 
 # Waren, die auf Abholung warten, liegen als Haufen vor dem Gebäude
 func _update_piles() -> void:
+	# Fertige Waren liegen sichtbar vor dem Haus – als echtes Produkt (Stämme, Bretter, Säcke, Körbe, Kisten …)
 	for b in economy.buildings:
 		var n: int = mini(economy.out_total(b), 8)
 		var pile: Node3D = b.get("pile")
-		if n == 0:
+		var item := ""
+		for k in b.get("out", {}):
+			if int(b.out[k]) > 0:
+				item = String(k)
+				break
+		if n == 0 or item == "":
 			if pile:
 				pile.visible = false
 			continue
-		if pile == null or not is_instance_valid(pile):
+		if pile == null or not is_instance_valid(pile) or pile.get_meta("item", "") != item:
+			if pile and is_instance_valid(pile):
+				pile.queue_free()
 			pile = Node3D.new()
+			pile.set_meta("item", item)
+			pile.scale = Vector3.ONE * 1.25
 			get_parent().add_child(pile)
-			var mat := StandardMaterial3D.new()
-			mat.albedo_color = Color(0.72, 0.55, 0.32)
 			for i in 8:
-				var m := MeshInstance3D.new()
-				var bm := BoxMesh.new()
-				bm.size = Vector3(0.5, 0.35, 0.5)
-				m.mesh = bm
-				m.material_override = mat
-				m.position = Vector3((i % 3) * 0.55 - 0.55, 0.18 + (i / 3) * 0.36, 0)
-				pile.add_child(m)
+				var holder := Node3D.new()
+				var inner := Node3D.new()
+				holder.add_child(inner)
+				_build_load(inner, item)
+				if inner.get_meta("pose", "") == "schulter":
+					# Stämme/Bretter liegen quer gestapelt
+					inner.position = Vector3(-0.19, -0.42, 0)
+					holder.position = Vector3(0, (i / 4) * 0.17 + 0.08, (i % 4) * 0.17 - 0.25)
+					holder.rotation.y = PI / 2
+				else:
+					inner.position = Vector3(0, -0.14, -0.3)
+					holder.position = Vector3((i % 3) * 0.36 - 0.36, (i / 3) * 0.26, (i / 3 % 2) * 0.1)
+					holder.rotation.y = i * 0.4
+				pile.add_child(holder)
 			b.pile = pile
 		var d := door_of(b)
 		var side: Vector3 = Vector3(2.2, 0, 0).rotated(Vector3.UP, b.node.rotation.y)

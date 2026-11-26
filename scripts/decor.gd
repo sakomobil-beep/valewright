@@ -258,9 +258,8 @@ func _plots_step(dt: float) -> void:
 # Bauernhof-Gatter mit detaillierten, animierten Tieren (scripts/farms.gd)
 func _make_farm_animals(b: Dictionary, info: Dictionary) -> void:
 	# Gatter direkt hinten an den Stall angebaut (Stalltür führt hinein)
-	var back := 1.25 * 1.5 + 3.4 * 0.72
-	var center := _around(b, back, b.node.rotation.y + PI)
-	var pen: Node3D = Farms.pen(b.type, 3.4)
+	var center := _around(b, Farms.PEN_BACK, b.node.rotation.y + PI)
+	var pen: Node3D = Farms.pen(b.type, Farms.PEN_R)
 	pen.position = center
 	var to_b: Vector3 = b.pos - center
 	pen.rotation.y = atan2(to_b.x, to_b.z) - PI / 2   # Tor zeigt zum Hof
