@@ -69,7 +69,8 @@ func apply(d: Dictionary) -> void:
 		k.left = int(r[1]) + 1
 		t.mine_rock(k)
 	for i in d.deposits:
-		t.reveal_deposit(t.deposits[int(i)])
+		if int(i) < t.deposits.size():   # ältere Spielstände hatten andere Berge
+			t.reveal_deposit(t.deposits[int(i)])
 	for br in d.bridges:
 		bld.place_bridge({"a": _p(br.a), "b": _p(br.b), "y": float(br.y), "len": float(br.len)}, false)
 	for b in d.buildings:

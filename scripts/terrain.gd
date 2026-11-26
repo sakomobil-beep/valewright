@@ -15,10 +15,11 @@ var hgrid := PackedFloat32Array()   # Höhen des Bodennetzes (schneller Zugriff)
 var gmask := PackedByteArray()      # 1 = hier darf Gras wachsen
 var river_w := 1.0
 var forest_k := 0.05
-var deposits_per_mountain := 8
+var deposits_per_mountain := 14
 var noise := FastNoiseLite.new()
 var detail := FastNoiseLite.new()
-var mountains: Array = []
+var mountains: Array = []   # einzelne Gipfel {p, r, h, rg}
+var ranges: Array = []      # Gebirgszüge: Listen von Gipfel-Indizes (vorderer Ausläufer zuerst)
 var lakes: Array = []
 var trees: Array = []   # {pos, mm, i, t, alive}
 var rocks: Array = []   # {pos, i, t, left}
@@ -45,27 +46,52 @@ func prepare(cfg: Dictionary) -> void:
 	hill_amp = {"flach": 2.0, "huegel": 9.0, "gebirge": 7.0, "gemischt": 6.0}.get(gen.terrain, 6.0)
 	river_w = {"wenig": 0.75, "normal": 1.0, "viel": 1.3}.get(gen.water, 1.0)
 	forest_k = {"licht": 0.3, "normal": 0.05, "dicht": -0.15}.get(gen.forest, 0.05)
-	deposits_per_mountain = {"knapp": 4, "normal": 8, "reich": 12}.get(gen.res, 8)
+	deposits_per_mountain = {"knapp": 8, "normal": 14, "reich": 20}.get(gen.res, 14)   # je Gebirgszug
 	var classic: bool = world_seed == 4711 and gen.size == "mittel" and gen.terrain == "gemischt" and gen.water == "normal"
+	# Gebirgszüge wie bei Siedler: mehrere Gipfel hintereinander, der vordere Ausläufer reicht nah ans Startgebiet
+	mountains = []
+	ranges = []
 	if classic:
-		mountains = [
-			{"p": Vector2(-95, -80), "r": 42.0, "h": 26.0},
-			{"p": Vector2(110, 95), "r": 34.0, "h": 20.0},
-			{"p": Vector2(-120, 110), "r": 28.0, "h": 15.0},
-		]
+		for chain in [
+			[[-58, -56, 20, 10], [-84, -78, 28, 18], [-114, -96, 33, 26], [-146, -118, 27, 21]],
+			[[-92, 96, 20, 11], [-116, 118, 26, 17], [-140, 144, 24, 15]],
+			[[92, 78, 21, 12], [116, 100, 29, 20], [140, 128, 25, 17]],
+		]:
+			_add_range(chain.map(func(c): return {"p": Vector2(c[0], c[1]), "r": float(c[2]), "h": float(c[3])}))
 		lakes = [{"p": Vector2(-55, 60), "r": 16.0}, {"p": Vector2(85, -70), "r": 12.0}]
 		return
 	var rng := RandomNumberGenerator.new()
 	rng.seed = world_seed * 7 + 13
-	var nm: int = {"flach": 1, "huegel": 2, "gebirge": 5, "gemischt": 3}.get(gen.terrain, 3)
-	mountains = []
+	var nm: int = {"flach": 1, "huegel": 2, "gebirge": 4, "gemischt": 3}.get(gen.terrain, 3)
+	var big := 1.2 if gen.terrain == "gebirge" else 1.0
 	for i in nm:
-		for tries in 50:
-			var p := Vector2(rng.randf_range(-0.4, 0.4), rng.randf_range(-0.4, 0.4)) * SIZE
-			if p.length() < 70.0 * sc or mountains.any(func(m): return m.p.distance_to(p) < 80.0 * sc):
+		for tries in 80:
+			var ang := rng.randf() * TAU
+			var start := Vector2(cos(ang), sin(ang)) * rng.randf_range(72.0, 96.0) * sc
+			var dir := start.normalized().rotated(rng.randf_range(-0.7, 0.7))
+			var n: int = rng.randi_range(3, 5) + (1 if gen.terrain == "gebirge" else 0)
+			var chain: Array = []
+			var p := start
+			for k in n:
+				var r: float = (rng.randf_range(16.0, 22.0) if k == 0 else rng.randf_range(22.0, 34.0)) * sc * big
+				var h: float = (rng.randf_range(9.0, 13.0) if k == 0 else rng.randf_range(15.0, 26.0)) * big
+				chain.append({"p": p, "r": r, "h": h})
+				dir = dir.rotated(rng.randf_range(-0.45, 0.45))
+				p += dir * r * 0.95
+			var ok := true
+			for c in chain:
+				if absf(c.p.x) > SIZE * 0.46 or absf(c.p.y) > SIZE * 0.46:
+					ok = false   # nicht über den Kartenrand
+				if absf(c.p.x - river_x(c.p.y)) < c.r * 1.2 + 10.0:
+					ok = false   # den Fluss nicht zuschütten
+				if c.p.length() < 62.0 * sc:
+					ok = false   # Startgebiet frei lassen
+				for m in mountains:
+					if m.p.distance_to(c.p) < (m.r + c.r) * 1.1:
+						ok = false   # Gebirgszüge nicht ineinander
+			if not ok:
 				continue
-			var big := 1.25 if gen.terrain == "gebirge" else 1.0
-			mountains.append({"p": p, "r": rng.randf_range(26.0, 42.0) * sc * big, "h": rng.randf_range(14.0, 26.0) * big})
+			_add_range(chain)
 			break
 	var nl: int = {"wenig": 0, "normal": 2, "viel": 4}.get(gen.water, 2)
 	lakes = []
@@ -771,18 +797,45 @@ func bridge_mesh(span: Dictionary) -> Node3D:
 	return g
 
 ## --- Bodenschätze in den Bergen (der Rutengänger findet sie) ---
+func _add_range(chain: Array) -> void:
+	var idx: Array = []
+	for c in chain:
+		c.rg = ranges.size()
+		idx.append(mountains.size())
+		mountains.append(c)
+	ranges.append(idx)
+
 func _make_deposits() -> void:
+	# Über den ganzen Gebirgszug verteilt: vorne Stein, Kohle und Eisen, Gold nur weiter hinten (wie bei Siedler)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 314
-	for m in mountains:
-		var kinds: Array = DEPOSIT_KINDS.duplicate()
-		for k in deposits_per_mountain:
-			var ang := rng.randf() * TAU
-			var r: float = rng.randf_range(0.35, 0.95) * m.r
-			var x: float = m.p.x + cos(ang) * r
-			var z: float = m.p.y + sin(ang) * r
-			var kind: String = kinds[k % kinds.size()] if k < 4 else kinds[rng.randi() % kinds.size()]
-			deposits.append({"pos": Vector3(x, height(x, z), z), "kind": kind, "found": false, "node": null})
+	for rg in ranges:
+		var n: int = deposits_per_mountain
+		for k in n:
+			var gi: int = rg[k % rg.size()]
+			var m: Dictionary = mountains[gi]
+			var front: bool = rg.find(gi) == 0
+			var kind: String
+			if k == n - 1:
+				kind = "gold"   # jeder Gebirgszug hat mindestens ein Goldvorkommen
+			elif k < 4 and not front:
+				kind = DEPOSIT_KINDS[k]
+			elif front:
+				kind = ["stein", "kohle", "eisenerz"][k % 3]
+			else:
+				kind = DEPOSIT_KINDS[rng.randi() % DEPOSIT_KINDS.size()]
+			if kind == "gold" and rg.find(gi) < 2 and rg.size() > 2:
+				gi = rg[rg.size() - 1]   # Gold liegt tief im Gebirge
+				m = mountains[gi]
+			for tries in 12:
+				var ang := rng.randf() * TAU
+				var r: float = rng.randf_range(0.3, 0.9) * m.r
+				var x: float = m.p.x + cos(ang) * r
+				var z: float = m.p.y + sin(ang) * r
+				if height(x, z) < WATER_Y + 1.0 or deposits.any(func(d): return Vector2(d.pos.x - x, d.pos.z - z).length() < 7.0):
+					continue
+				deposits.append({"pos": Vector3(x, height(x, z), z), "kind": kind, "found": false, "node": null})
+				break
 
 func deposit_near(p: Vector3, kind: String, r: float):
 	for d in deposits:

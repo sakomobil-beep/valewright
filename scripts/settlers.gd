@@ -185,10 +185,12 @@ func _on_built(b: Dictionary) -> void:
 	if military and military.is_military(b.type):
 		military.on_player_built(b)
 		return
-	if b.type in economy.FIELD_WORKERS or economy.produces(b.type):
+	if b.type in economy.FIELD_WORKERS or economy.produces(b.type) or b.type == "wirtshaus":   # Wirt schenkt das Bier aus
 		# Jeder neue Arbeiter braucht Werkzeug
 		if b.get("loaded", false):
 			pass
+		elif b.type in economy.TOOL_FREE:
+			pass   # Werkzeugkette und Grundstoffe brauchen kein Werkzeug (sonst Sackgasse)
 		elif economy.stock.get("werkzeug", 0) < 1:
 			b.status = "ST_NO_TOOL"
 			get_tree().create_timer(5.0).timeout.connect(func(): _on_built(b))
@@ -199,6 +201,7 @@ func _on_built(b: Dictionary) -> void:
 		var job: String = b.type if ResourceLoader.exists("res://models/w_%s.glb" % b.type) else "traeger"
 		var w := spawn(job, lager_door())
 		w.job = b.type
+		w.role = b.type   # sonst hält ihn die Trägerverwaltung für einen freien Träger
 		w.home = b
 		b.worker = w
 		w.q = [{"go": door_of(b)}, {"fn": func(): _next_job(w)}]
@@ -259,6 +262,10 @@ func _next_job(w: Dictionary) -> void:
 			]
 		"brunnen":
 			# schöpft sichtbar Wasser am Brunnen und bringt es ins Haus (wie im Browser)
+			if economy.stock_full("wasser") and not b.get("paused", false):
+				b.status = "ST_STOCK_FULL"
+				w.q = [{"wait": 3.0}, {"fn": func(): _next_job(w)}]
+				return
 			if b.get("paused", false) or economy.out_total(b) >= 8:
 				b.status = "ST_PAUSED" if b.get("paused", false) else "ST_OUT_FULL"
 				w.q = [{"wait": 2.0}, {"fn": func(): _next_job(w)}]
@@ -361,6 +368,8 @@ func _next_job(w: Dictionary) -> void:
 				w.q = [{"wait": 2.0}, {"fn": func(): _next_job(w)}]
 		"foerster":
 			var tr_ = _free(terrain.nearest_tree(b.pos, 14.0, false), terrain.trees, true)
+			if tr_ == null:   # nichts in der Nähe: weiter weg nach gefällten Bäumen suchen
+				tr_ = _free(terrain.nearest_tree(b.pos, 30.0, false), terrain.trees, true)
 			if tr_ == null:
 				b.status = "ST_IDLE"
 				w.q = [{"wait": 6.0}, {"fn": func(): _next_job(w)}]
@@ -629,7 +638,7 @@ func _plan_carrier(w: Dictionary) -> void:
 				continue
 			var c = economy.best_consumer(item, b.pos, b)
 			var dest: Vector3 = c.pos if c != null else nearest_lager(b.pos)
-			var k: float = (economy.prio(c) if c != null else 1.5) * 400.0 + Vector2(b.pos.x - p.x, b.pos.z - p.z).length() + Vector2(dest.x - b.pos.x, dest.z - b.pos.z).length() * 0.5 - mini(avail, cap) * 15.0
+			var k: float = (economy.prio(c) if c != null else 1.5) * 400.0 + Vector2(b.pos.x - p.x, b.pos.z - p.z).length() + Vector2(dest.x - b.pos.x, dest.z - b.pos.z).length() * 0.5 - mini(avail, 8) * 25.0   # volle Ausgänge zuerst leeren, damit kein Gebäude stillsteht
 			if k < jk:
 				jk = k
 				job = {"from": b, "to": c, "item": item, "n": mini(avail, cap)}
@@ -1102,7 +1111,7 @@ func _seq_next(w: Dictionary) -> void:
 		if h == "IN": h = first
 		elif h == "OUT": h = out
 		var look := _local(b, st.l)
-		var anim: String = {"hammer": "chop", "dig": "plant", "saw": "saw", "carve": "carve", "push": "push", "stoke": "stoke", "chop": "chop", "shoot": "shoot", "shovel": "shovel"}.get(String(st.get("a", "")), "push")
+		var anim: String = {"hammer": "chop", "dig": "plant", "saw": "saw", "carve": "carve", "push": "push", "stoke": "stoke", "chop": "chop", "shoot": "shoot", "shovel": "shovel"}.get(String(st.get("a")) if st.get("a") != null else "", "push")
 		q.append({"walk": _local(b, st.p)})
 		q.append({"face": look})
 		q.append({"fn": func(): _carry(w, h); _show_prop(b, st, out)})

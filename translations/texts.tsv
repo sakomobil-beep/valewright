@@ -528,3 +528,4 @@ POP_SOLDIERS	Soldaten	Soldiers
 RES_PER_MIN	%s pro Min.	%s per min
 RES_WARN_RED	⚠ Eine Ware fehlt – Gebäude warten darauf!	⚠ A good is missing – buildings are waiting for it!
 RES_WARN_YELLOW	Eine Ware wird knapp.	A good is running low.
+ST_STOCK_FULL	Lager gut gefüllt – pausiert	Storage well stocked – paused

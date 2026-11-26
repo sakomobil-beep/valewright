@@ -232,6 +232,8 @@ func _deer_step(d: Dictionary, dt: float, t: float) -> void:
 	var scared := false
 	if settlers and Engine.get_process_frames() % 20 == 0:
 		for w in settlers.workers:
+			if not is_instance_valid(w.node):
+				continue
 			if w.node.visible and w.node.position.distance_to(n.position) < 12.0:
 				scared = true
 				var away: Vector3 = (n.position - w.node.position)

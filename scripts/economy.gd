@@ -23,6 +23,8 @@ var unl := 0     # Freischalt-Stufe (steigt mit zufriedenen Wohnhäusern)
 var BUILD_TIME := 8.0
 var WORK_TIME := 10.0
 # Diese Berufe arbeiten draußen in der Welt (siehe settlers.gd)
+# Diese Gebäude brauchen kein Werkzeug für ihren Arbeiter – so kommt man nie in eine Sackgasse
+const TOOL_FREE := ["holzfaeller", "saegewerk", "steinmetz", "foerster", "rutengaenger", "steinmine", "kohlemine", "eisenmine", "koehler", "schmelze", "schmied", "brunnen"]
 const FIELD_WORKERS := ["holzfaeller", "steinmetz", "foerster", "rutengaenger", "bauernhof", "schweinezucht", "brunnen"]
 # Diese Gebäude produzieren (noch) keine Waren
 const NO_PRODUCTION := ["wohnhaus", "denkmal", "kaserne", "wirtshaus", "lager", "markt", "burg", "wachturm", "wachstube", "wehrturm"]
@@ -269,6 +271,8 @@ func _process(dt: float) -> void:
 			_house(b, dt)
 		elif produces(b.type) and b.get("worker_inside", false):
 			_produce(b, dt)
+		elif b.type == "wirtshaus" and b.get("worker") != null:
+			plan_rec(b)   # Status „Schenkt Bier aus“ / „Bier fehlt“
 
 # Rezepte wie planNext im Browser: [Eingang, Ware, Menge, Sekunden]
 const REC := {"goldschmied": [{"golderz": 1, "kohle": 1}, "schmuck", 1, 8], "winzer": [{}, "trauben", 2, 7], "kelterei": [{"trauben": 2}, "wein", 1, 7], "raeucherei": [{"fisch": 1, "stamm": 1}, "raeucherfisch", 2, 7], "kuhstall": [{"getreide": 1, "wasser": 1}, "milch", 2, 6], "kaeserei": [{"milch": 2}, "kaese", 1, 7], "konditorei": [{"mehl": 1, "milch": 1, "honig": 1}, "kuchen", 2, 7], "hopfenbauer": [{}, "hopfen", 1, 6], "schaefer": [{}, "wolle", 1, 6], "weberei": [{"wolle": 1}, "stoff", 1, 6], "schneider": [{"stoff": 1}, "kleidung", 1, 6], "imker": [{}, "honig", 2, 7], "lehmgrube": [{}, "lehm", 1, 5], "toepfer": [{"lehm": 1}, "kruege", 1, 6], "koehler": [{"stamm": 2}, "kohle", 1, 9], "brauerei": [{"getreide": 1, "hopfen": 1, "wasser": 1}, "bier", 2, 6], "saegewerk": [{"stamm": 1}, "bretter", 2, 4], "muehle": [{"getreide": 1}, "mehl", 1, 4], "baeckerei": [{"mehl": 1, "wasser": 1}, "brot", 2, 5], "steinmine": [{}, "stein", 1, 6], "eisenmine": [{}, "eisenerz", 1, 6], "kohlemine": [{}, "kohle", 1, 6], "goldmine": [{}, "golderz", 1, 9], "schmelze": [{"eisenerz": 1, "kohle": 1}, "eisenbarren", 1, 6], "waffenschnitzer": [{"bretter": 1}, "kampfstock", 1, 5], "muenzpraege": [{"golderz": 2, "kohle": 1}, "muenzen", 1, 8], "metzger": [{"schwein": 1}, "schinken", 2, 5], "wagner": [{"bretter": 2, "eisenbarren": 1}, "karren", 1, 9], "flachsbauer": [{}, "flachs", 1, 6], "seilerei": [{"flachs": 1}, "sehne", 1, 5], "schmied": [{"eisenbarren": 1}, "werkzeug", 1, 6], "brunnen": [{}, "wasser", 2, 2.4], "bauernhof": [{}, "getreide", 2, 9], "schweinezucht": [{"getreide": 1, "wasser": 1}, "schwein", 1, 8]}
@@ -353,6 +357,9 @@ func plan_rec(b: Dictionary):
 	if T == "wagner" and int(b.get("orders", 0)) <= 0:
 		b.status = "ST_WAIT_ORDER"
 		return null
+	if stock_full(r[1]):
+		b.status = "ST_STOCK_FULL"   # genug im Lager – Arbeiter und Träger werden für anderes frei
+		return null
 	if int(b.out.get(r[1], 0)) >= 8:
 		b.status = "ST_OUT_FULL"
 		return null
@@ -405,7 +412,7 @@ func _produce(b: Dictionary, dt: float) -> void:
 # ---------- Wohnhäuser (Waren werden ins Haus geliefert, Bier im Wirtshaus) ----------
 func near_pub(b: Dictionary):
 	var best = null
-	var bd := 25.0 * 1.5
+	var bd := 50.0   # Einzugsbereich eines Wirtshauses (vorher 37,5 – zu knapp für normale Siedlungen)
 	for p in buildings:
 		if p.type != "wirtshaus" or p.build < 1.0 or p.get("removed", false) or p.get("paused", false) or p.get("worker") == null:
 			continue
@@ -470,6 +477,13 @@ func house_wants(b: Dictionary) -> Array:
 	return res
 
 # ---------- Freischalten ----------
+# Lager-Obergrenze: ist genug da, pausiert der Erzeuger (sonst schleppen Träger nur noch Wasser & Co. ins Lager)
+const STOCK_CAP := {"stamm": 250, "bretter": 250, "stein": 250}
+func stock_full(item) -> bool:
+	if item == null or not (item is String) or not stock.has(item):
+		return false
+	return int(stock.get(item, 0)) >= int(STOCK_CAP.get(item, 60))
+
 func is_unlocked(t: String) -> bool:
 	if String(Session.cfg.get("unlock", "normal")) == "alle":
 		return true

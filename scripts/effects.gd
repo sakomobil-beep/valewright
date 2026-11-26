@@ -61,6 +61,8 @@ func _process(dt: float) -> void:
 		var f: Dictionary = FX.get(b.type, {})
 		if f.is_empty():
 			continue
+		if b.has("fx_nodes") and b.fx_nodes.any(func(e): return not is_instance_valid(e[1])):
+			b.erase("fx_nodes")   # Modell wurde getauscht (Hausstufe): Rauch neu anbringen
 		if not b.has("fx_nodes"):
 			if b.build < 1.0:
 				continue
