@@ -7,12 +7,13 @@ signal message(text: String)
 signal house_level_changed(b: Dictionary)
 
 # Wohnhäuser: Stufen und Bedürfnisse wie in der Browser-Version
+# Wohnhaus-Stufen: am Anfang genügsam, erst ab dem Fachwerkhaus anspruchsvoller
 const HOUSE_LV := [
-	{"needs": ["*food", "wasser"], "tax": 0.0},
-	{"needs": ["*fine", "wasser", "bier"], "tax": 0.0},
-	{"needs": ["*fine", "kaese", "wasser", "bier", "kleidung"], "tax": 0.1},
-	{"needs": ["*fine", "kaese", "kuchen", "wasser", "bier", "kleidung", "met", "kruege", "kerzen"], "tax": 0.2},
-	{"needs": ["*fine", "kaese", "kuchen", "wasser", "bier", "kleidung", "met", "kruege", "kerzen", "schmuck", "wein"], "tax": 0.4},
+	{"needs": ["wasser"], "tax": 0.0},                                                     # Hütte
+	{"needs": ["*food", "wasser"], "tax": 0.0},                                            # Bauernhaus
+	{"needs": ["*food", "wasser", "bier"], "tax": 0.1},                                    # Fachwerkhaus
+	{"needs": ["*food", "wasser", "bier", "kaese", "kleidung"], "tax": 0.2},               # Bürgerhaus
+	{"needs": ["*food", "wasser", "bier", "kaese", "kleidung", "kuchen", "met", "kruege", "kerzen", "wein", "schmuck"], "tax": 0.4},   # Herrenhaus
 ]
 const UPCOST := {3: {"ziegel": 2}, 4: {"ziegel": 4, "bretter": 2}}
 const FOODS := ["brot", "fisch", "schinken"]
@@ -21,7 +22,7 @@ var HOUSE_TICK := 90.0
 # Einwohner: Haupthaus bietet Platz für BASE_HOMES, jedes Wohnhaus je nach Stufe mehr.
 # Alle Berufe, Träger, Baumeister und Soldaten kommen aus diesem Vorrat.
 const BASE_HOMES := 10
-const HOUSE_PEOPLE := [1, 2, 2, 3, 4]
+const HOUSE_PEOPLE := [3, 5, 7, 9, 12]   # Bewohner je Stufe
 const GROW_TIME := 45.0
 var residents := 8
 var _grow_t := 0.0
