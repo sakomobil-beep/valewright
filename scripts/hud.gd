@@ -516,7 +516,19 @@ func _make_plate() -> Dictionary:
 	pl.add_theme_color_override("font_color", Color.WHITE)
 	pz.add_child(pl)
 	_plate_layer.add_child(pz)
-	return {"panel": pc, "name": nm, "status": st, "pause": pz}
+	# Warnzeichen: rotes, hüpfendes Ausrufezeichen (Einwohner oder Werkzeug fehlt)
+	var wz := Label.new()
+	wz.text = "!"
+	wz.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	wz.add_theme_font_size_override("font_size", 64)
+	wz.add_theme_color_override("font_color", Color(0.95, 0.12, 0.08))
+	wz.add_theme_color_override("font_outline_color", Color(1, 0.95, 0.85))
+	wz.add_theme_constant_override("outline_size", 12)
+	wz.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_plate_layer.add_child(wz)
+	return {"panel": pc, "name": nm, "status": st, "pause": pz, "warn": wz}
+
+const WARN_ST := ["ST_NO_PEOPLE", "ST_NO_TOOL"]
 
 func _status_col(st: String, b: Dictionary) -> Color:
 	if b.get("paused", false):
@@ -544,7 +556,8 @@ func _update_plates() -> void:
 			continue
 		var key := str(b.node.get_instance_id())
 		var paused: bool = b.get("paused", false)
-		if not labels_on and not paused:
+		var warn: bool = not paused and b.build >= 1.0 and String(b.get("status", "")) in WARN_ST
+		if not labels_on and not paused and not warn:
 			continue
 		seen[key] = true
 		if not _plates.has(key):
@@ -574,8 +587,21 @@ func _update_plates() -> void:
 			var off := Vector2(0, pc.size.y + 6) if pc.visible else Vector2.ZERO
 			pz.position = (sp - Vector2(pz.size.x * 0.5, pz.size.y) - off).round()
 			pz.modulate.a = maxf(0.6, fade)
+		var wz: Label = P.warn
+		wz.visible = vis and warn
+		if wz.visible:
+			var tt := Time.get_ticks_msec() * 0.001
+			var hop := absf(sin(tt * 4.0)) * 10.0          # hüpft
+			var pulse := 1.0 + 0.15 * sin(tt * 8.0)        # pulsiert
+			wz.reset_size()
+			wz.pivot_offset = wz.size * 0.5
+			wz.scale = Vector2.ONE * pulse
+			var off2 := Vector2(0, pc.size.y + 4) if pc.visible else Vector2.ZERO
+			wz.position = (sp - Vector2(wz.size.x * 0.5, wz.size.y + hop) - off2).round()
+			wz.modulate.a = maxf(0.7, fade)
 	for key in _plates.keys():
 		if not seen.has(key):
 			_plates[key].panel.queue_free()
 			_plates[key].pause.queue_free()
+			_plates[key].warn.queue_free()
 			_plates.erase(key)
