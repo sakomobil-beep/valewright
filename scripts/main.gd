@@ -54,6 +54,7 @@ func _ready() -> void:
 	settlers.name = "Siedler"
 	settlers.terrain = terrain
 	settlers.economy = economy
+	economy.pop_src = settlers
 	add_child(settlers)
 	var decor := Decor.new()
 	decor.name = "Leben"

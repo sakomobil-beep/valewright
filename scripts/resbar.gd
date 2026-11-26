@@ -47,7 +47,7 @@ func _ready() -> void:
 		s.btn.pressed.connect(func(): _toggle(i))
 		_groups.append(s.btn)
 	_gap(hb)
-	for p in [["pop_work", "👥", "POP_SETTLERS"], ["pop_car", "🧺", "POP_CARRIERS"], ["pop_sold", "⚔️", "POP_SOLDIERS"]]:
+	for p in [["pop_free", "🏠", "POP_FREE"], ["pop_work", "👥", "POP_SETTLERS"], ["pop_car", "🧺", "POP_CARRIERS"], ["pop_sold", "⚔️", "POP_SOLDIERS"]]:
 		_slot(hb, p[0], "", tr(p[2]), false, p[1])
 	_drop = PanelContainer.new()
 	_drop.add_theme_stylebox_override("panel", UiIcons.wood(6))
@@ -299,6 +299,8 @@ func _update() -> void:
 		for bb in economy.buildings:
 			waiting += economy.out_total(bb)
 		var short: bool = waiting > 12 and busy >= car
+		var fr: int = economy.free_people()
+		_put("pop_free", "%d/%d" % [maxi(0, fr), economy.residents], 0, 2 if fr <= 0 else (1 if fr <= 2 else 0), tr("POP_FREE_TIP") % [maxi(0, fr), economy.residents, economy.home_cap()])
 		_put("pop_work", str(work), 0, 0, tr("POP_TIP"))
 		_put("pop_car", str(car) + (" ⚠" if short else ""), 0, 1 if short else 0, tr("POP_CARRIERS") + ("\n" + tr("POP_SHORT") % waiting if short else ""))
 		_put("pop_sold", str(fig), 0, 0, tr("POP_SOLDIERS"))

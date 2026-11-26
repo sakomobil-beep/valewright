@@ -18,6 +18,14 @@ const UPCOST := {3: {"ziegel": 2}, 4: {"ziegel": 4, "bretter": 2}}
 const FOODS := ["brot", "fisch", "schinken"]
 const FINE := ["raeucherfisch", "wurst"]
 var HOUSE_TICK := 90.0
+# Einwohner: Haupthaus bietet Platz für BASE_HOMES, jedes Wohnhaus je nach Stufe mehr.
+# Alle Berufe, Träger, Baumeister und Soldaten kommen aus diesem Vorrat.
+const BASE_HOMES := 10
+const HOUSE_PEOPLE := [1, 2, 2, 3, 4]
+const GROW_TIME := 45.0
+var residents := 8
+var _grow_t := 0.0
+var pop_src = null   # Siedler-Verwaltung (zählt, wer schon eine Aufgabe hat)
 var builders_n := 1   # Baumeister (mehr nur über die Handwerkskammer)
 var carriers_n := 2   # Träger (mehr nur über die Handwerkskammer)
 const TRAIN_TIME := 300.0   # 5 Minuten Ausbildung
@@ -264,8 +272,34 @@ func _check_problems(dt: float) -> void:
 	if not low:
 		_food_note = false
 
+func home_cap() -> int:
+	var n := BASE_HOMES
+	for b in buildings:
+		if b.type == "wohnhaus" and b.build >= 1.0 and not b.get("removed", false) and int(b.get("owner", 0)) == 0:
+			n += HOUSE_PEOPLE[clampi(int(b.get("lvl", 0)), 0, 4)]
+	return n
+
+func used_people() -> int:
+	return pop_src.used_people() if pop_src else 0
+
+func free_people() -> int:
+	return residents - used_people()
+
+func _grow(dt: float) -> void:
+	_grow_t += dt
+	if _grow_t < GROW_TIME * tf():
+		return
+	_grow_t = 0.0
+	if residents >= home_cap():
+		return
+	var happy := buildings.any(func(b): return b.type == "wohnhaus" and b.build >= 1.0 and int(b.get("sat", 0)) > 0 and not b.get("removed", false))
+	if residents < BASE_HOMES or happy:
+		residents += 1
+		changed.emit()
+
 func _process(dt: float) -> void:
 	_check_problems(dt)
+	_grow(dt)
 	for b in buildings:
 		if b.build < 1.0 or b.get("removed", false):
 			continue
@@ -288,6 +322,10 @@ func _train(b: Dictionary, dt: float) -> void:
 	b.tq_t = float(b.get("tq_t", 0.0)) + dt
 	b.status = "ST_HK_TRAIN"
 	if b.tq_t >= TRAIN_TIME:
+		if free_people() < 1:
+			b.status = "ST_NO_PEOPLE"
+			b.tq_t = TRAIN_TIME
+			return
 		b.tq_t = 0.0
 		var k: String = q.pop_front()
 		if k == "bau":

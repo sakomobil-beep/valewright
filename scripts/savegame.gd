@@ -15,7 +15,7 @@ func save(slot: String) -> void:
 	var t: Node3D = main.terrain
 	var m: Node3D = main.military
 	var d := {"version": VERSION, "cfg": Session.cfg, "date": Time.get_datetime_string_from_system(false, true),
-		"time": m.time, "stock": e.stock, "unl": e.unl, "builders_n": e.builders_n, "carriers_n": e.carriers_n, "mission": main.missions.mission, "step": main.missions.step,
+		"time": m.time, "stock": e.stock, "unl": e.unl, "builders_n": e.builders_n, "residents": e.residents, "carriers_n": e.carriers_n, "mission": main.missions.mission, "step": main.missions.step,
 		"mission_done": main.missions.done, "won": main.missions.won,
 		"fog": Marshalls.raw_to_base64(main.fog.explored.compress(FileAccess.COMPRESSION_DEFLATE)), "fog_n": main.fog.explored.size()}
 	var bl: Array = []
@@ -62,6 +62,7 @@ func apply(d: Dictionary) -> void:
 		e.stock[k] = int(d.stock[k])
 	e.unl = int(d.unl)
 	e.builders_n = int(d.get("builders_n", 1))
+	e.residents = int(d.get("residents", 99))
 	e.carriers_n = int(d.get("carriers_n", 2))
 	m.time = float(d.time)
 	for i in d.trees_dead:

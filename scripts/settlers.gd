@@ -189,6 +189,10 @@ func _on_built(b: Dictionary) -> void:
 		# Jeder neue Arbeiter braucht Werkzeug
 		if b.get("loaded", false):
 			pass
+		elif economy.free_people() < 1:
+			b.status = "ST_NO_PEOPLE"
+			get_tree().create_timer(5.0).timeout.connect(func(): _on_built(b))
+			return
 		elif b.type in economy.TOOL_FREE:
 			pass   # Werkzeugkette und Grundstoffe brauchen kein Werkzeug (sonst Sackgasse)
 		elif economy.stock.get("werkzeug", 0) < 1:
@@ -580,6 +584,18 @@ func _remove(w: Dictionary) -> void:
 	w.node.queue_free()
 
 # Trägerzahl wie carrierTarget im Browser
+# Wie viele Einwohner schon eine Aufgabe haben (Berufe, Träger, Baumeister, Soldaten)
+func used_people() -> int:
+	var n := 0
+	for w in workers:
+		if w.get("dead", false) or w.role in ["bauarbeiter", "soldat", "kind", "dorf"]:
+			continue
+		n += 1
+	n += int(economy.builders_n)
+	if military:
+		n += military.soldiers.filter(func(s): return s.owner == 0).size()
+	return n
+
 func carrier_target() -> int:
 	return int(economy.carriers_n)
 

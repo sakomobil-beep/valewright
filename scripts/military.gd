@@ -335,7 +335,7 @@ func _man_tower(b: Dictionary) -> void:
 			break
 	if s == null:
 		# leerer Turm: Wächter mit Kampfstock (Miliz) wie im Browser
-		if b.garrison + b.get("incoming", 0) == 0 and economy.stock.get("kampfstock", 0) > 0:
+		if b.garrison + b.get("incoming", 0) == 0 and economy.stock.get("kampfstock", 0) > 0 and economy.free_people() > 0:
 			economy.stock.kampfstock -= 1
 			economy.changed.emit()
 			s = _new_soldier(0, settlers.lager_door(), 0, "schwert")
@@ -555,14 +555,19 @@ func _barracks(dt: float) -> void:
 			if b.train_t <= 0.0:
 				_train_done(b)
 			continue
-		if int(b.get("trS", 0)) > 0 and economy.has_in(b, {"schwert": 1, "schild": 1}):
+		var people_ok: bool = economy.free_people() > 0
+		if (int(b.get("trS", 0)) > 0 or int(b.get("trB", 0)) > 0) and not people_ok and int(b.get("promo", 0)) == 0:
+			b.running = false
+			b.status = "ST_NO_PEOPLE"
+			continue
+		if int(b.get("trS", 0)) > 0 and people_ok and economy.has_in(b, {"schwert": 1, "schild": 1}):
 			economy.take_in(b, {"schwert": 1, "schild": 1})
 			b.trS -= 1
 			b.train = "schwert"
 			b.train_t = 6.0 * 2.5 * tf
 			b.status = "ST_TRAIN_SWORD"
 			b.running = true
-		elif int(b.get("trB", 0)) > 0 and economy.has_in(b, {"bogen": 1, "pfeile": 5}):
+		elif int(b.get("trB", 0)) > 0 and people_ok and economy.has_in(b, {"bogen": 1, "pfeile": 5}):
 			economy.take_in(b, {"bogen": 1, "pfeile": 5})
 			b.trB -= 1
 			b.train = "bogen"
