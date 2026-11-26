@@ -794,7 +794,9 @@ func _process(_dt: float) -> void:
 			info_label.text = ""
 			_house_panel(b)
 		else:
-			_set_chips(_io_sections(b))
+			var rest := info_label.text.split("\n", true, 1)   # Status steht jetzt in der Arbeits-Karte
+			info_label.text = rest[1] if rest.size() > 1 else ""
+			_set_chips(_io_sections(b), b)
 
 var order_box: HBoxContainer
 var info_icon: TextureRect
@@ -816,41 +818,57 @@ func _set_head(t: String, title: String, sub: String) -> void:
 	info_icon.visible = info_icon.texture != null
 
 # Abschnitte als Kacheln: [[Überschrift, [[Ware, Menge], ...]], ...]
-func _set_chips(sections: Array) -> void:
-	var sig := str(sections)
+func _set_chips(sections: Array, bld = null) -> void:
+	info_label.visible = info_label.text.strip_edges() != ""
+	var prog := -1
+	if bld != null and bld.build >= 1.0 and bld.get("running", false):
+		prog = int(100.0 * float(bld.get("t", 0.0)) / maxf(0.1, float(bld.get("dur", economy.WORK_TIME))))
+	var sig := str(sections) + "|" + str(prog / 5) + "|" + (str(bld.get("status", "")) if bld != null else "")
 	if sig == _chip_sig:
 		return
 	_chip_sig = sig
 	for c in info_chips.get_children():
 		c.queue_free()
+	# Arbeits-Karte: Status farbig + Fortschritt der aktuellen Herstellung
+	if bld != null and bld.build >= 1.0:
+		var st := String(bld.get("status", ""))
+		var good: bool = st in ["ST_WORKING", "ST_HARVEST", "ST_SOW", "ST_FEED", "ST_DRAW_WATER", "ST_PUB", "ST_SEARCHING", "ST_HK_TRAIN"]
+		var bad: bool = bld.get("paused", false) or st in ["ST_NO_PEOPLE", "ST_NO_TOOL", "ST_MISSING", "ST_OUT_FULL", "ST_NOTHING_FOUND", "ST_GOLD_EMPTY"]
+		var cw := _hpcard(info_chips, Color(0.1, 0.25, 0.08, 0.35) if good else (Color(0.35, 0.08, 0.05, 0.35) if bad else Color(0, 0, 0, 0.25)))
+		var txt := tr("ST_PAUSED") if bld.get("paused", false) else tr(st)
+		if st == "ST_MISSING" and String(bld.get("missing", "")) != "":
+			txt += " " + tr("ITEM_" + String(bld.missing).to_upper())
+		_lbl(cw, ("✔ " if good else ("✖ " if bad else "• ")) + txt, 14, C_OK if good else (C_BAD if bad else C_DIM)).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		if prog >= 0:
+			var hb := HBoxContainer.new(); hb.add_theme_constant_override("separation", 8); cw.add_child(hb)
+			_lbl(hb, "⚙ " + tr("UI_PROGRESS"), 13, C_DIM, 110)
+			_bar(hb, prog, 100, C_GOLD, 170)
+			_lbl(hb, "%d %%" % prog, 13, C_DIM)
 	for sec in sections:
-		var hl := Label.new()
-		hl.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-		hl.text = sec[0]
-		hl.add_theme_font_size_override("font_size", 14)
-		hl.add_theme_color_override("font_color", Color(0.94, 0.77, 0.4))
-		info_chips.add_child(hl)
-		var fl := HFlowContainer.new()
-		fl.add_theme_constant_override("h_separation", 6)
-		fl.add_theme_constant_override("v_separation", 6)
-		info_chips.add_child(fl)
+		var card := _hpcard(info_chips)
+		_lbl(card, sec[0], 14, C_GOLD)
+		var gr := GridContainer.new()
+		gr.columns = 2
+		gr.add_theme_constant_override("h_separation", 14)
+		gr.add_theme_constant_override("v_separation", 3)
+		card.add_child(gr)
 		for it in sec[1]:
+			var hb := HBoxContainer.new()
+			hb.add_theme_constant_override("separation", 6)
+			hb.tooltip_text = tr("ITEM_" + String(it[0]).to_upper())
+			gr.add_child(hb)
+			hb.add_child(UiIcons.icon_rect(String(it[0]), 22))
+			_lbl(hb, tr("ITEM_" + String(it[0]).to_upper()), 14, Color(0.96, 0.9, 0.78), 96)
 			var pc := PanelContainer.new()
 			var sb := StyleBoxFlat.new()
-			sb.bg_color = Color(0, 0, 0, 0.28) if int(it[1]) > 0 else Color(0.5, 0.1, 0.05, 0.35)
-			sb.set_corner_radius_all(6)
-			sb.content_margin_left = 7
-			sb.content_margin_right = 8
-			sb.content_margin_top = 2
-			sb.content_margin_bottom = 2
+			sb.bg_color = Color(0.3, 0.45, 0.2, 0.6) if int(it[1]) > 0 else Color(0.5, 0.1, 0.05, 0.5)
+			sb.set_corner_radius_all(9)
+			sb.content_margin_left = 7; sb.content_margin_right = 7
 			pc.add_theme_stylebox_override("panel", sb)
-			pc.tooltip_text = tr("ITEM_" + String(it[0]).to_upper())
-			var lb := Label.new()
-			lb.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-			lb.text = "%s %s  %d" % [economy.icon(it[0]), tr("ITEM_" + String(it[0]).to_upper()), int(it[1])]
-			lb.add_theme_font_size_override("font_size", 15)
-			pc.add_child(lb)
-			fl.add_child(pc)
+			pc.custom_minimum_size.x = 34
+			hb.add_child(pc)
+			var l := _lbl(pc, str(int(it[1])), 13, Color.WHITE)
+			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 func _io_sections(b: Dictionary) -> Array:
 	var io = economy.data.io.get(b.type, null)
@@ -992,6 +1010,7 @@ func _need_row(par: Control, b: Dictionary, k: String, for_next: bool) -> void:
 		_lbl(hb, "✖ " + tr("UI_NOT_IN_STOCK"), 13, C_BAD)
 
 func _house_panel(b: Dictionary) -> void:
+	info_label.visible = info_label.text.strip_edges() != ""
 	var lv: int = int(b.lvl)
 	var sig := "H%d|%d|%s|%s|%s|%d|%s" % [lv, int(b.sat), str(b["in"]), str(b.get("miss", [])), _pub_state(b), int(economy.HOUSE_TICK - float(b.get("ht", 0.0))), str(economy.stock.get("brot", 0) > 0)]
 	if sig == _chip_sig:

@@ -614,3 +614,4 @@ UI_RESIDENTS	Bewohner	residents
 UI_HOUSE_UP_HINT	Noch %d volle Versorgungsrunde(n), dann steigt das Haus auf, wenn oben alles ✔ ist.	%d more fully supplied round(s), then the house rises if everything above is ✔.
 UI_HOUSE_UP_READY	Bereit – steigt in der nächsten Runde auf!	Ready – rises next round!
 UI_HOUSE_UP_WAIT	Zufrieden – wartet nur noch auf die fehlenden Waren oben.	Content – only waiting for the missing goods above.
+UI_PROGRESS	Herstellung	Production

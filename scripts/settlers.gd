@@ -549,6 +549,19 @@ func _next_job(w: Dictionary) -> void:
 				{"wait": 3.0},
 				{"fn": func(): _next_job(w)},
 			]
+		"eisenmine", "kohlemine":
+			# Zeche: Bergmann geht neben den Schienen zum Schachtkranz und fährt ein
+			if w.node.visible and not w.get("in_shaft", false):
+				w.q = [
+					{"walk": _local(b, [1.05, 2.3]), "checked": true},
+					{"walk": _local(b, [1.05, 0.9]), "checked": true},
+					{"walk": _local(b, [0.5, 0.45]), "checked": true},
+					{"fn": func(): w.in_shaft = true; w.node.visible = false; b.worker_inside = true; w.inside_b = b},
+				]
+				return
+			b.worker_inside = true
+			w.inside_b = b
+			w.node.visible = false
 		_:
 			# arbeitet sichtbar am Arbeitsplatz vor dem Haus (wie im Browser), sonst drinnen
 			b.worker_inside = true
