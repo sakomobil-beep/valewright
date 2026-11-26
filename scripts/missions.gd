@@ -8,6 +8,8 @@ var mission := 0            # 0 = keine, -1 = Tutorial, 1..4 = Kapitel
 var done := false
 var step := 0               # Tutorial-Schritt
 var next_btn: Button
+var skip_btn: Button
+var close_btn: Button
 var _manual_ok := false
 var panel: PanelContainer
 var label: Label
@@ -40,7 +42,8 @@ func goals(id: int) -> Array:
 				["🍞", "G_BROT", func(): return e.stock.brot, 30],
 				["🔨", "G_WERKZEUG", func(): return e.stock.werkzeug, 25],
 				["🗼", "G_TOWERS", func(): return towers.call("wachturm"), 2],
-				["👥", "G_SETTLERS", func(): return main.settlers.workers.size(), 20],
+				["🏡", "G_FARMHOUSE", func(): return 1 if e.unl >= 2 else 0, 1],
+				["👥", "G_RESIDENTS", func(): return e.residents, 35],
 			]
 		2:
 			return [
@@ -112,10 +115,16 @@ func setup(layer: CanvasLayer) -> void:
 		next_btn.text = tr("TUT_NEXT")
 		next_btn.pressed.connect(func(): _manual_ok = true)
 		hb.add_child(next_btn)
-		var skip := Button.new()
-		skip.text = tr("TUT_SKIP")
-		skip.pressed.connect(func(): _manual_ok = true; step = mini(step + 1, tutorial_steps().size() - 1))
-		hb.add_child(skip)
+		skip_btn = Button.new()
+		skip_btn.text = tr("TUT_SKIP")
+		skip_btn.pressed.connect(func(): _manual_ok = true; step = mini(step + 1, tutorial_steps().size() - 1))
+		hb.add_child(skip_btn)
+		# am Ende: Tutorial schließen und als freies Spiel weiterspielen
+		close_btn = Button.new()
+		close_btn.text = "✔ " + tr("TUT_CLOSE")
+		close_btn.visible = false
+		close_btn.pressed.connect(_tutorial_close)
+		vb.add_child(close_btn)
 
 func _victory() -> String:
 	return String(Session.cfg.get("victory", "conquest"))
@@ -204,6 +213,17 @@ func _tut_target(i: int):
 		return main.settlers.lager_door() + Vector3(0, 12.0, -2.0)
 	return null
 
+func _tutorial_close() -> void:
+	# Tutorial beenden: Fenster, Pfeil und Hervorhebung weg – das Spiel läuft als freies Spiel ohne Ziel weiter
+	mission = 0
+	Session.cfg["mode"] = "free"
+	Session.cfg["victory"] = "endless"
+	main.builder.tut_hl = ""
+	if _arrow:
+		_arrow.visible = false
+	panel.visible = false
+	main._toast(tr("TUT_CLOSED"))
+
 func _tut_arrow(at) -> void:
 	if _arrow == null:
 		_arrow = Node3D.new()
@@ -246,8 +266,11 @@ func _tutorial() -> void:
 		_manual_ok = false
 		step += 1
 		main._toast("✅ " + tr("TUT_DONE"))
+	var last := step == steps.size() - 1
 	if next_btn:
-		next_btn.visible = steps[step][1] == null
+		next_btn.visible = steps[step][1] == null and not last
+		skip_btn.visible = not last
+		close_btn.visible = last
 	_arrow_at = _tut_target(step)
 	_tut_arrow(_arrow_at)
 	var chap := 1 if step < 4 else (2 if step < 8 else 3)
