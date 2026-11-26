@@ -217,6 +217,10 @@ func _next_job(w: Dictionary) -> void:
 		"fischer":
 			_fisher_job(w, b)
 		"holzfaeller":
+			if economy.stock_full("stamm"):
+				b.status = "ST_STOCK_FULL"
+				w.q = [{"wait": 4.0}, {"fn": func(): _next_job(w)}]
+				return
 			var tr_ = _free(terrain.nearest_tree(b.pos, 22.0), terrain.trees, true)
 			if tr_ == null:
 				b.status = "ST_NO_TREES"
@@ -638,7 +642,7 @@ func _plan_carrier(w: Dictionary) -> void:
 				continue
 			var c = economy.best_consumer(item, b.pos, b)
 			var dest: Vector3 = c.pos if c != null else nearest_lager(b.pos)
-			var k: float = (economy.prio(c) if c != null else 1.5) * 400.0 + Vector2(b.pos.x - p.x, b.pos.z - p.z).length() + Vector2(dest.x - b.pos.x, dest.z - b.pos.z).length() * 0.5 - mini(avail, 8) * 25.0   # volle Ausgänge zuerst leeren, damit kein Gebäude stillsteht
+			var k: float = (economy.prio(c) if c != null else 1.5) * 400.0 + Vector2(b.pos.x - p.x, b.pos.z - p.z).length() + Vector2(dest.x - b.pos.x, dest.z - b.pos.z).length() * 0.5 - mini(avail, cap) * 15.0
 			if k < jk:
 				jk = k
 				job = {"from": b, "to": c, "item": item, "n": mini(avail, cap)}
