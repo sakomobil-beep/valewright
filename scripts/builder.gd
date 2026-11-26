@@ -790,6 +790,20 @@ func _process(_dt: float) -> void:
 			_set_chips(_stock_sections())
 		elif b.type == "wohnhaus" and b.has("lvl"):
 			info_label.text += "\n" + tr("UI_HOUSE_PEOPLE") % [economy.HOUSE_PEOPLE[clampi(b.lvl, 0, 4)]]
+			# was gerade im Haus liegt (höchstens 2 je Ware) und wann wieder verbraucht wird
+			var inside := []
+			for k in economy.HOUSE_LV[b.lvl].needs:
+				if k == "bier":
+					continue
+				if k == "*food" or k == "*fine":
+					var have := 0
+					for f in (economy.FOODS if k == "*food" else economy.FINE):
+						have += int(b["in"].get(f, 0))
+					inside.append("%s %d/2" % [tr("UI_FOOD"), have])
+				else:
+					inside.append("%s %d/2" % [tr("ITEM_" + String(k).to_upper()), int(b["in"].get(k, 0))])
+			info_label.text += "\n" + tr("UI_HOUSE_INSIDE") % " · ".join(inside)
+			info_label.text += "\n" + tr("UI_HOUSE_NEXTUSE") % maxi(0, int(ceil(economy.HOUSE_TICK - float(b.get("ht", 0.0)))))
 			if b.lvl < 4:
 				info_label.text += "\n" + tr("UI_HOUSE_NEXT") % [tr("HOUSE_%d" % (b.lvl + 1)), economy.HOUSE_PEOPLE[b.lvl + 1]]
 			_set_chips(_house_sections(b))
