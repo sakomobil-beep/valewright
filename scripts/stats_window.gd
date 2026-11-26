@@ -289,7 +289,7 @@ func _overview() -> void:
 	var happy := own.filter(func(b): return b.type == "wohnhaus" and int(b.get("sat", 0)) >= 1).size()
 	var houses := own.filter(func(b): return b.type == "wohnhaus" and b.build >= 1.0).size()
 	var grid := GridContainer.new()
-	grid.columns = 4
+	grid.columns = 5
 	grid.add_theme_constant_override("h_separation", 8)
 	grid.add_theme_constant_override("v_separation", 8)
 	_body.add_child(grid)
@@ -299,9 +299,6 @@ func _overview() -> void:
 		var old: float = float(hist[maxi(0, hist.size() - 16)].get(key, 0))
 		var v: float = float(hist[-1].get(key, 0)) - old
 		return "" if absf(v) < 0.5 else ("+%d" % int(v) if v > 0 else "−%d" % int(-v))
-	_tile(grid, "👥", str(_people()), tr("ST_SETTLERS"), d.call("pop"))
-	_tile(grid, "🧺", str(_carriers()), tr("STW_CARRIERS"), d.call("car"))
-	_tile(grid, "⚔️", str(_soldiers()), tr("ST_SOLDIERS"), d.call("sold"))
 	_tile(grid, "🏠", str(own.size()), tr("ST_BUILDINGS"), d.call("bld"))
 	_tile(grid, "🚩", "%d %%" % int(main.military.land_share(0) * 100.0), tr("MIL_LAND"), "")
 	_tile(grid, "🪙", str(int(e.stock.get("muenzen", 0))), tr("ITEM_MUENZEN"), "")
@@ -311,6 +308,7 @@ func _overview() -> void:
 		if k != "muenzen":
 			total += int(e.stock[k])
 	_tile(grid, "📦", str(total), tr("STW_STOCK_TOTAL"), "")
+	_pop_houses()
 	_section(tr("STW_GROWTH"))
 	_chart([{"name": tr("ST_SETTLERS"), "data": _series("pop"), "col": GREEN}, {"name": tr("STW_CARRIERS"), "data": _series("car"), "col": GOLD},
 		{"name": tr("ST_SOLDIERS"), "data": _series("sold"), "col": RED}, {"name": tr("ST_BUILDINGS"), "data": _series("bld"), "col": BLUE}])
@@ -345,6 +343,67 @@ func _overview() -> void:
 		bar.add_theme_stylebox_override("background", bs)
 		hb.add_child(bar)
 		_label(hb, tr("STW_PER_MIN") % snappedf(r[1], 0.1), 13, GREEN, 120)
+
+# Bevölkerung, Wohnhäuser je Stufe, was für den Aufstieg fehlt, Probleme
+func _pop_houses() -> void:
+	var e: Node = main.economy
+	var st = main.settlers
+	_section(tr("STW_POP"))
+	var g := GridContainer.new()
+	g.columns = 6
+	g.add_theme_constant_override("h_separation", 8)
+	_body.add_child(g)
+	var work := 0
+	for w in st.workers:
+		if not w.get("dead", false) and not w.role in ["traeger", "soldat", "kind", "dorf", "bauarbeiter"]:
+			work += 1
+	_tile(g, "🏠", "%d/%d" % [e.residents, e.home_cap()], tr("POP_FREE"))
+	_tile(g, "🧑", str(maxi(0, e.free_people())), tr("POP_IDLE"))
+	_tile(g, "👥", str(work), tr("POP_WORKERS"))
+	_tile(g, "🧺", str(_carriers()), tr("POP_CARRIERS"))
+	_tile(g, "👷", str(int(e.builders_n)), tr("POP_BUILDERS"))
+	_tile(g, "⚔️", str(_soldiers()), tr("POP_SOLDIERS"))
+	var houses := _own_buildings().filter(func(b): return b.type == "wohnhaus" and b.build >= 1.0)
+	_section(tr("STW_HOUSES"))
+	var g2 := GridContainer.new()
+	g2.columns = 5
+	g2.add_theme_constant_override("h_separation", 8)
+	_body.add_child(g2)
+	var need := {}
+	for lv in 5:
+		var n := houses.filter(func(b): return int(b.get("lvl", 0)) == lv).size()
+		_tile(g2, ["🛖", "🏡", "🏘️", "🏛️", "🏰"][lv], str(n), tr("HOUSE_%d" % lv))
+	for b in houses:
+		for k in b.get("miss", []):
+			need[k] = int(need.get(k, 0)) + 1
+	if need.is_empty():
+		_label(_body, tr("STW_HOUSES_OK"), 13, GREEN)
+	else:
+		_label(_body, tr("STW_NEXT_NEED"), 13, DIM)
+		var keys := need.keys()
+		keys.sort_custom(func(a, b): return need[a] > need[b])
+		for k in keys:
+			var hb := HBoxContainer.new()
+			hb.add_theme_constant_override("separation", 8)
+			_body.add_child(hb)
+			hb.add_child(UiIcons.icon_rect(k, 22))
+			_label(hb, tr("ITEM_" + String(k).to_upper()), 14, TEXT, 160)
+			_label(hb, tr("STW_HOUSES_WAIT") % need[k], 13, GOLD)
+	_section(tr("STW_PROBLEMS"))
+	var own := _own_buildings()
+	var np := own.filter(func(b): return b.build >= 1.0 and String(b.get("status", "")) == "ST_NO_PEOPLE").size()
+	var nt := own.filter(func(b): return b.build >= 1.0 and String(b.get("status", "")) == "ST_NO_TOOL").size()
+	var nm := own.filter(func(b): return b.build >= 1.0 and String(b.get("status", "")) == "ST_MISSING").size()
+	var waiting := 0
+	for b in e.buildings:
+		waiting += e.out_total(b)
+	var any := false
+	for row in [[np, "STW_P_PEOPLE"], [nt, "STW_P_TOOL"], [nm, "STW_P_MISSING"], [waiting if waiting > 12 else 0, "STW_P_WAITING"]]:
+		if int(row[0]) > 0:
+			any = true
+			_label(_body, "❗ " + tr(row[1]) % int(row[0]), 14, Color(1, 0.5, 0.4))
+	if not any:
+		_label(_body, tr("STW_P_NONE"), 13, GREEN)
 
 # ---------- Reiter: Waren ----------
 func _goods() -> void:

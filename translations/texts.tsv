@@ -593,3 +593,14 @@ TUT_12	🎉 Tutorial geschafft! Wie es weitergeht: Eisenmine + Kohle → Schmelz
 TUT_NEXT	Weiter ▶	Next ▶
 TUT_SKIP	Überspringen	Skip
 TUT_CHAPTER	Kapitel	Chapter
+STW_POP	Bevölkerung	Population
+STW_HOUSES	Wohnhäuser nach Stufe	Houses by level
+STW_NEXT_NEED	Für den nächsten Aufstieg fehlt:	Missing for the next level:
+STW_HOUSES_WAIT	%d Häuser warten darauf	%d houses waiting for it
+STW_HOUSES_OK	Kein Haus wartet auf Waren.	No house is waiting for goods.
+STW_PROBLEMS	Probleme	Problems
+STW_P_PEOPLE	%d Gebäude ohne Arbeiter – keine freien Einwohner	%d buildings without workers – no idle residents
+STW_P_TOOL	%d Gebäude ohne Arbeiter – Werkzeug fehlt	%d buildings without workers – tools missing
+STW_P_MISSING	%d Gebäude warten auf Rohstoffe	%d buildings waiting for materials
+STW_P_WAITING	%d fertige Waren warten auf Träger	%d finished goods waiting for carriers
+STW_P_NONE	Alles läuft – keine Probleme.	Everything runs – no problems.
