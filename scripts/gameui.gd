@@ -523,7 +523,18 @@ func about_page(in_game: bool) -> void:
 
 # ---------- Einstellungen ----------
 const SETTINGS := "user://settings.cfg"
-var opts := {"volume": 0.8, "shadows": true, "effects": true, "cam_speed": 1.0, "language": "", "grass": "hoch"}
+var opts := {"volume": 0.8, "shadows": true, "effects": true, "cam_speed": 1.0, "language": "", "grass": "hoch",
+	"preset": "hoch", "window": "vollbild", "res": "1920x1080", "vsync": true, "fps": 0, "scale": 1.0, "aa": "msaa2",
+	"shadow_q": "hoch", "tree_dist": 75, "show_fps": false}
+# Voreinstellungen: ein Klick stellt alles passend ein
+const PRESETS := {
+	"niedrig": {"shadows": true, "effects": false, "grass": "niedrig", "scale": 0.75, "aa": "fxaa", "shadow_q": "niedrig", "tree_dist": 45},
+	"mittel": {"shadows": true, "effects": false, "grass": "mittel", "scale": 1.0, "aa": "fxaa", "shadow_q": "mittel", "tree_dist": 60},
+	"hoch": {"shadows": true, "effects": true, "grass": "hoch", "scale": 1.0, "aa": "msaa2", "shadow_q": "hoch", "tree_dist": 75},
+	"ultra": {"shadows": true, "effects": true, "grass": "hoch", "scale": 1.0, "aa": "msaa4", "shadow_q": "sehr_hoch", "tree_dist": 120},
+}
+var _settings_tab := "allg"
+var _fps_label: Label
 
 func load_settings() -> void:
 	var c := ConfigFile.new()
@@ -541,9 +552,16 @@ func save_settings() -> void:
 func apply_settings() -> void:
 	load_settings()
 	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(0.001, opts.volume)))
+	_apply_display()
+	if main == null:
+		return
 	var sun: DirectionalLight3D = main.get_node_or_null("Sonne")
 	if sun:
 		sun.shadow_enabled = opts.shadows
+		var sq: Array = {"niedrig": [2048, 90.0, 0], "mittel": [4096, 140.0, 1], "hoch": [4096, 180.0, 2], "sehr_hoch": [8192, 240.0, 3]}.get(String(opts.shadow_q), [4096, 180.0, 2])
+		RenderingServer.directional_shadow_atlas_set_size(int(sq[0]), true)
+		sun.directional_shadow_max_distance = float(sq[1])
+		RenderingServer.directional_soft_shadow_filter_set_quality([RenderingServer.SHADOW_QUALITY_HARD, RenderingServer.SHADOW_QUALITY_SOFT_LOW, RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM, RenderingServer.SHADOW_QUALITY_SOFT_HIGH][int(sq[2])])
 	for we in main.find_children("*", "WorldEnvironment", false, false):
 		we.environment.ssao_enabled = opts.effects
 		we.environment.glow_enabled = false   # Lichtschein verursachte weißes Flackern an Bäumen/Gras (Forward+)
@@ -556,55 +574,141 @@ func apply_settings() -> void:
 	var rig = main.get_node_or_null("Kamera")
 	if rig:
 		rig.pan_speed = 0.9 * opts.cam_speed
+	var ter = main.get_node_or_null("Gelaende")
+	if ter == null and "terrain" in main:
+		ter = main.terrain
+	if ter and ter.has_method("set_tree_dist"):
+		ter.set_tree_dist(float(opts.tree_dist))
+
+# Fenster, Auflösung, VSync, FPS, Render-Skalierung (FSR), Kantenglättung, FPS-Anzeige
+func _apply_display() -> void:
+	var vp := get_viewport()
+	match String(opts.window):
+		"fenster":
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+			var r := String(opts.res).split("x")
+			if r.size() == 2:
+				DisplayServer.window_set_size(Vector2i(int(r[0]), int(r[1])))
+		"exklusiv":
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN)
+		_:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if opts.vsync else DisplayServer.VSYNC_DISABLED)
+	Engine.max_fps = int(opts.fps)
+	var sc := float(opts.scale)
+	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if sc < 0.99 else Viewport.SCALING_3D_MODE_BILINEAR
+	vp.scaling_3d_scale = sc
+	vp.msaa_3d = {"msaa2": Viewport.MSAA_2X, "msaa4": Viewport.MSAA_4X, "msaa8": Viewport.MSAA_8X}.get(String(opts.aa), Viewport.MSAA_DISABLED)
+	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if String(opts.aa) == "fxaa" else Viewport.SCREEN_SPACE_AA_DISABLED
+	vp.use_taa = String(opts.aa) == "taa"
+	if opts.show_fps and _fps_label == null:
+		var cl := CanvasLayer.new()
+		cl.layer = 50
+		add_child(cl)
+		_fps_label = Label.new()
+		_fps_label.position = Vector2(8, 4)
+		_fps_label.add_theme_font_size_override("font_size", 14)
+		_fps_label.add_theme_color_override("font_color", Color(0.6, 1.0, 0.5))
+		_fps_label.add_theme_color_override("font_outline_color", Color.BLACK)
+		_fps_label.add_theme_constant_override("outline_size", 4)
+		cl.add_child(_fps_label)
+		var tm := Timer.new()
+		tm.wait_time = 0.5
+		tm.autostart = true
+		tm.timeout.connect(func(): if _fps_label: _fps_label.text = "%d FPS" % Engine.get_frames_per_second())
+		cl.add_child(tm)
+	if _fps_label:
+		_fps_label.get_parent().visible = opts.show_fps
 
 func settings_menu(in_game: bool) -> void:
 	load_settings()
-	var vb := _window(480)
+	var vb := _window(560)
 	_label(vb, "MENU_SETTINGS", 28, GOLD, true)
-	_label(vb, "SET_VOLUME")
-	var vol := HSlider.new()
-	vol.min_value = 0.0
-	vol.max_value = 1.0
-	vol.step = 0.05
-	vol.value = opts.volume
-	vol.value_changed.connect(func(v): opts.volume = v; save_settings(); apply_settings())
-	vb.add_child(vol)
-	_label(vb, "SET_CAMSPEED")
-	var cs := HSlider.new()
-	cs.min_value = 0.4
-	cs.max_value = 2.0
-	cs.step = 0.1
-	cs.value = opts.cam_speed
-	cs.value_changed.connect(func(v): opts.cam_speed = v; save_settings(); apply_settings())
-	vb.add_child(cs)
-	var sh := CheckButton.new()
-	sh.text = "SET_SHADOWS"
-	sh.button_pressed = opts.shadows
-	sh.toggled.connect(func(v): opts.shadows = v; save_settings(); apply_settings())
-	vb.add_child(sh)
-	var fx := CheckButton.new()
-	fx.text = "SET_EFFECTS"
-	fx.button_pressed = opts.effects
-	fx.toggled.connect(func(v): opts.effects = v; save_settings(); apply_settings())
-	vb.add_child(fx)
-	_label(vb, "SET_GRASS")
-	var go := OptionButton.new()
-	var gk := ["hoch", "mittel", "niedrig", "aus"]
-	for k in gk:
-		go.add_item(tr("SETG_" + k.to_upper()))
-	go.selected = maxi(0, gk.find(String(opts.grass)))
-	go.item_selected.connect(func(i): opts.grass = gk[i]; save_settings(); apply_settings())
-	vb.add_child(go)
-	_label(vb, "SET_LANGUAGE")
-	var hb := HBoxContainer.new()
-	vb.add_child(hb)
-	for lang in ["de", "en"]:
-		var b := Button.new()
-		b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-		b.text = "Deutsch" if lang == "de" else "English"
-		b.pressed.connect(func(): I18n.set_language(lang); settings_menu(in_game))
-		hb.add_child(b)
-	_label(vb, "SET_KEYS", 12)
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 8)
+	vb.add_child(tabs)
+	for tk in [["allg", "SET_TAB_GENERAL"], ["grafik", "SET_TAB_GRAPHICS"]]:
+		var tb := Button.new()
+		tb.text = tk[1]
+		tb.toggle_mode = true
+		tb.button_pressed = _settings_tab == tk[0]
+		tb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var key: String = tk[0]
+		tb.pressed.connect(func(): _settings_tab = key; settings_menu(in_game))
+		tabs.add_child(tb)
+	var set := func(k: String, v, custom := true):
+		opts[k] = v
+		if custom and k in ["shadows", "effects", "grass", "scale", "aa", "shadow_q", "tree_dist"]:
+			opts.preset = "eigene"
+		save_settings()
+		apply_settings()
+	var opt := func(label: String, keys: Array, names: Array, cur, cb: Callable) -> OptionButton:
+		var hb := HBoxContainer.new()
+		vb.add_child(hb)
+		var l := _label(hb, label, 15)
+		l.custom_minimum_size.x = 250
+		var ob := OptionButton.new()
+		ob.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		for n in names:
+			ob.add_item(tr(n))
+		ob.selected = maxi(0, keys.find(cur))
+		ob.item_selected.connect(func(i): cb.call(keys[i]))
+		hb.add_child(ob)
+		return ob
+	if _settings_tab == "allg":
+		_label(vb, "SET_VOLUME")
+		var vol := HSlider.new()
+		vol.min_value = 0.0; vol.max_value = 1.0; vol.step = 0.05; vol.value = opts.volume
+		vol.value_changed.connect(func(v): set.call("volume", v))
+		vb.add_child(vol)
+		_label(vb, "SET_CAMSPEED")
+		var cs := HSlider.new()
+		cs.min_value = 0.4; cs.max_value = 2.0; cs.step = 0.1; cs.value = opts.cam_speed
+		cs.value_changed.connect(func(v): set.call("cam_speed", v))
+		vb.add_child(cs)
+		_label(vb, "SET_LANGUAGE")
+		var hb := HBoxContainer.new()
+		vb.add_child(hb)
+		for lang in ["de", "en"]:
+			var b := Button.new()
+			b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+			b.text = "Deutsch" if lang == "de" else "English"
+			b.pressed.connect(func(): I18n.set_language(lang); settings_menu(in_game))
+			hb.add_child(b)
+		_label(vb, "SET_KEYS", 12)
+	else:
+		# Voreinstellung
+		opt.call("SET_PRESET", ["niedrig", "mittel", "hoch", "ultra", "eigene"], ["SETP_NIEDRIG", "SETP_MITTEL", "SETP_HOCH", "SETP_ULTRA", "SETP_EIGENE"], String(opts.preset), func(k):
+			if PRESETS.has(k):
+				for pk in PRESETS[k]:
+					opts[pk] = PRESETS[k][pk]
+			opts.preset = k
+			save_settings(); apply_settings(); settings_menu(in_game))
+		_label(vb, "SET_SEC_SCREEN", 14, GOLD)
+		opt.call("SET_WINDOW", ["vollbild", "exklusiv", "fenster"], ["SETW_VOLLBILD", "SETW_EXKLUSIV", "SETW_FENSTER"], String(opts.window), func(k): set.call("window", k, false); settings_menu(in_game))
+		if String(opts.window) == "fenster":
+			var rs := ["1280x720", "1600x900", "1920x1080", "2560x1440", "3840x2160"]
+			opt.call("SET_RES", rs, rs, String(opts.res), func(k): set.call("res", k, false))
+		var vs := CheckButton.new(); vs.text = "SET_VSYNC"; vs.button_pressed = opts.vsync
+		vs.toggled.connect(func(v): set.call("vsync", v, false))
+		vb.add_child(vs)
+		opt.call("SET_FPS", [0, 30, 60, 120, 144], ["SETF_UNLIMITED", "30", "60", "120", "144"], int(opts.fps), func(k): set.call("fps", k, false))
+		opt.call("SET_SCALE", [1.0, 0.85, 0.75, 0.6], ["SETS_100", "SETS_85", "SETS_75", "SETS_60"], float(opts.scale), func(k): set.call("scale", k))
+		opt.call("SET_AA", ["aus", "fxaa", "msaa2", "msaa4", "msaa8", "taa"], ["SETA_AUS", "SETA_FXAA", "SETA_MSAA2", "SETA_MSAA4", "SETA_MSAA8", "SETA_TAA"], String(opts.aa), func(k): set.call("aa", k))
+		_label(vb, "SET_SEC_DETAIL", 14, GOLD)
+		var sh := CheckButton.new(); sh.text = "SET_SHADOWS"; sh.button_pressed = opts.shadows
+		sh.toggled.connect(func(v): set.call("shadows", v))
+		vb.add_child(sh)
+		opt.call("SET_SHADOWQ", ["niedrig", "mittel", "hoch", "sehr_hoch"], ["SETQ_NIEDRIG", "SETQ_MITTEL", "SETQ_HOCH", "SETQ_SEHR_HOCH"], String(opts.shadow_q), func(k): set.call("shadow_q", k))
+		opt.call("SET_TREES", [45, 60, 75, 120], ["SETT_45", "SETT_60", "SETT_75", "SETT_120"], int(opts.tree_dist), func(k): set.call("tree_dist", k))
+		var gk := ["hoch", "mittel", "niedrig", "aus"]
+		opt.call("SET_GRASS", gk, gk.map(func(k): return "SETG_" + k.to_upper()), String(opts.grass), func(k): set.call("grass", k))
+		var fx := CheckButton.new(); fx.text = "SET_EFFECTS"; fx.button_pressed = opts.effects
+		fx.toggled.connect(func(v): set.call("effects", v))
+		vb.add_child(fx)
+		var sf := CheckButton.new(); sf.text = "SET_SHOWFPS"; sf.button_pressed = opts.show_fps
+		sf.toggled.connect(func(v): set.call("show_fps", v, false))
+		vb.add_child(sf)
 	_button(vb, "UI_BACK", pause_menu if in_game else main_menu)
 
 

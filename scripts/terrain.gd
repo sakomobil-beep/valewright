@@ -415,6 +415,15 @@ func _build_trees() -> void:
 		trees.append({"pos": t.origin, "mm": mms[o[0]], "mm2": mms2[o[0]], "i": o[1], "t": t, "alive": true})
 
 const LOD_DIST := 75.0
+
+# Sichtweite der detaillierten Bäume (Einstellungen → Grafik)
+func set_tree_dist(d: float) -> void:
+	for c in get_children():
+		if c is MultiMeshInstance3D and String(c.name).begins_with("Baeume_"):
+			if String(c.name).ends_with("_nah"):
+				c.visibility_range_end = d
+			elif String(c.name).ends_with("_fern"):
+				c.visibility_range_begin = d
 const FAR_OF := {"buche": "oak", "eiche": "oak", "ahorn": "oak", "fichte": "fir"}
 
 # ---------- Detaillierte Bäume (nah) ----------

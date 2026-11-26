@@ -281,7 +281,6 @@ MENU_SETTINGS	⚙️ Einstellungen	⚙️ Settings
 SET_VOLUME	🔊 Lautstärke	🔊 Volume
 SET_CAMSPEED	🎥 Kamera-Geschwindigkeit	🎥 Camera speed
 SET_SHADOWS	Schatten	Shadows
-SET_EFFECTS	Effekte (Umgebungsverdeckung, Leuchten)	Effects (ambient occlusion, glow)
 SET_LANGUAGE	🌐 Sprache	🌐 Language
 SET_KEYS	Tasten: Leertaste = Pause · 1/2/3 = Tempo · R = drehen · Esc = Menü · Handy: zwei Finger = zoomen & drehen	Keys: Space = pause · 1/2/3 = speed · R = rotate · Esc = menu · Phone: two fingers = zoom & rotate
 UI_STATS	Statistik	Statistics
@@ -648,3 +647,45 @@ TUT_5	Kapitel 2: Die Siedlung wächst.\nDein Haupthaus bietet Platz für 20 Einw
 TUT_6	Klicke ein Gebäude an. Das Fenster rechts zeigt oben den Status (grün = arbeitet, rot = Problem) mit Fortschrittsbalken, darunter was es braucht und herstellt. Ein Wohnhaus zeigt seine Stufe, die Zufriedenheit und was zum Aufstieg fehlt. Mit ⏸ hältst du die Arbeit an. Ein rotes ❗ über einem Haus heißt: Es fehlen Einwohner oder Werkzeug.	Click a building. The window on the right shows the status at the top (green = working, red = problem) with a progress bar, below what it needs and makes. A house shows its level, its contentment and what is missing for the next level. ⏸ pauses its work. A red ❗ above a building means residents or tools are missing.
 TUT_9	Kapitel 3: In die Berge.\nDie Erze liegen im Berg vor deinem Gebiet. Baue unter „Militär“ eine Wachstube am Rand deines Gebiets in Richtung Berg. Ein Wächter mit Kampfstock besetzt sie – dann wächst dein Gebiet. Tipp: Im Haupthaus-Fenster unter „🛡️ Wache“ siehst du deine Torwächter und kannst freie Soldaten einberufen. Greift ein Gegner an, warnt dich ein roter Balken oben.	Chapter 3: Into the mountains.\nThe ores lie in the mountain beyond your land. Build a guardhouse under “Military” at the edge of your land towards the mountain. A guard with a fighting staff mans it – then your land grows. Tip: in the town hall window under “🛡️ Guard” you see your gate guards and can call up free soldiers. If an enemy attacks, a red bar at the top warns you.
 TUT_12	🎉 Tutorial geschafft! Wie es weitergeht: Eisenmine + Kohle → Schmelze → Schmied für Werkzeug. Der Wagner baut Karren – sie stehen auf seinem Parkplatz, die Träger holen sie ab und tragen dann 4 Waren auf einmal. Brauerei + Wirtshaus bringen Bier für Fachwerkhäuser, Käse und Kleidung für Bürgerhäuser. In der Kaserne bildest du Soldaten aus. Die 📊 Statistik zeigt dir jederzeit, was fehlt.\nSchließe das Tutorial und spiel frei weiter – oder starte im Menü die Kampagne.	🎉 Tutorial complete! What comes next: iron mine + coal → smelter → smith for tools. The cartwright builds carts – they stand in his yard, carriers pick them up and then carry 4 goods at once. Brewery + pub bring beer for timber houses, cheese and clothes for townhouses. Train soldiers in the barracks. The 📊 statistics always show what is missing.\nClose the tutorial and keep playing freely – or start the campaign from the menu.
+SET_TAB_GENERAL	⚙️ Allgemein	⚙️ General
+SET_TAB_GRAPHICS	🖥️ Grafik	🖥️ Graphics
+SET_PRESET	Voreinstellung	Preset
+SETP_NIEDRIG	Niedrig (schnell)	Low (fast)
+SETP_MITTEL	Mittel	Medium
+SETP_HOCH	Hoch	High
+SETP_ULTRA	Ultra (schön)	Ultra (pretty)
+SETP_EIGENE	Eigene	Custom
+SET_SEC_SCREEN	Bildschirm & Leistung	Screen & performance
+SET_SEC_DETAIL	Details	Details
+SET_WINDOW	Anzeige	Display
+SETW_VOLLBILD	Vollbild (randlos)	Fullscreen (borderless)
+SETW_EXKLUSIV	Vollbild (exklusiv)	Fullscreen (exclusive)
+SETW_FENSTER	Fenster	Window
+SET_RES	Fenstergröße	Window size
+SET_VSYNC	VSync (kein Bildreißen)	VSync (no tearing)
+SET_FPS	Bilder pro Sekunde begrenzen	Limit frames per second
+SETF_UNLIMITED	unbegrenzt	unlimited
+SET_SCALE	Render-Skalierung (FSR)	Render scale (FSR)
+SETS_100	100 % (scharf)	100 % (sharp)
+SETS_85	85 % (FSR Qualität)	85 % (FSR quality)
+SETS_75	75 % (FSR Ausgewogen)	75 % (FSR balanced)
+SETS_60	60 % (FSR Leistung)	60 % (FSR performance)
+SET_AA	Kantenglättung	Anti-aliasing
+SETA_AUS	Aus	Off
+SETA_FXAA	FXAA (schnell)	FXAA (fast)
+SETA_MSAA2	MSAA 2×	MSAA 2×
+SETA_MSAA4	MSAA 4×	MSAA 4×
+SETA_MSAA8	MSAA 8×	MSAA 8×
+SETA_TAA	TAA (ruhigstes Bild)	TAA (calmest image)
+SET_SHADOWQ	Schattenqualität	Shadow quality
+SETQ_NIEDRIG	Niedrig	Low
+SETQ_MITTEL	Mittel	Medium
+SETQ_HOCH	Hoch	High
+SETQ_SEHR_HOCH	Sehr hoch	Very high
+SET_TREES	Detaillierte Bäume bis	Detailed trees up to
+SETT_45	45 m	45 m
+SETT_60	60 m	60 m
+SETT_75	75 m	75 m
+SETT_120	120 m	120 m
+SET_SHOWFPS	FPS anzeigen	Show FPS
+SET_EFFECTS	Effekte (Umgebungsverdeckung)	Effects (ambient occlusion)
