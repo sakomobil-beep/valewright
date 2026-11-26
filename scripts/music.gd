@@ -8,6 +8,7 @@ var _a := AudioStreamPlayer.new()
 var _b := AudioStreamPlayer.new()
 var _cur: AudioStreamPlayer
 var _track := ""
+var _rep := 0
 var _build := ["aufbau_1", "aufbau_2", "aufbau_3"]
 var _bi := 0
 var _t := 0.0
@@ -55,9 +56,15 @@ func _on_finished(p: AudioStreamPlayer) -> void:
 	if p != _cur:
 		return
 	if _track.begins_with("aufbau"):
-		_bi = (_bi + 1) % _build.size()
-		_track = ""
-		play(_build[_bi])
+		# Loop-Stücke sind kurz: jedes 3x nahtlos, dann das nächste
+		_rep += 1
+		if _rep >= 3:
+			_rep = 0
+			_bi = (_bi + 1) % _build.size()
+			_track = ""
+			play(_build[_bi])
+		else:
+			p.play()
 
 func _process(dt: float) -> void:
 	_t -= dt
