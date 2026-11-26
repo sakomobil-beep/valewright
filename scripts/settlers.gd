@@ -677,6 +677,31 @@ func _lpart(g: Node3D, mesh: Mesh, pos: Vector3, mat: Material, rot := Vector3.Z
 
 func _build_load(g: Node3D, item: String) -> void:
 	var front := Vector3(0, 0.24, 0.3)   # vor dem Bauch, zwischen den Händen
+	if Items3D.has(item):
+		# echtes Warenmodell wie in der Browser-Version, Trageweise je Ware
+		var mi := Items3D.make(item)
+		mi.scale = Vector3.ONE * 1.25
+		g.add_child(mi)
+		match Items3D.style(item):
+			"shoulder":
+				g.set_meta("pose", "schulter")
+				mi.position = Vector3(0.2, 0.52, 0.0)
+				mi.rotation = Vector3(0, PI / 2, -0.35)
+			"back":
+				g.set_meta("pose", "ruecken")
+				mi.position = Vector3(0, 0.36, -0.3)
+				mi.rotation = Vector3(0.25, 0, 0)
+			"hand":
+				g.set_meta("pose", "hand")
+				mi.position = Vector3(0.27, -0.12, 0.08)
+				if item == "fisch":
+					mi.rotation = Vector3(0, PI / 2, PI / 2)
+				elif item == "schinken":
+					mi.rotation = Vector3(PI, 0, 0)
+			_:
+				g.set_meta("pose", "bauch")
+				mi.position = front + Vector3(0, -0.04, 0)
+		return
 	if item == "stamm":
 		g.set_meta("pose", "schulter")
 		var c := CylinderMesh.new()
@@ -1037,6 +1062,18 @@ func _animate(w: Dictionary, dt: float) -> void:
 				P.ty = k * 0.04
 				P.hy = -0.12
 				P.bob *= 0.8
+			elif carrying and cart != null and cart.get_meta("pose", "") == "ruecken":
+				# Sack/Garbe auf dem Rücken: Hände halten die Last über der Schulter, leicht vorgebeugt
+				P.alx = -2.5
+				P.arx = -2.5
+				P.alz = 0.25
+				P.arz = -0.25
+				P.tx = 0.16
+			elif carrying and cart != null and cart.get_meta("pose", "") == "hand":
+				# kleine Ware in der rechten Hand, linker Arm schwingt
+				P.arx = 0.05
+				P.arz = 0.12
+				P.alx = -k * 0.5
 			elif carrying:
 				# Last mit beiden Händen vor dem Bauch, leicht nach hinten gelehnt
 				P.alx = -1.15
@@ -1226,6 +1263,13 @@ func _animate(w: Dictionary, dt: float) -> void:
 				if ld is Node and ld.get_meta("pose", "") == "schulter":
 					P.arx = -2.75
 					P.arz = 0.32
+				elif ld is Node and ld.get_meta("pose", "") == "ruecken":
+					P.alx = -2.5
+					P.arx = -2.5
+					P.alz = 0.25
+					P.arz = -0.25
+				elif ld is Node and ld.get_meta("pose", "") == "hand":
+					P.arz = 0.12
 				else:
 					P.alx = -1.15
 					P.arx = -1.15
@@ -1461,7 +1505,21 @@ func _update_piles() -> void:
 				var inner := Node3D.new()
 				holder.add_child(inner)
 				_build_load(inner, item)
-				if inner.get_meta("pose", "") == "schulter":
+				if inner.get_meta("pose", "") == "schulter" and Items3D.has(item):
+					var c0: Node3D = inner.get_child(0)
+					c0.position = Vector3.ZERO
+					c0.rotation = Vector3.ZERO
+					inner.position = Vector3(0, 0.12, 0)
+					# Stämme/Bretter nebeneinander, Lagen übereinander (oben etwas versetzt)
+					var layer := i / 3
+					holder.position = Vector3(0, layer * (0.25 if item == "stamm" else 0.16), (i % 3) * 0.3 - 0.3 + (0.15 if layer % 2 == 1 else 0.0))
+				elif Items3D.has(item):
+					var c1: Node3D = inner.get_child(0)
+					c1.position = Vector3.ZERO
+					c1.rotation = Vector3(0, i * 0.7, 0) if not item in ["fisch"] else Vector3(0, i * 0.5, 0)
+					inner.position = Vector3(0, 0.12, 0)
+					holder.position = Vector3((i % 3) * 0.42 - 0.42, (i / 3) * 0.24, (i / 3 % 2) * 0.12)
+				elif inner.get_meta("pose", "") == "schulter":
 					# Stämme/Bretter liegen quer gestapelt
 					inner.position = Vector3(-0.19, -0.42, 0)
 					holder.position = Vector3(0, (i / 4) * 0.17 + 0.08, (i % 4) * 0.17 - 0.25)
