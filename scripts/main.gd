@@ -149,12 +149,16 @@ func _setup_environment() -> void:
 	env.adjustment_contrast = 1.08
 	env.ssao_enabled = true            # Umgebungsverdeckung wie im Browser
 	env.ssao_radius = 1.5
-	env.glow_enabled = true            # Bloom
-	env.glow_intensity = 0.4
+	env.glow_enabled = true            # Bloom: Sonne, Lampen, Glut leuchten leicht nach
+	env.glow_intensity = 0.55
+	env.glow_bloom = 0.08
+	env.glow_hdr_threshold = 0.9
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.8, 0.87, 0.92)
-	env.fog_density = 0.0004
-	env.fog_aerial_perspective = 0.1
+	env.fog_density = 0.0011          # leichter Dunst in der Ferne
+	env.fog_aerial_perspective = 0.35
+	env.fog_sky_affect = 0.25
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
@@ -164,6 +168,9 @@ func _setup_environment() -> void:
 	sun.light_color = Color(1.0, 0.95, 0.86)
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 180.0
+	sun.shadow_blur = 1.8                  # weichere Schattenkanten
+	sun.directional_shadow_blend_splits = true
+	RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM)
 	sun.name = "Sonne"
 	add_child(sun)
 
