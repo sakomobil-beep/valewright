@@ -1,7 +1,10 @@
 extends Node3D
 # Rauch aus Schornsteinen und Funken an Schmieden – Positionen aus den Browser-Modellen übernommen
 
-const FX := {"holzfaeller": {"houseSmoke": [-0.4, 4.34, -0.39]}, "steinmetz": {"houseSmoke": [-0.4, 4.64, -0.41]}, "bauernhof": {"houseSmoke": [-0.51, 5.11, -0.49]}, "baeckerei": {"smokeAt": [-0.55, 5.26, -0.51]}, "kohlemine": {"smokeAt": [-0.57, 4.73, -0.62]}, "metzger": {"houseSmoke": [-0.49, 5.03, -0.45]}, "fischer": {"houseSmoke": [-0.37, 4.03, -0.35]}, "schmelze": {"smokeAt": [0, 4.1, -0.4], "sparkAt": [0, 0.9, 0.9]}, "raeucherei": {"houseSmoke": [-0.4, 4.64, -0.39], "workSmoke": [1.9, 2.1, 0.2]}, "kuhstall": {"houseSmoke": [-0.48, 4.95, -0.41]}, "kaeserei": {"houseSmoke": [-0.4, 4.64, -0.39]}, "konditorei": {"houseSmoke": [-0.4, 4.64, -0.39]}, "winzer": {"houseSmoke": [-0.4, 4.64, -0.39]}, "kelterei": {"houseSmoke": [-0.48, 4.95, -0.43]}, "goldschmied": {"sparkAt": [1.75, 1, 0.75], "houseSmoke": [-0.44, 4.79, -0.41]}, "hopfenbauer": {"houseSmoke": [-0.4, 4.64, -0.39]}, "brauerei": {"houseSmoke": [-0.48, 4.95, -0.43], "workSmoke": [1.85, 1.3, 0.55]}, "wirtshaus": {"houseSmoke": [-0.55, 5.36, -0.47]}, "schaefer": {"houseSmoke": [-0.39, 4.56, -0.37]}, "weberei": {"houseSmoke": [-0.44, 4.79, -0.41]}, "schneider": {"houseSmoke": [-0.4, 4.64, -0.39]}, "toepfer": {"houseSmoke": [-0.4, 4.64, -0.39], "workSmoke": [-1.5, 0.85, 1.3]}, "koehler": {"workSmoke": [1.6, 0.95, 2.9]}, "wohnhaus": {"houseSmoke": [-0.4, 3.65, -0.39]}, "seilerei": {"houseSmoke": [-0.44, 4.79, -0.41]}, "waffenschmied": {"smokeAt": [-0.6, 5.41, -0.3], "sparkAt": [1.9, 1, 0.9]}, "bogenbauer": {"houseSmoke": [-0.4, 4.64, -0.39]}, "wagner": {"houseSmoke": [-0.48, 4.95, -0.45]}, "waffenschnitzer": {"houseSmoke": [-0.46, 4.87, -0.43]}, "wachstube": {"houseSmoke": [-0.39, 3.47, -0.37]}, "muenzpraege": {"smokeAt": [-0.46, 4.87, -0.45], "sparkAt": [1.95, 1, 1]}, "schmied": {"smokeAt": [-0.6, 5.41, -0.3], "sparkAt": [1.9, 1, 0.9]}}
+const FX := {"holzfaeller": {"houseSmoke": [-0.4, 4.34, -0.39]}, "steinmetz": {"houseSmoke": [-0.4, 4.64, -0.41]}, "bauernhof": {"houseSmoke": [-0.51, 5.11, -0.49]}, "baeckerei": {"smokeAt": [-0.55, 5.26, -0.51]}, "kohlemine": {"smokeAt": [-0.57, 4.73, -0.62]}, "metzger": {"houseSmoke": [-0.49, 5.03, -0.45]}, "fischer": {"houseSmoke": [-0.37, 4.03, -0.35]}, "schmelze": {"smokeAt": [0, 4.1, -0.4], "sparkAt": [0, 0.9, 0.9]}, "raeucherei": {"houseSmoke": [-0.4, 4.64, -0.39], "workSmoke": [1.9, 2.1, 0.2]}, "kuhstall": {"houseSmoke": [-0.48, 4.95, -0.41]}, "kaeserei": {"houseSmoke": [-0.4, 4.64, -0.39]}, "konditorei": {"houseSmoke": [-0.4, 4.64, -0.39]}, "winzer": {"houseSmoke": [-0.4, 4.64, -0.39]}, "kelterei": {"houseSmoke": [-0.48, 4.95, -0.43]}, "goldschmied": {"sparkAt": [1.75, 1, 0.75], "houseSmoke": [-0.44, 4.79, -0.41]}, "hopfenbauer": {"houseSmoke": [-0.4, 4.64, -0.39]}, "brauerei": {"houseSmoke": [-0.48, 4.95, -0.43], "workSmoke": [1.85, 1.3, 0.55]}, "wirtshaus": {"houseSmoke": [-0.55, 5.36, -0.47]}, "schaefer": {"houseSmoke": [-0.39, 4.56, -0.37]}, "weberei": {"houseSmoke": [-0.44, 4.79, -0.41]}, "schneider": {"houseSmoke": [-0.4, 4.64, -0.39]}, "toepfer": {"houseSmoke": [-0.4, 4.64, -0.39], "workSmoke": [-1.5, 0.85, 1.3]}, "koehler": {"workSmoke": [1.6, 0.95, 2.9]}, "wohnhaus": {"houseSmoke": [-0.4, 3.65, -0.39]}, "seilerei": {"houseSmoke": [-0.44, 4.79, -0.41]}, "waffenschmied": {"smokeAt": [-0.6, 5.41, -0.3], "sparkAt": [1.9, 1, 0.9]}, "bogenbauer": {"houseSmoke": [-0.4, 4.64, -0.39]}, "wagner": {"houseSmoke": [-0.48, 4.95, -0.45]}, "waffenschnitzer": {"houseSmoke": [-0.46, 4.87, -0.43]}, "wachstube": {"houseSmoke": [-0.39, 3.47, -0.37]}, "muenzpraege": {"smokeAt": [-0.46, 4.87, -0.45], "sparkAt": [1.95, 1, 1]}, "schmied": {"smokeAt": [-0.6, 5.41, -0.3], "sparkAt": [1.9, 1, 0.9]},
+	"muehle": {"flourAt": [1.4, 0.6, 1.1]}, "saegewerk": {"chipsAt": [0.3, 0.95, 1.8]}}
+# zusätzliche Arbeits-Effekte an Gebäuden, die schon Rauch haben
+const FX_EXTRA := {"baeckerei": {"flourAt": [-1.9, 0.9, 0.6]}, "steinmetz": {"stoneDustAt": [1.6, 0.6, 1.0]}, "waffenschnitzer": {"chipsAt": [1.85, 0.9, 0.9]}, "wagner": {"chipsAt": [1.75, 0.9, 0.9]}, "bogenbauer": {"chipsAt": [1.75, 0.9, 0.8]}}
 
 var economy
 var _smoke_mesh: Mesh
@@ -58,7 +61,8 @@ func _process(dt: float) -> void:
 				var sn: Node = b.node.find_child(k, true, false)
 				if sn:
 					_spins.append([sn, k, b])
-		var f: Dictionary = FX.get(b.type, {})
+		var f: Dictionary = FX.get(b.type, {}).duplicate()
+		f.merge(FX_EXTRA.get(b.type, {}))
 		if f.is_empty():
 			continue
 		if b.has("fx_nodes") and b.fx_nodes.any(func(e): return not is_instance_valid(e[1])):
@@ -84,6 +88,12 @@ func _attach(b: Dictionary, f: Dictionary) -> void:
 		var p: CPUParticles3D
 		if kind == "sparkAt":
 			p = _sparks()
+		elif kind == "flourAt":
+			p = _dust(Color(0.97, 0.95, 0.88), 0.45)
+		elif kind == "stoneDustAt":
+			p = _dust(Color(0.72, 0.7, 0.66), 0.35)
+		elif kind == "chipsAt":
+			p = _chips()
 		else:
 			p = _smoke(kind)
 		p.position = pos
@@ -127,9 +137,82 @@ func _sparks() -> CPUParticles3D:
 	p.initial_velocity_min = 2.0
 	p.initial_velocity_max = 3.5
 	p.gravity = Vector3(0, -9, 0)
+	p.amount = 18
+	p.explosiveness = 0.35   # Funken stieben stoßweise wie beim Hammerschlag
+	p.scale_amount_min = 0.5
+	p.scale_amount_max = 1.3
 	var g := Gradient.new()
-	g.set_color(0, Color(1.0, 0.85, 0.3))
-	g.set_color(1, Color(1.0, 0.3, 0.05))
+	g.set_color(0, Color(1.0, 0.95, 0.6))
+	g.add_point(0.4, Color(1.0, 0.6, 0.15))
+	g.set_color(g.get_point_count() - 1, Color(0.8, 0.15, 0.02, 0.0))
+	p.color_ramp = g
+	p.emitting = false
+	return p
+
+# Mehl- oder Steinstaub: feine, langsam schwebende Wölkchen
+var _dust_mesh: Mesh
+func _dust(col: Color, alpha: float) -> CPUParticles3D:
+	if _dust_mesh == null:
+		var sm := SphereMesh.new()
+		sm.radius = 0.12
+		sm.height = 0.22
+		sm.radial_segments = 6
+		sm.rings = 3
+		var m := StandardMaterial3D.new()
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.vertex_color_use_as_albedo = true
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		sm.material = m
+		_dust_mesh = sm
+	var p := CPUParticles3D.new()
+	p.mesh = _dust_mesh
+	p.local_coords = false
+	p.lifetime = 2.2
+	p.amount = 14
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = 0.35
+	p.direction = Vector3(0, 1, 0.3)
+	p.spread = 70.0
+	p.initial_velocity_min = 0.15
+	p.initial_velocity_max = 0.45
+	p.gravity = Vector3(0.12, 0.05, 0.0)
+	var c := Curve.new()
+	c.add_point(Vector2(0, 0.5))
+	c.add_point(Vector2(1, 2.2))
+	p.scale_amount_curve = c
+	var g := Gradient.new()
+	g.set_color(0, Color(col.r, col.g, col.b, alpha))
+	g.set_color(1, Color(col.r, col.g, col.b, 0.0))
+	p.color_ramp = g
+	p.emitting = false
+	return p
+
+# Holzspäne: kleine helle Splitter fliegen im Bogen und fallen zu Boden
+var _chip_mesh: Mesh
+func _chips() -> CPUParticles3D:
+	if _chip_mesh == null:
+		var bm := BoxMesh.new()
+		bm.size = Vector3(0.07, 0.015, 0.04)
+		var m := StandardMaterial3D.new()
+		m.vertex_color_use_as_albedo = true
+		bm.material = m
+		_chip_mesh = bm
+	var p := CPUParticles3D.new()
+	p.mesh = _chip_mesh
+	p.local_coords = false
+	p.lifetime = 1.0
+	p.amount = 16
+	p.direction = Vector3(0.4, 1, 0.3)
+	p.spread = 50.0
+	p.initial_velocity_min = 1.2
+	p.initial_velocity_max = 2.4
+	p.gravity = Vector3(0, -7.5, 0)
+	p.angular_velocity_min = -540.0
+	p.angular_velocity_max = 540.0
+	p.particle_flag_rotate_y = true
+	var g := Gradient.new()
+	g.set_color(0, Color(0.95, 0.82, 0.55))
+	g.set_color(1, Color(0.8, 0.62, 0.36, 0.0))
 	p.color_ramp = g
 	p.emitting = false
 	return p
