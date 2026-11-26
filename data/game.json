@@ -8,7 +8,7 @@
     "stein": 4
    },
    "r": 3.2,
-   "desc": "Zusätzliches Lager: Träger bringen Waren zum nächsten Lager – verkürzt die Wege in fernen Gebieten und bringt 2 Träger mehr.",
+   "desc": "Zusätzliches Lager: Träger bringen Waren zum nächsten Lager – verkürzt die Wege in fernen Gebieten.",
    "mine": null
   },
   "holzfaeller": {
@@ -386,7 +386,7 @@
     "stein": 1
    },
    "r": 2,
-   "desc": "Hütte → Fachwerkhaus → Bürgerhaus. Gut versorgte Häuser bringen Träger und zahlen Steuern 🪙",
+   "desc": "Hütte → Fachwerkhaus → Bürgerhaus. Gut versorgte Häuser schalten Neues frei und zahlen Steuern 🪙",
    "mine": null
   },
   "markt": {
@@ -569,6 +569,17 @@
    },
    "r": 1,
    "desc": "Über den Fluss.",
+   "mine": null
+  },
+  "handwerkskammer": {
+   "name": "Handwerkskammer",
+   "icon": "🛠️",
+   "cost": {
+    "bretter": 6,
+    "stein": 4
+   },
+   "r": 2.8,
+   "desc": "Bildet Baumeister und Träger aus – je 1 Werkzeug und 5 Minuten.",
    "mine": null
   }
  },
@@ -1117,8 +1128,14 @@
     "wein"
    ],
    [
-    "muenzen",
-    "👥 Träger"
+    "muenzen"
+   ]
+  ],
+  "handwerkskammer": [
+   [],
+   [
+    "👷 Baumeister",
+    "🧺 Träger"
    ]
   ]
  },
@@ -1203,6 +1220,7 @@
    "icon": "🏡",
    "types": [
     "wohnhaus",
+    "handwerkskammer",
     "lager",
     "bruecke",
     "wirtshaus",

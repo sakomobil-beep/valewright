@@ -15,7 +15,7 @@ func save(slot: String) -> void:
 	var t: Node3D = main.terrain
 	var m: Node3D = main.military
 	var d := {"version": VERSION, "cfg": Session.cfg, "date": Time.get_datetime_string_from_system(false, true),
-		"time": m.time, "stock": e.stock, "unl": e.unl, "mission": main.missions.mission, "step": main.missions.step,
+		"time": m.time, "stock": e.stock, "unl": e.unl, "builders_n": e.builders_n, "carriers_n": e.carriers_n, "mission": main.missions.mission, "step": main.missions.step,
 		"mission_done": main.missions.done, "won": main.missions.won,
 		"fog": Marshalls.raw_to_base64(main.fog.explored.compress(FileAccess.COMPRESSION_DEFLATE)), "fog_n": main.fog.explored.size()}
 	var bl: Array = []
@@ -23,7 +23,7 @@ func save(slot: String) -> void:
 		if b.get("destroyed", false):
 			continue
 		bl.append({"type": b.type, "pos": _v(b.pos), "rot": snappedf(b.node.rotation.y, 0.001), "build": b.build,
-			"lvl": b.get("lvl", 0), "sat": b.get("sat", 0), "garrison": main.military.soldiers.filter(func(x): return x.get("home") == b and x.state == "garrison").map(func(x): return [x.kind, x.rank, x.get("militia", false)]) if b.get("owner", 0) == 0 and main.military.is_military(b.type) else b.get("garrison", 0), "claimed": b.get("claimed", false), "site_in": b.get("site_in", {}), "site_level": b.get("site_level", 1.0), "in": b.get("in", {}), "out": b.get("out", {}), "orders": b.get("orders", 0), "wo": b.get("wo", {}), "trS": b.get("trS", 0), "trB": b.get("trB", 0), "promo": b.get("promo", 0), "up": b.get("up", 0), "plots": b.get("plots", []).map(func(q): return [q.state, q.growth]), "pigs": b.get("pigs", []).map(func(q): return q.growth)})
+			"lvl": b.get("lvl", 0), "sat": b.get("sat", 0), "garrison": main.military.soldiers.filter(func(x): return x.get("home") == b and x.state == "garrison").map(func(x): return [x.kind, x.rank, x.get("militia", false)]) if b.get("owner", 0) == 0 and main.military.is_military(b.type) else b.get("garrison", 0), "claimed": b.get("claimed", false), "site_in": b.get("site_in", {}), "site_level": b.get("site_level", 1.0), "in": b.get("in", {}), "out": b.get("out", {}), "orders": b.get("orders", 0), "wo": b.get("wo", {}), "trS": b.get("trS", 0), "trB": b.get("trB", 0), "promo": b.get("promo", 0), "tq": b.get("tq", []), "tq_t": b.get("tq_t", 0.0), "up": b.get("up", 0), "plots": b.get("plots", []).map(func(q): return [q.state, q.growth]), "pigs": b.get("pigs", []).map(func(q): return q.growth)})
 	d.buildings = bl
 	d.bridges = t.bridges.map(func(br): return {"a": _v(br.a), "b": _v(br.b), "y": br.y, "len": br.get("len", 0.0)})
 	var dead: Array = []
@@ -61,6 +61,8 @@ func apply(d: Dictionary) -> void:
 	for k in d.stock:
 		e.stock[k] = int(d.stock[k])
 	e.unl = int(d.unl)
+	e.builders_n = int(d.get("builders_n", 1))
+	e.carriers_n = int(d.get("carriers_n", 2))
 	m.time = float(d.time)
 	for i in d.trees_dead:
 		t.fell_tree(t.trees[int(i)], null, true)

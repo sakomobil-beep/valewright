@@ -170,7 +170,18 @@ func start(b: Dictionary, delivered := {}) -> void:
 	_sites.append(b)
 	_call_builder(b)
 
+func _busy_builders() -> int:
+	var n := 0
+	for x in _sites:
+		var w = x.get("site_builder")
+		if w != null and not w.get("dead", false) and not x.get("removed", false):
+			n += 1
+	return n
+
 func _call_builder(b: Dictionary) -> void:
+	if _busy_builders() >= int(economy.builders_n):
+		b.status = "SITE_WAIT_BUILDER"
+		return
 	var w: Dictionary = settlers.spawn("bauarbeiter", settlers.nearest_lager(b.pos))
 	b.site_builder = w
 	b.status = "SITE_BUILDER_COMING"
@@ -211,6 +222,7 @@ func _process(dt: float) -> void:
 func _step(b: Dictionary, dt: float) -> void:
 	var w = b.site_builder
 	if w == null or w.get("dead", false):
+		b.site_builder = null
 		_call_builder(b)
 		return
 	var r: float = float(economy.type_info(b.type).r)

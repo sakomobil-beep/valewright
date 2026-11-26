@@ -38,8 +38,8 @@ func door_of(b: Dictionary) -> Vector3:
 
 func _ready() -> void:
 	_build_grid()
-	for i in 3:
-		var w := spawn("traeger", lager_door() + Vector3(i - 1.0, 0, 0.8))
+	for i in 2:
+		var w := spawn("traeger", lager_door() + Vector3(i - 0.5, 0, 0.8))
 		w.role = "traeger"
 
 func spawn(job: String, at: Vector3) -> Dictionary:
@@ -581,19 +581,7 @@ func _remove(w: Dictionary) -> void:
 
 # Trägerzahl wie carrierTarget im Browser
 func carrier_target() -> int:
-	var n := 3
-	var wk := 0
-	var lagers := 0
-	for b in economy.buildings:
-		if b.get("removed", false):
-			continue
-		if b.get("worker") != null:
-			wk += 1
-		if b.build >= 1.0 and b.type == "lager":
-			lagers += 1
-		if b.build >= 1.0 and b.type == "wohnhaus":
-			n += int(b.get("lvl", 0)) + 1
-	return n + wk / 2 + 2 * maxi(0, lagers - 1)
+	return int(economy.carriers_n)
 
 func _carrier_spawn() -> void:
 	var c := workers.filter(func(x): return x.role == "traeger" and not x.get("dead", false)).size()

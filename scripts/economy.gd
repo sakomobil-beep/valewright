@@ -18,6 +18,9 @@ const UPCOST := {3: {"ziegel": 2}, 4: {"ziegel": 4, "bretter": 2}}
 const FOODS := ["brot", "fisch", "schinken"]
 const FINE := ["raeucherfisch", "wurst"]
 var HOUSE_TICK := 90.0
+var builders_n := 1   # Baumeister (mehr nur über die Handwerkskammer)
+var carriers_n := 2   # Träger (mehr nur über die Handwerkskammer)
+const TRAIN_TIME := 300.0   # 5 Minuten Ausbildung
 var unl := 0     # Freischalt-Stufe (steigt mit zufriedenen Wohnhäusern)
 
 var BUILD_TIME := 8.0
@@ -27,7 +30,7 @@ var WORK_TIME := 10.0
 const TOOL_FREE := ["holzfaeller", "saegewerk", "steinmetz", "foerster", "rutengaenger", "steinmine", "kohlemine", "eisenmine", "koehler", "schmelze", "schmied", "brunnen"]
 const FIELD_WORKERS := ["holzfaeller", "steinmetz", "foerster", "rutengaenger", "bauernhof", "schweinezucht", "brunnen"]
 # Diese Gebäude produzieren (noch) keine Waren
-const NO_PRODUCTION := ["wohnhaus", "denkmal", "kaserne", "wirtshaus", "lager", "markt", "burg", "wachturm", "wachstube", "wehrturm"]
+const NO_PRODUCTION := ["handwerkskammer", "wohnhaus", "denkmal", "kaserne", "wirtshaus", "lager", "markt", "burg", "wachturm", "wachstube", "wehrturm"]
 # Mengen, die von 1 abweichen
 const AMOUNT := {"saegewerk": {"bretter": 2}, "bogenbauer": {"pfeile": 5}, "imker": {"honig": 2}}
 
@@ -267,12 +270,33 @@ func _process(dt: float) -> void:
 		if b.build < 1.0 or b.get("removed", false):
 			continue
 		bufs(b)
-		if b.type == "wohnhaus":
+		if b.type == "handwerkskammer":
+			_train(b, dt)
+		elif b.type == "wohnhaus":
 			_house(b, dt)
 		elif produces(b.type) and b.get("worker_inside", false):
 			_produce(b, dt)
 		elif b.type == "wirtshaus" and b.get("worker") != null:
 			plan_rec(b)   # Status „Schenkt Bier aus“ / „Bier fehlt“
+
+# Handwerkskammer: Warteschlange abarbeiten (Werkzeug wurde beim Auftrag bezahlt)
+func _train(b: Dictionary, dt: float) -> void:
+	var q: Array = b.get("tq", [])
+	if q.is_empty():
+		b.status = "ST_HK_IDLE"
+		return
+	b.tq_t = float(b.get("tq_t", 0.0)) + dt
+	b.status = "ST_HK_TRAIN"
+	if b.tq_t >= TRAIN_TIME:
+		b.tq_t = 0.0
+		var k: String = q.pop_front()
+		if k == "bau":
+			builders_n += 1
+			message.emit(tr("MSG_HK_BUILDER") % builders_n)
+		else:
+			carriers_n += 1
+			message.emit(tr("MSG_HK_CARRIER") % carriers_n)
+		changed.emit()
 
 # Rezepte wie planNext im Browser: [Eingang, Ware, Menge, Sekunden]
 const REC := {"goldschmied": [{"golderz": 1, "kohle": 1}, "schmuck", 1, 8], "winzer": [{}, "trauben", 2, 7], "kelterei": [{"trauben": 2}, "wein", 1, 7], "raeucherei": [{"fisch": 1, "stamm": 1}, "raeucherfisch", 2, 7], "kuhstall": [{"getreide": 1, "wasser": 1}, "milch", 2, 6], "kaeserei": [{"milch": 2}, "kaese", 1, 7], "konditorei": [{"mehl": 1, "milch": 1, "honig": 1}, "kuchen", 2, 7], "hopfenbauer": [{}, "hopfen", 1, 6], "schaefer": [{}, "wolle", 1, 6], "weberei": [{"wolle": 1}, "stoff", 1, 6], "schneider": [{"stoff": 1}, "kleidung", 1, 6], "imker": [{}, "honig", 2, 7], "lehmgrube": [{}, "lehm", 1, 5], "toepfer": [{"lehm": 1}, "kruege", 1, 6], "koehler": [{"stamm": 2}, "kohle", 1, 9], "brauerei": [{"getreide": 1, "hopfen": 1, "wasser": 1}, "bier", 2, 6], "saegewerk": [{"stamm": 1}, "bretter", 2, 4], "muehle": [{"getreide": 1}, "mehl", 1, 4], "baeckerei": [{"mehl": 1, "wasser": 1}, "brot", 2, 5], "steinmine": [{}, "stein", 1, 6], "eisenmine": [{}, "eisenerz", 1, 6], "kohlemine": [{}, "kohle", 1, 6], "goldmine": [{}, "golderz", 1, 9], "schmelze": [{"eisenerz": 1, "kohle": 1}, "eisenbarren", 1, 6], "waffenschnitzer": [{"bretter": 1}, "kampfstock", 1, 5], "muenzpraege": [{"golderz": 2, "kohle": 1}, "muenzen", 1, 8], "metzger": [{"schwein": 1}, "schinken", 2, 5], "wagner": [{"bretter": 2, "eisenbarren": 1}, "karren", 1, 9], "flachsbauer": [{}, "flachs", 1, 6], "seilerei": [{"flachs": 1}, "sehne", 1, 5], "schmied": [{"eisenbarren": 1}, "werkzeug", 1, 6], "brunnen": [{}, "wasser", 2, 2.4], "bauernhof": [{}, "getreide", 2, 9], "schweinezucht": [{"getreide": 1, "wasser": 1}, "schwein", 1, 8]}

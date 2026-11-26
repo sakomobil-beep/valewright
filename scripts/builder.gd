@@ -204,7 +204,7 @@ func setup_ui(layer: CanvasLayer) -> void:
 	order_box = HBoxContainer.new()
 	order_box.add_theme_constant_override("separation", 4)
 	ivb.add_child(order_box)
-	for o in [["kaserne", "trS", "⚔️ +1"], ["kaserne", "trB", "🏹 +1"], ["kaserne", "promo", "🪙 ⬆"], ["waffenschmied", "schwert", "🗡️ +1"], ["waffenschmied", "schild", "🛡️ +1"], ["wagner", "orders", "🛒 +1"], ["*post", "post", "🛡️ ➜ 🏰"]]:
+	for o in [["kaserne", "trS", "⚔️ +1"], ["kaserne", "trB", "🏹 +1"], ["kaserne", "promo", "🪙 ⬆"], ["waffenschmied", "schwert", "🗡️ +1"], ["waffenschmied", "schild", "🛡️ +1"], ["wagner", "orders", "🛒 +1"], ["handwerkskammer", "bau", "👷 +1"], ["handwerkskammer", "tr", "🧺 +1"], ["*post", "post", "🛡️ ➜ 🏰"]]:
 		var ob := Button.new()
 		ob.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		ob.custom_minimum_size = Vector2(56, 34)
@@ -420,7 +420,13 @@ func model(t: String, lvl := 0) -> Node3D:
 		return Node3D.new()
 	var file := "wohnhaus_%d" % lvl if t == "wohnhaus" else t
 	# weitere Lagerhäuser bekommen ihr eigenes Modell (das Haupthaus baut main.gd)
-	var ps: PackedScene = load("res://models/lagerhaus.tscn") if t == "lager" else load("res://models/%s.glb" % file)
+	var ps: PackedScene
+	if t == "lager":
+		ps = load("res://models/lagerhaus.tscn")
+	elif t == "handwerkskammer":
+		ps = load("res://models/handwerkskammer.tscn")
+	else:
+		ps = load("res://models/%s.glb" % file)
 	var n: Node3D = ps.instantiate()
 	n.scale = Vector3.ONE * SCALE
 	_shadows(n)
@@ -612,7 +618,7 @@ func _process(_dt: float) -> void:
 	_att_for = null
 	act_box.visible = selected != null and selected.type != "bruecke" and not selected.get("hq", false)
 	var tower: bool = selected != null and military and military.POSTS.has(selected.type) and selected.get("owner", 0) == 0
-	order_box.visible = selected != null and selected.build >= 1.0 and (selected.type in ["kaserne", "waffenschmied", "wagner"] or tower)
+	order_box.visible = selected != null and selected.build >= 1.0 and (selected.type in ["kaserne", "waffenschmied", "wagner", "handwerkskammer"] or tower)
 	if order_box.visible:
 		for ob in order_box.get_children():
 			ob.visible = ob.get_meta("for") == selected.type or (tower and ob.get_meta("for") == "*post")
@@ -843,6 +849,19 @@ func _order(t: String, k: String) -> void:
 		return
 	if selected == null or selected.type != t:
 		return
+	if t == "handwerkskammer":
+		if int(economy.stock.get("werkzeug", 0)) < 1:
+			economy.message.emit(tr("MSG_HK_NOTOOL"))
+			return
+		economy.stock.werkzeug -= 1
+		economy.note("use", "werkzeug", 1)
+		if not selected.has("tq"):
+			selected.tq = []
+		selected.tq.append(k)
+		economy.changed.emit()
+		if settlers:
+			settlers.sfx("place")
+		return
 	if t == "waffenschmied":
 		if not selected.has("wo"):
 			selected.wo = {}
@@ -860,6 +879,13 @@ func _orders_text(b: Dictionary) -> String:
 			return "\n" + tr("ORD_SMITH") % [int(b.get("wo", {}).get("schwert", 0)), int(b.get("wo", {}).get("schild", 0))]
 		"wagner":
 			return "\n" + tr("ORD_WAGNER") % int(b.get("orders", 0))
+		"handwerkskammer":
+			var q: Array = b.get("tq", [])
+			var t := "\n" + tr("ORD_HK_STAFF") % [int(economy.builders_n), int(economy.carriers_n)]
+			if q.is_empty():
+				return t + "\n" + tr("ORD_HK_HINT")
+			var left := int(ceil((economy.TRAIN_TIME - float(b.get("tq_t", 0.0))) / 60.0))
+			return t + "\n" + tr("ORD_HK_NOW") % [tr("HK_" + String(q[0]).to_upper()), left] + "\n" + tr("ORD_HK_QUEUE") % [q.count("bau"), q.count("tr")]
 	if b.has("plots"):
 		var pl: Array = b.plots
 		return "\n" + tr("INFO_FIELDS") % [pl.size(), pl.filter(func(q): return q.state == "reif").size(), pl.filter(func(q): return q.state == "wächst").size()]
@@ -1128,6 +1154,8 @@ func place_loaded(sv: Dictionary) -> void:
 	rec.out_res = {}
 	for kk in ["orders", "trS", "trB", "promo"]:
 		rec[kk] = int(sv.get(kk, 0))
+	rec["tq"] = Array(sv.get("tq", []))
+	rec["tq_t"] = float(sv.get("tq_t", 0.0))
 	rec.wo = sv.get("wo", {}).duplicate()
 	rec.up = int(sv.get("up", 0))
 	rec.plots_load = sv.get("plots", [])
