@@ -771,10 +771,7 @@ func _process(_dt: float) -> void:
 			return
 		var txt := (tr("BLD_HAUPTHAUS") if b.type == "lager" and not economy.buildings.is_empty() and b == economy.buildings[0] else tr(_key(b.type))) + "\n" + tr(b.status)
 		if b.type == "wohnhaus" and b.has("lvl") and b.build >= 1.0:
-			txt = "%s – %s\n%s" % [tr(_key(b.type)), tr("HOUSE_%d" % b.lvl), tr(b.status)]
-			if not b.miss.is_empty():
-				txt += " " + ", ".join(b.miss.map(func(k): return tr("ITEM_" + String(k).to_upper())))
-			txt += "\n" + tr("UI_SATISFACTION") + " " + "😊".repeat(b.sat) + "·".repeat(3 - b.sat)
+			txt = "%s – %s\n" % [tr(_key(b.type)), tr("HOUSE_%d" % b.lvl)]
 		if b.status == "ST_MISSING":
 			txt += " " + tr("ITEM_" + String(b.missing).to_upper())
 		if b.build < 1.0:
@@ -794,24 +791,8 @@ func _process(_dt: float) -> void:
 		elif b.type == "lager":
 			_set_chips(_stock_sections())
 		elif b.type == "wohnhaus" and b.has("lvl"):
-			info_label.text += "\n" + tr("UI_HOUSE_PEOPLE") % [economy.HOUSE_PEOPLE[clampi(b.lvl, 0, 4)]]
-			# was gerade im Haus liegt (höchstens 2 je Ware) und wann wieder verbraucht wird
-			var inside := []
-			for k in economy.HOUSE_LV[b.lvl].needs:
-				if k == "bier":
-					continue
-				if k == "*food" or k == "*fine":
-					var have := 0
-					for f in (economy.FOODS if k == "*food" else economy.FINE):
-						have += int(b["in"].get(f, 0))
-					inside.append("%s %d/2" % [tr("UI_FOOD"), have])
-				else:
-					inside.append("%s %d/2" % [tr("ITEM_" + String(k).to_upper()), int(b["in"].get(k, 0))])
-			info_label.text += "\n" + tr("UI_HOUSE_INSIDE") % " · ".join(inside)
-			info_label.text += "\n" + tr("UI_HOUSE_NEXTUSE") % maxi(0, int(ceil(economy.HOUSE_TICK - float(b.get("ht", 0.0)))))
-			if b.lvl < 4:
-				info_label.text += "\n" + tr("UI_HOUSE_NEXT") % [tr("HOUSE_%d" % (b.lvl + 1)), economy.HOUSE_PEOPLE[b.lvl + 1]]
-			_set_chips(_house_sections(b))
+			info_label.text = ""
+			_house_panel(b)
 		else:
 			_set_chips(_io_sections(b))
 
@@ -916,6 +897,159 @@ func _house_sections(b: Dictionary) -> Array:
 		if not more.is_empty():
 			res.append(["⬆ " + tr("UI_HOUSE_UPNEEDS") % tr("HOUSE_%d" % (b.lvl + 1)), more])
 	return res
+
+# ---------- Modernes Wohnhaus-Fenster ----------
+# Stufenleiter, Zufriedenheit als Balken, jede Ware als Zeile mit Haken/Kreuz und Füllstand,
+# klare Hinweise (z. B. „Wirtshaus in der Nähe bauen“), was zum Aufstieg fehlt
+const C_OK := Color(0.55, 0.9, 0.45)
+const C_BAD := Color(1.0, 0.45, 0.35)
+const C_GOLD := Color(0.94, 0.77, 0.4)
+const C_DIM := Color(0.75, 0.7, 0.62)
+
+func _pub_state(b: Dictionary) -> String:
+	if economy.near_pub(b) != null:
+		return "ok"
+	for p in economy.buildings:
+		if p.type == "wirtshaus" and p.build >= 1.0 and not p.get("removed", false) and Vector2(p.pos.x - b.pos.x, p.pos.z - b.pos.z).length() < 50.0:
+			return "nobeer" if p.get("worker") != null else "noworker"
+	return "none"
+
+func _lbl(par: Control, t: String, sz := 14, col := Color(0.96, 0.9, 0.78), w := 0.0) -> Label:
+	var l := Label.new()
+	l.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	l.text = t
+	l.add_theme_font_size_override("font_size", sz)
+	l.add_theme_color_override("font_color", col)
+	if w > 0.0:
+		l.custom_minimum_size.x = w
+	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	par.add_child(l)
+	return l
+
+func _hpcard(par: Control, col := Color(0, 0, 0, 0.25)) -> VBoxContainer:
+	var pc := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = col
+	sb.set_corner_radius_all(8)
+	sb.content_margin_left = 10
+	sb.content_margin_right = 10
+	sb.content_margin_top = 6
+	sb.content_margin_bottom = 7
+	pc.add_theme_stylebox_override("panel", sb)
+	par.add_child(pc)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 4)
+	pc.add_child(vb)
+	return vb
+
+func _bar(par: Control, v: float, mx: float, col: Color, w := 90.0) -> void:
+	var pb := ProgressBar.new()
+	pb.show_percentage = false
+	pb.max_value = mx
+	pb.value = v
+	pb.custom_minimum_size = Vector2(w, 10)
+	pb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var f := StyleBoxFlat.new(); f.bg_color = col; f.set_corner_radius_all(4)
+	var bg := StyleBoxFlat.new(); bg.bg_color = Color(0, 0, 0, 0.35); bg.set_corner_radius_all(4)
+	pb.add_theme_stylebox_override("fill", f)
+	pb.add_theme_stylebox_override("background", bg)
+	par.add_child(pb)
+
+# eine Bedarfs-Zeile: Symbol, Name, Füllstand im Haus (x/2), Haken/Kreuz, Hinweis
+func _need_row(par: Control, b: Dictionary, k: String, for_next: bool) -> void:
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 8)
+	par.add_child(hb)
+	var ok: bool = economy.need_ok(b, k)
+	var shown: String = "brot" if k == "*food" else ("raeucherfisch" if k == "*fine" else k)
+	hb.add_child(UiIcons.icon_rect(shown, 22))
+	var name: String = tr("UI_FOOD") if k == "*food" else tr("ITEM_" + shown.to_upper())
+	_lbl(hb, name, 14, Color(0.96, 0.9, 0.78), 110)
+	if k == "bier":
+		var ps := _pub_state(b)
+		_lbl(hb, "✔ " + tr("UI_PUB_OK") if ps == "ok" else "✖ " + tr({"none": "UI_PUB_BUILD", "nobeer": "UI_PUB_NOBEER", "noworker": "UI_PUB_NOWORKER"}[ps]), 13, C_OK if ps == "ok" else C_BAD)
+		return
+	var have := 0
+	if k == "*food" or k == "*fine":
+		for f in (economy.FOODS if k == "*food" else economy.FINE):
+			have += int(b["in"].get(f, 0))
+	else:
+		have = int(b["in"].get(k, 0))
+	var cap := 1 if for_next else 2
+	_bar(hb, mini(have, cap), cap, C_OK if ok else C_BAD, 70)
+	_lbl(hb, "%d/%d" % [mini(have, cap), cap], 13, C_DIM, 34)
+	var stock := 0
+	if k == "*food" or k == "*fine":
+		for f in (economy.FOODS if k == "*food" else economy.FINE):
+			stock += int(economy.stock.get(f, 0))
+	else:
+		stock = int(economy.stock.get(k, 0))
+	if ok:
+		_lbl(hb, "✔", 15, C_OK)
+	elif stock > 0:
+		_lbl(hb, "🧺 " + tr("UI_ON_THE_WAY"), 13, C_GOLD)
+	else:
+		_lbl(hb, "✖ " + tr("UI_NOT_IN_STOCK"), 13, C_BAD)
+
+func _house_panel(b: Dictionary) -> void:
+	var lv: int = int(b.lvl)
+	var sig := "H%d|%d|%s|%s|%s|%d|%s" % [lv, int(b.sat), str(b["in"]), str(b.get("miss", [])), _pub_state(b), int(economy.HOUSE_TICK - float(b.get("ht", 0.0))), str(economy.stock.get("brot", 0) > 0)]
+	if sig == _chip_sig:
+		return
+	_chip_sig = sig
+	for c in info_chips.get_children():
+		c.queue_free()
+	# Stufenleiter
+	var lad := HBoxContainer.new()
+	lad.add_theme_constant_override("separation", 4)
+	info_chips.add_child(lad)
+	for i in 5:
+		var pc := PanelContainer.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.85, 0.62, 0.2, 0.95) if i == lv else (Color(0.4, 0.55, 0.3, 0.6) if i < lv else Color(0, 0, 0, 0.3))
+		sb.set_corner_radius_all(6)
+		sb.content_margin_left = 6; sb.content_margin_right = 6; sb.content_margin_top = 2; sb.content_margin_bottom = 2
+		pc.add_theme_stylebox_override("panel", sb)
+		pc.tooltip_text = "%s · %d %s" % [tr("HOUSE_%d" % i), economy.HOUSE_PEOPLE[i], tr("UI_RESIDENTS")]
+		var l := _lbl(pc, ["🛖", "🏡", "🏘️", "🏛️", "🏰"][i] + (" " + tr("HOUSE_%d" % i) if i == lv else ""), 13, Color.WHITE if i == lv else C_DIM)
+		lad.add_child(pc)
+		l.get_parent().remove_child(l); pc.add_child(l)
+	# Bewohner + Zufriedenheit
+	var c1 := _hpcard(info_chips)
+	var r1 := HBoxContainer.new(); r1.add_theme_constant_override("separation", 10); c1.add_child(r1)
+	_lbl(r1, tr("UI_HOUSE_PEOPLE") % economy.HOUSE_PEOPLE[clampi(lv, 0, 4)], 15)
+	var r2 := HBoxContainer.new(); r2.add_theme_constant_override("separation", 8); c1.add_child(r2)
+	_lbl(r2, "😊 " + tr("UI_SATISFACTION"), 14, C_DIM, 120)
+	_bar(r2, int(b.sat), 3, C_OK if int(b.sat) > 0 else C_BAD, 120)
+	_lbl(r2, "%d/3" % int(b.sat), 13, C_DIM)
+	_lbl(c1, tr("UI_HOUSE_NEXTUSE") % maxi(0, int(ceil(economy.HOUSE_TICK - float(b.get("ht", 0.0))))), 12, C_DIM)
+	# braucht jetzt
+	var L: Dictionary = economy.HOUSE_LV[lv]
+	var all_ok := true
+	for k in L.needs:
+		all_ok = all_ok and economy.need_ok(b, k)
+	var c2 := _hpcard(info_chips, Color(0.1, 0.25, 0.08, 0.35) if all_ok else Color(0.35, 0.08, 0.05, 0.35))
+	_lbl(c2, ("✔ " if all_ok else "✖ ") + tr("UI_HOUSE_NOW"), 14, C_GOLD)
+	for k in L.needs:
+		_need_row(c2, b, k, false)
+	# nächster Aufstieg
+	if lv < 4:
+		var nx: Dictionary = economy.HOUSE_LV[lv + 1]
+		var c3 := _hpcard(info_chips)
+		_lbl(c3, "⬆ " + tr("UI_HOUSE_UPNEEDS") % tr("HOUSE_%d" % (lv + 1)) + "  (👥 %d)" % economy.HOUSE_PEOPLE[lv + 1], 14, C_GOLD)
+		for k in nx.needs:
+			if not k in L.needs:
+				_need_row(c3, b, k, true)
+		for k in economy.UPCOST.get(lv + 1, {}):
+			var hb := HBoxContainer.new(); hb.add_theme_constant_override("separation", 8); c3.add_child(hb)
+			hb.add_child(UiIcons.icon_rect(k, 22))
+			_lbl(hb, tr("ITEM_" + String(k).to_upper()), 14, Color(0.96, 0.9, 0.78), 110)
+			var need: int = int(economy.UPCOST[lv + 1][k])
+			var have := int(b["in"].get(k, 0))
+			_bar(hb, mini(have, need), need, C_OK if have >= need else C_BAD, 70)
+			_lbl(hb, "%d/%d" % [mini(have, need), need], 13, C_DIM)
+		var hint := tr("UI_HOUSE_UP_HINT") % (3 - int(b.sat)) if int(b.sat) < 3 else (tr("UI_HOUSE_UP_READY") if b.get("miss", []).is_empty() else tr("UI_HOUSE_UP_WAIT"))
+		_lbl(c3, hint, 12, C_DIM).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 func _stock_sections() -> Array:
 	var res := []

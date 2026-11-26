@@ -573,7 +573,7 @@ POP_FREE_TIP	🏠 Einwohner: %d · Platz in Haupthaus und Wohnhäusern: %d\nNeue
 ST_NO_PEOPLE	Keine freien Einwohner – baue Wohnhäuser	No free residents – build houses
 UI_HOUSE_PEOPLE	👥 Bewohner: %d	👥 Residents: %d
 UI_HOUSE_NEXT	⬆ Gut versorgt wird es zum %s (%d Bewohner)	⬆ Well supplied it becomes a %s (%d residents)
-UI_HOUSE_NOW	Braucht jetzt (Vorrat)	Needs now (in stock)
+UI_HOUSE_NOW	Braucht jetzt	Needs now
 UI_HOUSE_UPNEEDS	Zusätzlich für %s	Additionally for %s
 UI_HOUSE_INSIDE	📦 Im Haus: %s	📦 Inside: %s
 UI_HOUSE_NEXTUSE	⏳ Nächster Verbrauch in %d s	⏳ Next use in %d s
@@ -604,3 +604,13 @@ STW_P_TOOL	%d Gebäude ohne Arbeiter – Werkzeug fehlt	%d buildings without wor
 STW_P_MISSING	%d Gebäude warten auf Rohstoffe	%d buildings waiting for materials
 STW_P_WAITING	%d fertige Waren warten auf Träger	%d finished goods waiting for carriers
 STW_P_NONE	Alles läuft – keine Probleme.	Everything runs – no problems.
+UI_PUB_OK	Wirtshaus in der Nähe hat Bier	pub nearby has beer
+UI_PUB_BUILD	Wirtshaus in der Nähe bauen	build a pub nearby
+UI_PUB_NOBEER	Wirtshaus hat kein Bier – Brauerei bauen	pub has no beer – build a brewery
+UI_PUB_NOWORKER	Wirtshaus hat keinen Wirt	pub has no innkeeper
+UI_ON_THE_WAY	wird gebracht	on its way
+UI_NOT_IN_STOCK	nicht im Lager	not in stock
+UI_RESIDENTS	Bewohner	residents
+UI_HOUSE_UP_HINT	Noch %d volle Versorgungsrunde(n), dann steigt das Haus auf, wenn oben alles ✔ ist.	%d more fully supplied round(s), then the house rises if everything above is ✔.
+UI_HOUSE_UP_READY	Bereit – steigt in der nächsten Runde auf!	Ready – rises next round!
+UI_HOUSE_UP_WAIT	Zufrieden – wartet nur noch auf die fehlenden Waren oben.	Content – only waiting for the missing goods above.
