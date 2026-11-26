@@ -638,8 +638,8 @@ func _map_preview(c: Dictionary) -> ImageTexture:
 				col = Color(0.82, 0.76, 0.55)
 			elif h > 14.0:
 				col = Color(0.93, 0.93, 0.9)
-			elif h > 7.0:
-				col = Color(0.55, 0.5, 0.42).lerp(Color(0.68, 0.64, 0.58), clampf((h - 7.0) / 7.0, 0, 1))
+			elif t.mountain(x, z) > 2.0:
+				col = Color(0.55, 0.5, 0.42).lerp(Color(0.68, 0.64, 0.58), clampf((t.mountain(x, z) - 2.0) / 8.0, 0, 1))
 			else:
 				col = Color(0.42, 0.66, 0.3).lerp(Color(0.56, 0.7, 0.34), clampf(h / 7.0, 0, 1))
 				var fv: float = fn.get_noise_2d(x, z) * 0.5 + 0.5

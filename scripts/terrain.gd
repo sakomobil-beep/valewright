@@ -58,7 +58,7 @@ func prepare(cfg: Dictionary) -> void:
 	ranges = []
 	if classic:
 		for chain in [
-			[[-58, -56, 20, 10], [-84, -78, 28, 18], [-114, -96, 33, 26], [-146, -118, 27, 21]],
+			[[-45, -43, 17, 10], [-72, -68, 24, 15], [-84, -78, 28, 18], [-114, -96, 33, 26], [-146, -118, 27, 21]],
 			[[-92, 96, 20, 11], [-116, 118, 26, 17], [-140, 144, 24, 15]],
 			[[92, 78, 21, 12], [116, 100, 29, 20], [140, 128, 25, 17]],
 		]:
@@ -75,19 +75,34 @@ func prepare(cfg: Dictionary) -> void:
 	if classic:
 		nm = maxi(0, nm - 3)
 	var big := 1.2 if gen.terrain == "gebirge" else 1.0
+	# Verteilung: der erste Gebirgszug liegt so nah am Start, dass ihn schon die erste
+	# Erweiterung mit einem Militärgebäude erreicht (Bergfuß ca. 36–50 m vom Haupthaus);
+	# die übrigen bekommen je einen eigenen Himmelsrichtungs-Sektor, damit Berge und
+	# freie Flächen gleichmäßig über die Karte verteilt sind
+	var sector0 := rng.randf() * TAU
 	for i in nm:
-		for tries in (240 if i == 0 else 80):
-			var ang := rng.randf() * TAU
-			# erster Gebirgszug nah am Start, die weiteren über die ganze Karte verteilt
-			var near := i == 0 and not classic
-			var start := Vector2(cos(ang), sin(ang)) * (rng.randf_range(72.0, 96.0) * rsc if near else rng.randf_range(175.0 if classic else 80.0 * rsc, SIZE * 0.4))
+		var near := i == 0 and not classic
+		for tries in (300 if near else 120):
+			var ang: float
+			var dist: float
+			if near:
+				ang = rng.randf() * TAU
+				dist = rng.randf_range(56.0, 64.0)
+			else:
+				var slot := (i - (0 if classic else 1)) if nm > 1 else 0
+				var cnt := maxi(1, nm - (0 if classic else 1))
+				ang = sector0 + TAU * (slot + 0.5) / cnt + rng.randf_range(-0.42, 0.42) * TAU / cnt
+				if tries > 60:
+					ang = rng.randf() * TAU   # Sektor voll: irgendwo Platz suchen
+				dist = rng.randf_range(175.0 if classic else 105.0 * rsc, SIZE * 0.42)
+			var start := Vector2(cos(ang), sin(ang)) * dist
 			var dir := start.normalized().rotated(rng.randf_range(-0.7, 0.7))
 			var n: int = rng.randi_range(3, 5) + (1 if gen.terrain == "gebirge" else 0)
 			var chain: Array = []
 			var p := start
 			for k in n:
-				var r: float = (rng.randf_range(16.0, 22.0) if k == 0 else rng.randf_range(22.0, 34.0)) * rsc * big
-				var h: float = (rng.randf_range(9.0, 13.0) if k == 0 else rng.randf_range(15.0, 26.0)) * big
+				var r: float = (rng.randf_range(15.0, 19.0) if k == 0 else rng.randf_range(22.0, 34.0)) * (1.0 if near and k == 0 else rsc) * big
+				var h: float = (rng.randf_range(12.0, 15.0) if k == 0 else rng.randf_range(15.0, 26.0)) * big
 				chain.append({"p": p, "r": r, "h": h})
 				dir = dir.rotated(rng.randf_range(-0.45, 0.45))
 				p += dir * r * 0.95
@@ -97,11 +112,11 @@ func prepare(cfg: Dictionary) -> void:
 					ok = false   # nicht über den Kartenrand
 				if absf(c.p.x - river_x(c.p.y)) < c.r * 1.2 + 10.0:
 					ok = false   # den Fluss nicht zuschütten
-				if c.p.length() < 62.0 * rsc:
-					ok = false   # Startgebiet frei lassen
+				if c.p.length() - c.r * 1.3 < 34.0:
+					ok = false   # Startgebiet (30 m) frei lassen
 				for m in mountains:
-					if m.p.distance_to(c.p) < (m.r + c.r) * 1.1:
-						ok = false   # Gebirgszüge nicht ineinander
+					if m.p.distance_to(c.p) < (m.r + c.r) * (1.1 if m.rg == c.get("rg", -1) else 1.7):
+						ok = false   # Gebirgszüge mit Abstand, damit freie Flächen dazwischen bleiben
 			if not ok:
 				continue
 			_add_range(chain)
@@ -840,8 +855,10 @@ func _make_deposits() -> void:
 	# Über den ganzen Gebirgszug verteilt: vorne Stein, Kohle und Eisen, Gold nur weiter hinten (wie bei Siedler)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 314
+	_starter_deposits(rng)
 	for rg in ranges:
 		var n: int = deposits_per_mountain
+		var fi := 0   # Zähler für den vorderen Ausläufer, damit dort Stein, Kohle UND Eisen liegen
 		for k in n:
 			var gi: int = rg[k % rg.size()]
 			var m: Dictionary = mountains[gi]
@@ -852,7 +869,8 @@ func _make_deposits() -> void:
 			elif k < 4 and not front:
 				kind = DEPOSIT_KINDS[k]
 			elif front:
-				kind = ["stein", "kohle", "eisenerz"][k % 3]
+				kind = ["kohle", "eisenerz", "stein"][fi % 3]
+				fi += 1
 			else:
 				kind = DEPOSIT_KINDS[rng.randi() % DEPOSIT_KINDS.size()]
 			if kind == "gold" and rg.find(gi) < 2 and rg.size() > 2:
@@ -869,6 +887,34 @@ func _make_deposits() -> void:
 					continue
 				deposits.append({"pos": Vector3(x, height(x, z), z), "kind": kind, "found": false, "node": null})
 				break
+
+# Am vorderen Ausläufer des nächsten Gebirgszugs, auf der Seite zum Start hin:
+# je ein Vorkommen Stein, Kohle und Eisen – erreichbar mit der ersten Wachstube
+func _starter_deposits(rng: RandomNumberGenerator) -> void:
+	if ranges.is_empty():
+		return
+	var best := -1
+	var bd := 1e9
+	for i in ranges.size():
+		var mm: Dictionary = mountains[ranges[i][0]]
+		if mm.p.length() < bd:
+			bd = mm.p.length(); best = i
+	var m: Dictionary = mountains[ranges[best][0]]
+	var toward: float = (-m.p).angle()
+	for kind in ["stein", "kohle", "eisenerz"]:
+		for tries in 60:
+			var ang := toward + rng.randf_range(-1.0, 1.0)
+			var r: float = rng.randf_range(0.25, 0.85) * m.r
+			var x: float = m.p.x + cos(ang) * r
+			var z: float = m.p.y + sin(ang) * r
+			if Vector2(x, z).length() > 56.0 or mountain(x, z) < 1.2:
+				continue
+			if terraces and tries < 40 and not _flat_spot(x, z, "stein"):
+				continue
+			if deposits.any(func(d): return Vector2(d.pos.x - x, d.pos.z - z).length() < 6.0):
+				continue
+			deposits.append({"pos": Vector3(x, height(x, z), z), "kind": kind, "found": false, "node": null})
+			break
 
 # ebene Terrassenstelle, passend zur Höhe: Stein/Kohle unten, Eisen Mitte, Gold oben
 func _flat_spot(x: float, z: float, kind: String) -> bool:
