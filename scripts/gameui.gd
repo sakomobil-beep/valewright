@@ -476,13 +476,13 @@ func game_end(won: bool) -> void:
 	_button(vb, "MENU_MAIN", Session.to_menu)
 
 # ---------- Hilfe ----------
-const HELP_TOPICS := ["CONTROLS", "BUILD", "CHAINS", "HOUSES", "MINING", "BRIDGE", "MILITARY", "GOALS", "SAVE"]
+const HELP_TOPICS := ["START", "CONTROLS", "BUILD", "INFO", "WORKERS", "CHAINS", "HOUSES", "MINING", "BRIDGE", "MILITARY", "MARKET", "WINDOWS", "GOALS", "SAVE", "TIPS"]
 
 func help_page(in_game: bool) -> void:
 	var vb := _window(760)
 	_label(vb, "MENU_HELP", 28, GOLD, true)
 	var sc := ScrollContainer.new()
-	sc.custom_minimum_size = Vector2(720, 520)
+	sc.custom_minimum_size = Vector2(720, 560)
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	vb.add_child(sc)
 	var inner := VBoxContainer.new()
@@ -491,7 +491,7 @@ func help_page(in_game: bool) -> void:
 	sc.add_child(inner)
 	for k in HELP_TOPICS:
 		_label(inner, "HELP_%s_T" % k, 20, GOLD)
-		_label(inner, "HELP_%s" % k, 15)
+		_label(inner, "HELP_%s" % k, 15).add_theme_constant_override("line_spacing", 3)
 		inner.add_child(HSeparator.new())
 	_button(vb, "UI_BACK", pause_menu if in_game else main_menu)
 
