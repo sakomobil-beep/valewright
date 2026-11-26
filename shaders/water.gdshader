@@ -86,5 +86,5 @@ void fragment() {
 	ROUGHNESS = mix(0.05, 0.6, foam);
 	SPECULAR = 0.75 * ex * (1.0 - foam);
 	METALLIC = 0.0;
-	ALPHA = clamp(0.9 + dk * 0.1 + foam * 0.1, 0.0, 1.0);   # kaum durchsichtig – sonst scheint der kantige Grund durch
+	ALPHA = clamp(0.9 + dk * 0.1 + foam * 0.1, 0.0, 1.0);   // kaum durchsichtig – sonst scheint der kantige Grund durch
 }
