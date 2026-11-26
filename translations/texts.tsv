@@ -545,3 +545,9 @@ ST_HQ	Herz deiner Siedlung – hier lagern alle Waren, und hier beginnt dein Geb
 UI_HQ_INFO	👥 Siedler: %d · 🏠 Gebäude: %d · 🛠️ Werkzeug: %d · 🪙 Münzen: %d	👥 Settlers: %d · 🏠 Buildings: %d · 🛠️ Tools: %d · 🪙 Coins: %d
 UI_STORED	Im Lager:	In storage:
 UI_SHARED_STOCK	Alle Lager teilen sich einen gemeinsamen Vorrat.	All storehouses share one common stock.
+UI_CLOSE_INFO	Schließen (auch Rechtsklick oder Klick auf die Karte)	Close (also right click or click on the map)
+UI_NEEDS	Braucht (im Gebäude)	Needs (in building)
+UI_MAKES	Stellt her (fertig)	Produces (ready)
+UI_HQ_SUB	Lager & Mittelpunkt deiner Siedlung	Storage & centre of your settlement
+UI_LEVEL_UP	⬆️ Ausgebaut – 20 % schneller	⬆️ Upgraded – 20 % faster
+UI_SITE_MAT	Baustoffe angeliefert	Materials delivered

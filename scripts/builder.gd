@@ -104,19 +104,57 @@ func setup_ui(layer: CanvasLayer) -> void:
 	isb.set_border_width_all(2)
 	isb.set_corner_radius_all(10)
 	isb.set_content_margin_all(10)
-	info_panel.add_theme_stylebox_override("panel", UiIcons.wood(6))
-	info_panel.offset_left = 14
-	info_panel.offset_top = 190
-	info_panel.custom_minimum_size = Vector2(260, 0)
+	info_panel.add_theme_stylebox_override("panel", UiIcons.wood(12))
+	info_panel.anchor_left = 1.0
+	info_panel.anchor_right = 1.0
+	info_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	info_panel.offset_right = -14
+	info_panel.offset_top = 196
+	info_panel.custom_minimum_size = Vector2(400, 0)
 	info_panel.visible = false
 	layer.add_child(info_panel)
 	var ivb := VBoxContainer.new()
+	ivb.add_theme_constant_override("separation", 8)
 	info_panel.add_child(ivb)
+	# Kopfzeile: Gebäudebild, Name, Schließen
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 10)
+	ivb.add_child(head)
+	info_icon = TextureRect.new()
+	info_icon.custom_minimum_size = Vector2(52, 52)
+	info_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	info_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	head.add_child(info_icon)
+	var hv := VBoxContainer.new()
+	hv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hv.add_theme_constant_override("separation", 0)
+	head.add_child(hv)
+	info_title = Label.new()
+	info_title.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	info_title.add_theme_font_size_override("font_size", 21)
+	info_title.add_theme_color_override("font_color", Color(0.94, 0.77, 0.4))
+	hv.add_child(info_title)
+	info_sub = Label.new()
+	info_sub.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	info_sub.add_theme_font_size_override("font_size", 13)
+	info_sub.add_theme_color_override("font_color", Color(0.85, 0.78, 0.62))
+	hv.add_child(info_sub)
+	var xb := Button.new()
+	xb.text = "✕"
+	xb.flat = true
+	xb.tooltip_text = tr("UI_CLOSE_INFO")
+	xb.pressed.connect(close_info)
+	head.add_child(xb)
+	ivb.add_child(HSeparator.new())
 	info_label = Label.new()
+	info_label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	info_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	info_label.custom_minimum_size.x = 460
+	info_label.custom_minimum_size.x = 380
 	info_label.add_theme_color_override("font_color", Color(0.96, 0.9, 0.78))
 	ivb.add_child(info_label)
+	info_chips = VBoxContainer.new()
+	info_chips.add_theme_constant_override("separation", 6)
+	ivb.add_child(info_chips)
 	attack_btn = Button.new()
 	attack_btn.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	attack_btn.visible = false
@@ -553,7 +591,9 @@ func _process(_dt: float) -> void:
 		ghost.rotation.y = lerp_angle(ghost.rotation.y, ghost_rot, minf(1.0, _dt * 12.0))
 	if enemy != null and info_panel.visible and military:
 		var e: Dictionary = enemy
-		info_label.text = "%s\n%s\n🛡️ %d" % [tr(e.ai.name) if e.has("ai") else "", tr("BLD_" + String(e.type).to_upper()), e.garrison]
+		_set_head(e.type, tr("BLD_" + String(e.type).to_upper()), tr(e.ai.name) if e.has("ai") else "")
+		info_label.text = "🛡️ %d" % e.garrison
+		_set_chips([])
 		var av: Dictionary = military.avail_kinds(0)
 		for kk in ["S", "B"]:
 			att_sl[kk].max_value = av[kk]
@@ -587,7 +627,10 @@ func _process(_dt: float) -> void:
 			var n_set := 0
 			if settlers:
 				n_set = settlers.get_child_count()
-			info_label.text = tr("BLD_HAUPTHAUS") + "\n" + tr("ST_HQ") + "\n" + tr("UI_HQ_INFO") % [n_set, economy.buildings.filter(func(x): return int(x.get("owner", 0)) == 0 and not x.get("removed", false)).size(), int(economy.stock.get("werkzeug", 0)), int(economy.stock.get("muenzen", 0))] + _stock_text()
+			_set_head("lager", tr("BLD_HAUPTHAUS"), tr("UI_HQ_SUB"))
+			info_label.text = tr("ST_HQ") + "\n" + tr("UI_HQ_INFO") % [n_set, economy.buildings.filter(func(x): return int(x.get("owner", 0)) == 0 and not x.get("removed", false)).size(), int(economy.stock.get("werkzeug", 0)), int(economy.stock.get("muenzen", 0))]
+			info_label.text += "\n📦 " + tr("UI_STORED")
+			_set_chips(_stock_sections())
 			return
 		var txt := (tr("BLD_HAUPTHAUS") if b.type == "lager" and not economy.buildings.is_empty() and b == economy.buildings[0] else tr(_key(b.type))) + "\n" + tr(b.status)
 		if b.type == "wohnhaus" and b.has("lvl") and b.build >= 1.0:
@@ -600,12 +643,109 @@ func _process(_dt: float) -> void:
 		if b.build < 1.0:
 			txt += "  %d %%" % int(b.build * 100.0)
 		else:
-			txt += _orders_text(b) + _bufs_text(b)
+			txt += _orders_text(b)
 			if b.type == "lager":
-				txt += "\n" + tr("UI_SHARED_STOCK") + _stock_text()
-		info_label.text = txt
+				txt += "\n" + tr("UI_SHARED_STOCK")
+		var lines := txt.split("\n", true, 1)
+		_set_head(b.type, lines[0], tr("UI_LEVEL_UP") if b.get("up", 0) > 0 else "")
+		info_label.text = lines[1] if lines.size() > 1 else ""
+		if b.build < 1.0:
+			var need := []
+			for k in b.get("site_need", {}):
+				need.append([k, int(b.get("site_in", {}).get(k, 0))])
+			_set_chips([["🧱 " + tr("UI_SITE_MAT"), need]] if not need.is_empty() else [])
+		elif b.type == "lager":
+			_set_chips(_stock_sections())
+		else:
+			_set_chips(_io_sections(b))
 
 var order_box: HBoxContainer
+var info_icon: TextureRect
+var info_title: Label
+var info_sub: Label
+var info_chips: VBoxContainer
+var _chip_sig := ""
+
+func close_info() -> void:
+	selected = null
+	enemy = null
+	info_panel.visible = false
+	_chip_sig = ""
+
+func _set_head(t: String, title: String, sub: String) -> void:
+	info_title.text = title
+	info_sub.text = sub
+	info_icon.texture = UiIcons.bld_tex("lagerhaus" if t == "lager" else t) if t != "" else null
+	info_icon.visible = info_icon.texture != null
+
+# Abschnitte als Kacheln: [[Überschrift, [[Ware, Menge], ...]], ...]
+func _set_chips(sections: Array) -> void:
+	var sig := str(sections)
+	if sig == _chip_sig:
+		return
+	_chip_sig = sig
+	for c in info_chips.get_children():
+		c.queue_free()
+	for sec in sections:
+		var hl := Label.new()
+		hl.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		hl.text = sec[0]
+		hl.add_theme_font_size_override("font_size", 14)
+		hl.add_theme_color_override("font_color", Color(0.94, 0.77, 0.4))
+		info_chips.add_child(hl)
+		var fl := HFlowContainer.new()
+		fl.add_theme_constant_override("h_separation", 6)
+		fl.add_theme_constant_override("v_separation", 6)
+		info_chips.add_child(fl)
+		for it in sec[1]:
+			var pc := PanelContainer.new()
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = Color(0, 0, 0, 0.28) if int(it[1]) > 0 else Color(0.5, 0.1, 0.05, 0.35)
+			sb.set_corner_radius_all(6)
+			sb.content_margin_left = 7
+			sb.content_margin_right = 8
+			sb.content_margin_top = 2
+			sb.content_margin_bottom = 2
+			pc.add_theme_stylebox_override("panel", sb)
+			pc.tooltip_text = tr("ITEM_" + String(it[0]).to_upper())
+			var lb := Label.new()
+			lb.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+			lb.text = "%s %s  %d" % [economy.icon(it[0]), tr("ITEM_" + String(it[0]).to_upper()), int(it[1])]
+			lb.add_theme_font_size_override("font_size", 15)
+			pc.add_child(lb)
+			fl.add_child(pc)
+
+func _io_sections(b: Dictionary) -> Array:
+	var io = economy.data.io.get(b.type, null)
+	if io == null:
+		return []
+	var out := []
+	var ins := []
+	for k in io[0]:
+		for alt in String(k).split("|"):
+			if economy.data.items.has(alt):
+				ins.append([alt, int(b["in"].get(alt, 0))])
+	var outs := []
+	for k in io[1]:
+		if economy.data.items.has(k):
+			outs.append([k, int(b.out.get(k, 0))])
+	if not ins.is_empty():
+		out.append(["⬇ " + tr("UI_NEEDS"), ins])
+	if not outs.is_empty():
+		out.append(["⬆ " + tr("UI_MAKES"), outs])
+	return out
+
+func _stock_sections() -> Array:
+	var res := []
+	for g in STOCK_GROUPS:
+		var items := []
+		for k in g[1]:
+			var n := int(economy.stock.get(k, 0))
+			if n > 0:
+				items.append([k, n])
+		if not items.is_empty():
+			res.append([tr(g[0]), items])
+	return res
 
 # Lagerbestand für Haupthaus und Lagerhäuser (gemeinsamer Vorrat), nach Gruppen
 const STOCK_GROUPS := [

@@ -99,6 +99,10 @@ func _input(e: InputEvent) -> void:
 	if not (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_RIGHT):
 		return
 	var closed := false
+	var bl = main.get("builder")
+	if bl and bl.info_panel.visible and bl.placing == "":
+		bl.close_info()
+		closed = true
 	if stats_win and stats_win.win and is_instance_valid(stats_win.win):
 		stats_win.toggle(stats_win.mode)
 		closed = true
