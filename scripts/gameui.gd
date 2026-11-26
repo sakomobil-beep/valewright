@@ -643,7 +643,7 @@ func about_page(in_game: bool) -> void:
 
 # ---------- Einstellungen ----------
 const SETTINGS := "user://settings.cfg"
-var opts := {"volume": 0.8, "shadows": true, "effects": true, "cam_speed": 1.0, "language": "", "grass": "hoch",
+var opts := {"music": 0.6, "volume": 0.8, "shadows": true, "effects": true, "cam_speed": 1.0, "language": "", "grass": "hoch",
 	"preset": "hoch", "window": "vollbild", "res": "1920x1080", "vsync": true, "fps": 0, "scale": 1.0, "aa": "msaa2",
 	"shadow_q": "hoch", "tree_dist": 75, "show_fps": false, "haze": false}
 # Voreinstellungen: ein Klick stellt alles passend ein
@@ -673,6 +673,9 @@ func apply_settings() -> void:
 	load_settings()
 	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(0.001, opts.volume)))
 	_apply_display()
+	var mus = main.get_node_or_null("Musik") if main else null
+	if mus:
+		mus.set_volume(float(opts.music))
 	if main == null:
 		return
 	var sun: DirectionalLight3D = main.get_node_or_null("Sonne")
@@ -785,6 +788,11 @@ func settings_menu(in_game: bool) -> void:
 		vol.min_value = 0.0; vol.max_value = 1.0; vol.step = 0.05; vol.value = opts.volume
 		vol.value_changed.connect(func(v): set.call("volume", v))
 		vb.add_child(vol)
+		_label(vb, "SET_MUSIC")
+		var mv := HSlider.new()
+		mv.min_value = 0.0; mv.max_value = 1.0; mv.step = 0.05; mv.value = opts.music
+		mv.value_changed.connect(func(v): set.call("music", v, false))
+		vb.add_child(mv)
 		_label(vb, "SET_CAMSPEED")
 		var cs := HSlider.new()
 		cs.min_value = 0.4; cs.max_value = 2.0; cs.step = 0.1; cs.value = opts.cam_speed

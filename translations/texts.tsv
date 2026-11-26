@@ -278,7 +278,7 @@ HELP_SAVE	Im Pausenmenü (Esc oder „☰ Menü“) kannst du in 3 Plätzen spei
 HELP_TIPS_T	💡 Tipps	💡 Tips
 HELP_TIPS	• Bretter sind am Anfang knapp – lieber zwei Holzfäller pro Sägewerk.\n• Vergiss den Förster nicht, sonst ist der Wald irgendwann weg.\n• Kurze Wege: Bäckerei nahe an Mühle und Brunnen, Schmelze nahe an den Bergwerken.\n• Achte auf Werkzeug: Ohne Werkzeug kommen keine neuen Arbeiter.\n• Halte immer etwas Essen für Bergwerke und Soldaten bereit.\n• Ein zweites Lager in einem neuen Gebiet spart den Trägern lange Wege.\n• Baue Wachtürme mit Bogenschützen an der Grenze zum Gegner – sie wehren Angriffe viel besser ab.	• Planks are short at the start – better two woodcutters per sawmill.\n• Don't forget the forester, or the forest will be gone one day.\n• Short paths: bakery close to mill and well, smelter close to the mines.\n• Watch your tools: without tools no new workers arrive.\n• Always keep some food ready for mines and soldiers.\n• A second storehouse in a new area saves carriers long walks.\n• Build watchtowers with archers on the border with your enemy – they fend off attacks much better.
 MENU_SETTINGS	⚙️ Einstellungen	⚙️ Settings
-SET_VOLUME	🔊 Lautstärke	🔊 Volume
+SET_VOLUME	🔊 Gesamtlautstärke	🔊 Master volume
 SET_CAMSPEED	🎥 Kamera-Geschwindigkeit	🎥 Camera speed
 SET_SHADOWS	Schatten	Shadows
 SET_LANGUAGE	🌐 Sprache	🌐 Language
@@ -692,3 +692,4 @@ SET_EFFECTS	Effekte (Umgebungsverdeckung)	Effects (ambient occlusion)
 SET_HAZE	Dunst in der Ferne	Haze in the distance
 INTRO_PRESENTS	präsentiert	presents
 INTRO_SUBTITLE	Ein Aufbauspiel aus dem Odenwald	A settlement game from the Odenwald
+SET_MUSIC	🎵 Musik-Lautstärke	🎵 Music volume

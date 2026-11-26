@@ -236,6 +236,10 @@ func _setup_stock() -> void:
 	ui_layer.add_child(rb)
 	stock_label = Label.new()
 	economy.changed.connect(_update_stock)
+	var music := preload("res://scripts/music.gd").new()   # Hintergrundmusik
+	music.name = "Musik"
+	music.main = self
+	add_child(music)
 	var grass := preload("res://scripts/grass.gd").new()
 	grass.name = "Gras"
 	grass.terrain = terrain
