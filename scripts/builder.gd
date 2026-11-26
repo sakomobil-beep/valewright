@@ -729,8 +729,8 @@ func _process(_dt: float) -> void:
 	if enemy != null and info_panel.visible and military:
 		var e: Dictionary = enemy
 		_set_head(e.type, tr("BLD_" + String(e.type).to_upper()), tr(e.ai.name) if e.has("ai") else "")
-		info_label.text = "🛡️ %d" % e.garrison
-		_set_chips([])
+		info_label.text = ""
+		_enemy_panel(e)
 		var av: Dictionary = military.avail_kinds(0)
 		for kk in ["S", "B"]:
 			att_sl[kk].max_value = av[kk]
@@ -740,8 +740,6 @@ func _process(_dt: float) -> void:
 		att_box.visible = not military.peace()
 		attack_btn.text = tr("UI_ATTACK") % int(att_sl.S.value + att_sl.B.value)
 		attack_btn.visible = not military.peace()
-		if military.peace():
-			info_label.text += "\n" + tr("MSG_PEACE")
 		order_box.visible = false
 		return
 	attack_btn.visible = false
@@ -796,7 +794,11 @@ func _process(_dt: float) -> void:
 		else:
 			var rest := info_label.text.split("\n", true, 1)   # Status steht jetzt in der Arbeits-Karte
 			info_label.text = rest[1] if rest.size() > 1 else ""
-			_set_chips(_io_sections(b), b)
+			if military and (military.POSTS.has(b.type) or b.type == "kaserne"):
+				info_label.text = ""
+				_military_panel(b)
+			else:
+				_set_chips(_io_sections(b), b)
 
 var order_box: HBoxContainer
 var info_icon: TextureRect
@@ -1069,6 +1071,83 @@ func _house_panel(b: Dictionary) -> void:
 			_lbl(hb, "%d/%d" % [mini(have, need), need], 13, C_DIM)
 		var hint := tr("UI_HOUSE_UP_HINT") % (3 - int(b.sat)) if int(b.sat) < 3 else (tr("UI_HOUSE_UP_READY") if b.get("miss", []).is_empty() else tr("UI_HOUSE_UP_WAIT"))
 		_lbl(c3, hint, 12, C_DIM).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+# ---------- Militär-Fenster: Besatzung Platz für Platz, Kaserne mit Ausbildung ----------
+func _slot_row(par: Control, kind: String, s) -> void:
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 8)
+	par.add_child(hb)
+	var ic := "🏹" if kind == "bogen" else "⚔️"
+	if s == null:
+		_lbl(hb, ic, 15, C_DIM, 26)
+		_lbl(hb, tr("UI_SLOT_FREE"), 13, C_DIM)
+		return
+	if s.get("militia", false):
+		ic = "🏏"
+	_lbl(hb, ic, 15, Color.WHITE, 26)
+	_lbl(hb, tr(military.RANKS[s.kind][s.rank]), 14, Color(0.96, 0.9, 0.78), 140)
+	_lbl(hb, "★".repeat(int(s.rank) + 1) + "☆".repeat(military.max_rank(s.kind) - int(s.rank)), 13, C_GOLD)
+
+func _military_panel(b: Dictionary) -> void:
+	var own: Array = military.soldiers.filter(func(s): return s.get("home") == b and s.state == "garrison")
+	var sig := "M%s|%s|%d|%d|%d|%s|%s" % [b.type, str(own.map(func(s): return [s.kind, s.rank])), int(b.get("trS", 0)), int(b.get("trB", 0)), int(b.get("promo", 0)), str(b.get("status", "")), str(b["in"]) if b.has("in") else ""]
+	if sig == _chip_sig:
+		return
+	_chip_sig = sig
+	info_label.visible = false
+	for c in info_chips.get_children():
+		c.queue_free()
+	if military.POSTS.has(b.type):
+		var P: Dictionary = military.POSTS[b.type]
+		var total := int(P.get("schwert", 0)) + int(P.get("bogen", 0))
+		var full := own.size() >= total
+		var c1 := _hpcard(info_chips, Color(0.1, 0.25, 0.08, 0.35) if full else (Color(0.35, 0.08, 0.05, 0.35) if own.is_empty() else Color(0, 0, 0, 0.25)))
+		var hb := HBoxContainer.new(); hb.add_theme_constant_override("separation", 8); c1.add_child(hb)
+		_lbl(hb, "🛡️ " + tr("MIL_GARRISON"), 14, C_GOLD, 130)
+		_bar(hb, own.size(), total, C_OK if full else (C_BAD if own.is_empty() else C_GOLD), 150)
+		_lbl(hb, "%d/%d" % [own.size(), total], 13, C_DIM)
+		_lbl(c1, ("✔ " if not own.is_empty() else "✖ ") + tr(String(b.get("status", ""))) if String(b.get("status", "")) != "" else "", 13, C_OK if not own.is_empty() else C_BAD)
+		var c2 := _hpcard(info_chips)
+		_lbl(c2, tr("UI_SLOTS"), 14, C_GOLD)
+		for kind in ["schwert", "bogen"]:
+			var list: Array = own.filter(func(s): return s.kind == kind)
+			for i in int(P.get(kind, 0)):
+				_slot_row(c2, kind, list[i] if i < list.size() else null)
+		return
+	# Kaserne: Ausbildungsaufträge und Ausrüstung
+	var c3 := _hpcard(info_chips)
+	_lbl(c3, "🎓 " + tr("UI_TRAINING"), 14, C_GOLD)
+	for row in [["⚔️", tr("MLW_SWORD"), int(b.get("trS", 0))], ["🏹", tr("MLW_BOW"), int(b.get("trB", 0))], ["⭐", tr("UI_PROMOTIONS"), int(b.get("promo", 0))]]:
+		var hb := HBoxContainer.new(); hb.add_theme_constant_override("separation", 8); c3.add_child(hb)
+		_lbl(hb, row[0], 15, Color.WHITE, 26)
+		_lbl(hb, row[1], 14, Color(0.96, 0.9, 0.78), 160)
+		_lbl(hb, tr("UI_ORDERED") % row[2], 13, C_GOLD if row[2] > 0 else C_DIM)
+	var c4 := _hpcard(info_chips)
+	_lbl(c4, "🧰 " + tr("UI_EQUIPMENT"), 14, C_GOLD)
+	var gr := GridContainer.new(); gr.columns = 2; gr.add_theme_constant_override("h_separation", 14); c4.add_child(gr)
+	economy.bufs(b)
+	for k in ["schwert", "schild", "bogen", "pfeile", "muenzen"]:
+		var hb := HBoxContainer.new(); hb.add_theme_constant_override("separation", 6); gr.add_child(hb)
+		hb.add_child(UiIcons.icon_rect(k, 22))
+		var n := int(b["in"].get(k, 0)) + (int(economy.stock.get(k, 0)) if k == "muenzen" else 0)
+		_lbl(hb, tr("ITEM_" + k.to_upper()), 14, Color(0.96, 0.9, 0.78), 96)
+		_lbl(hb, str(n), 13, C_OK if n > 0 else C_BAD)
+
+func _enemy_panel(e: Dictionary) -> void:
+	var sig := "E%d|%s" % [int(e.garrison), str(e.get("owner", 0))]
+	if sig == _chip_sig:
+		return
+	_chip_sig = sig
+	info_label.visible = false
+	for c in info_chips.get_children():
+		c.queue_free()
+	var cap := int(military.GARRISON.get(e.type, 1))
+	var c1 := _hpcard(info_chips, Color(0.35, 0.08, 0.05, 0.35))
+	var hb := HBoxContainer.new(); hb.add_theme_constant_override("separation", 8); c1.add_child(hb)
+	_lbl(hb, "🛡️ " + tr("MIL_GARRISON"), 14, C_GOLD, 130)
+	_bar(hb, int(e.garrison), cap, C_BAD, 150)
+	_lbl(hb, "%d/%d" % [int(e.garrison), cap], 13, C_DIM)
+	_lbl(c1, tr("MSG_PEACE") if military.peace() else tr("UI_ENEMY_HINT"), 12, C_DIM).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 func _stock_sections() -> Array:
 	var res := []

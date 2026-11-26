@@ -615,3 +615,10 @@ UI_HOUSE_UP_HINT	Noch %d volle Versorgungsrunde(n), dann steigt das Haus auf, we
 UI_HOUSE_UP_READY	Bereit – steigt in der nächsten Runde auf!	Ready – rises next round!
 UI_HOUSE_UP_WAIT	Zufrieden – wartet nur noch auf die fehlenden Waren oben.	Content – only waiting for the missing goods above.
 UI_PROGRESS	Herstellung	Production
+UI_SLOT_FREE	– frei –	– empty –
+UI_SLOTS	Plätze	Slots
+UI_TRAINING	Ausbildung	Training
+UI_PROMOTIONS	Beförderungen	Promotions
+UI_ORDERED	%d bestellt	%d ordered
+UI_EQUIPMENT	Ausrüstung	Equipment
+UI_ENEMY_HINT	Wähle unten, wie viele Kämpfer angreifen – mehr als die Besatzung erhöht die Chance.	Choose below how many fighters attack – more than the garrison raises your chances.
