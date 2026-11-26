@@ -76,7 +76,7 @@ func prepare(cfg: Dictionary) -> void:
 		nm = maxi(0, nm - 3)
 	var big := 1.2 if gen.terrain == "gebirge" else 1.0
 	for i in nm:
-		for tries in 80:
+		for tries in (240 if i == 0 else 80):
 			var ang := rng.randf() * TAU
 			# erster Gebirgszug nah am Start, die weiteren über die ganze Karte verteilt
 			var near := i == 0 and not classic
@@ -97,7 +97,7 @@ func prepare(cfg: Dictionary) -> void:
 					ok = false   # nicht über den Kartenrand
 				if absf(c.p.x - river_x(c.p.y)) < c.r * 1.2 + 10.0:
 					ok = false   # den Fluss nicht zuschütten
-				if c.p.length() < 62.0 * sc:
+				if c.p.length() < 62.0 * rsc:
 					ok = false   # Startgebiet frei lassen
 				for m in mountains:
 					if m.p.distance_to(c.p) < (m.r + c.r) * 1.1:
