@@ -601,16 +601,20 @@ var att_sl := {}
 var _att_for = null
 
 # Ausbau wie im Browser: 2 Dachziegel + 2 Bretter, danach 20 % schneller, goldene Fahne auf dem Dach
+const UP_COINS := 3   # Ausbau kostet zusätzlich Münzen
+
 func upgrade(b: Dictionary) -> void:
 	if b.get("up", 0) > 0:
 		return
-	if int(economy.stock.get("ziegel", 0)) < 2 or int(economy.stock.get("bretter", 0)) < 2:
+	if int(economy.stock.get("ziegel", 0)) < 2 or int(economy.stock.get("bretter", 0)) < 2 or int(economy.stock.get("muenzen", 0)) < UP_COINS:
 		economy.message.emit(tr("MSG_UPGRADE_NEED"))
 		return
 	economy.stock.ziegel -= 2
 	economy.stock.bretter -= 2
+	economy.stock.muenzen -= UP_COINS
 	economy.note("use", "ziegel", 2)
 	economy.note("use", "bretter", 2)
+	economy.note("use", "muenzen", UP_COINS)
 	b.up = 1
 	up_badge(b)
 	economy.changed.emit()
