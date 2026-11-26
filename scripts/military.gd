@@ -22,6 +22,7 @@ const FIRST_ATTACK := {"leicht": 3600.0, "mittel": 2700.0, "schwer": 1500.0}
 var terrain: Node3D
 var economy: Node
 var settlers: Node3D
+var aie: AiEconomy   # KI-Wirtschaft nach Spielerregeln (scripts/ai_economy.gd)
 var builder: Node3D
 
 var n := 0
@@ -39,6 +40,7 @@ var game_over := false
 
 # ---------- Aufbau ----------
 func _ready() -> void:
+	aie = AiEconomy.new(self)
 	_half = terrain.SIZE * 0.5
 	n = int(terrain.SIZE / CELL)
 	owner_grid.resize(n * n)
@@ -131,21 +133,23 @@ func _spawn_ai(id: int, p: Vector3, diff: String) -> void:
 		"t_grow": 0.0, "t_expand": 0.0, "t_attack": 0.0, "diff": diff, "alive": true}
 	ais.append(ai)
 	var lager := _ai_building(ai, "lager", p, 0)
-	lager.garrison = DIFF[diff].start
+	lager.garrison = 0   # wie der Spieler: keine geschenkten Soldaten
 	ai.lager = lager
 	ai.reserve = 0
 	claims.append({"pos": p, "r": CLAIM.lager, "owner": id, "b": lager})
-	# ein paar Wirtschaftsgebäude rund ums Lager
-	var econ := ["holzfaeller", "saegewerk", "bauernhof", "wohnhaus", "steinmetz"]
-	for k in econ.size():
-		var q := p + Vector3(cos(k * 1.3), 0, sin(k * 1.3)) * 13.0
-		if terrain.height(q.x, q.z) > terrain.WATER_Y + 0.5:
-			_ai_building(ai, econ[k], q, 0)
+	if aie == null:
+		aie = AiEconomy.new(self)
+	aie.setup(ai)   # gleicher Startvorrat, 8 Einwohner, 2 Träger, 1 Baumeister – alles weitere muss sie selbst bauen
 
 func _ai_building(ai: Dictionary, type: String, p: Vector3, garrison: int) -> Dictionary:
 	p.y = terrain.height(p.x, p.z)
-	var file := "lager" if type == "lager" else ("wohnhaus_1" if type == "wohnhaus" else type)
-	var node: Node3D = load("res://models/%s.glb" % file).instantiate()
+	var node: Node3D
+	var bld = get_parent().get("builder")
+	if type != "lager" and bld != null:
+		node = bld.model(type)
+	else:
+		var file := "lager" if type == "lager" else ("wohnhaus_1" if type == "wohnhaus" else type)
+		node = load("res://models/%s.glb" % file).instantiate()
 	node.scale = Vector3.ONE * 1.5
 	node.position = p
 	node.rotation.y = atan2(-p.x, -p.z)   # zur Kartenmitte gedreht
@@ -990,22 +994,16 @@ func _ai_tick(ai: Dictionary, dt: float) -> void:
 	if not ai.alive:
 		return
 	var D: Dictionary = DIFF[ai.diff]
-	ai.t_grow += dt
-	ai.t_expand += dt
 	ai.t_attack += dt
-	if ai.t_grow >= D.grow:
-		ai.t_grow = 0.0
-		ai.lager.garrison += 1
-	# Türme nachbesetzen (wie aiFillPosts)
-	if ai.lager.garrison > 3:
+	# Wirtschaft, Bauen, Einwohner, Soldaten – nach denselben Regeln wie beim Spieler
+	aie.tick(ai, dt)
+	# Türme mit ausgebildeten Kämpfern aus dem Lager auffüllen
+	if ai.lager.garrison > 1:
 		for b in ai.buildings:
-			if GARRISON.has(b.type) and not b.get("destroyed", false) and int(b.garrison) < GARRISON[b.type]:
+			if GARRISON.has(b.type) and b.get("build", 1.0) >= 1.0 and not b.get("destroyed", false) and int(b.garrison) < GARRISON[b.type]:
 				b.garrison += 1
 				ai.lager.garrison -= 1
 				break
-	if ai.t_expand >= D.expand and ai.lager.garrison > 2:
-		ai.t_expand = 0.0
-		_ai_expand(ai)
 	var early: bool = ai.get("angry", false) and ai.diff != "leicht"
 	if (time > FIRST_ATTACK.get(ai.diff, 2700.0) or early) and ai.t_attack >= D.attack and not ai.get("peaceful", false):
 		ai.t_attack = D.attack * randf_range(-0.2, 0.2)
@@ -1056,7 +1054,7 @@ func _ai_send(ai: Dictionary, target: Dictionary, n: int) -> void:
 	if n <= 0:
 		return
 	ai.lager.garrison -= n
-	var rk: int = 0 if ai.diff == "leicht" else (1 if ai.diff == "mittel" else 2)
+	var rk: int = 0   # keine geschenkten Ränge – wie beim Spieler nur über Beförderung
 	for i in n:
 		var s := _new_soldier(ai.id, _door(ai.lager), rk, "schwert")
 		s.slot = i
@@ -1146,6 +1144,9 @@ func load_ai(a: Dictionary) -> void:
 	ai.t_expand = float(a.t_expand)
 	ai.t_attack = float(a.t_attack)
 	ai.peaceful = bool(a.get("peaceful", false))
+	if a.get("eco", {}).has("stock"):
+		aie.restore(ai, a.eco)
+		return
 	for tw in a.towers:
 		var b := _ai_building(ai, "wachturm", Vector3(tw.pos[0], tw.pos[1], tw.pos[2]), int(tw.g))
 		claims.append({"pos": b.pos, "r": CLAIM.wachturm, "owner": id, "b": b})

@@ -44,7 +44,8 @@ func save(slot: String) -> void:
 	d.soldiers = m.soldiers.filter(func(s): return s.owner == 0 and s.state != "garrison").map(func(s): return [s.kind, s.rank])
 	d.ais = m.ais.map(func(a): return {"id": a.id, "diff": a.diff, "alive": a.alive, "pos": _v(a.pos),
 		"lager": a.lager.garrison, "peaceful": a.get("peaceful", false), "t_grow": a.t_grow, "t_expand": a.t_expand, "t_attack": a.t_attack,
-		"towers": a.buildings.filter(func(b): return b.type == "wachturm").map(func(b): return {"pos": _v(b.pos), "g": b.garrison})})
+		"towers": a.buildings.filter(func(b): return b.type == "wachturm").map(func(b): return {"pos": _v(b.pos), "g": b.garrison}),
+		"eco": m.aie.save(a) if a.alive and a.has("eco") else {}})
 	var f := FileAccess.open(Session.save_path(slot), FileAccess.WRITE)
 	f.store_string(JSON.stringify(d))
 	if slot != "auto":
