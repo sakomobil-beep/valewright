@@ -37,6 +37,8 @@ var _game_time := 0.0
 
 var stats_win: Node
 
+var _bar: PanelContainer
+
 func setup(l: CanvasLayer) -> void:
 	layer = l
 	stats_win = preload("res://scripts/stats_window.gd").new()
@@ -44,12 +46,13 @@ func setup(l: CanvasLayer) -> void:
 	stats_win.layer = l
 	add_child(stats_win)
 	var bar := PanelContainer.new()
-	_panel_style(bar, 8)
+	_bar = bar
+	bar.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	bar.anchor_left = 1.0
 	bar.anchor_right = 1.0
 	bar.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	bar.offset_right = -14
-	bar.offset_top = 12
+	bar.offset_right = -22
+	bar.offset_top = 20
 	layer.add_child(bar)
 	var hb := HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 4)
@@ -75,6 +78,16 @@ func setup(l: CanvasLayer) -> void:
 	set_speed(1.0)
 	_setup_minimap()
 
+# Knöpfe in die durchgehende Rohstoffleiste einhängen (rechts bündig)
+func dock(row: HBoxContainer) -> void:
+	_bar.get_parent().remove_child(_bar)
+	_bar.anchor_left = 0.0
+	_bar.anchor_right = 0.0
+	_bar.offset_right = 0
+	_bar.offset_top = 0
+	_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(_bar)
+
 func _panel_style(c: Control, m := 10) -> void:
 	c.add_theme_stylebox_override("panel", UiIcons.wood(m))
 
@@ -82,7 +95,7 @@ func _icon_btn(parent: Control, txt: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = txt
 	b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-	b.custom_minimum_size = Vector2(38, 34)
+	b.custom_minimum_size = Vector2(30, 34)
 	b.add_theme_font_size_override("font_size", 17)
 	b.pressed.connect(cb)
 	parent.add_child(b)

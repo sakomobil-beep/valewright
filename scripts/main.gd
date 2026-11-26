@@ -113,6 +113,7 @@ func _ready() -> void:
 	hud.main = self
 	add_child(hud)
 	hud.setup(ui_layer)
+	hud.dock(rb.row)
 	market = Market.new()
 	market.main = self
 	add_child(market)

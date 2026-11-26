@@ -372,9 +372,9 @@ LOCK_1	ab dem ersten zufriedenen Bauernhaus	after your first happy farmhouse
 LOCK_2	ab dem ersten zufriedenen Fachwerkhaus	after your first happy timber house
 LOCK_3	ab dem ersten zufriedenen Bürgerhaus	after your first happy townhouse
 LOCK_4	ab dem ersten zufriedenen Herrenhaus	after your first happy manor
-GRP_BAU	Baustoffe	Building materials
+GRP_BAU	Baustoffe	Building
 GRP_ESSEN	Essen	Food
-GRP_LAND	Landwirtschaft	Farming
+GRP_LAND	Landwirt.	Farming
 GRP_ERZE	Erze	Ores
 GRP_METALL	Metall	Metal
 GRP_HANDWERK	Handwerk	Crafts
@@ -578,6 +578,6 @@ TIP_RECIPE	Ware:	Goods:
 TIP_TERRITORY	Gebiet (Radius):	Territory (radius):
 TIP_NEEDS	Braucht:	Needs:
 TIP_MAKES	Stellt her:	Produces:
-POP_FREE	Einwohner (frei/gesamt)	Residents (free/total)
+POP_FREE	Einwohner	Residents
 POP_FREE_TIP	🏠 Freie Einwohner: %d von %d\nPlatz in Haupthaus und Wohnhäusern: %d\nNeue Einwohner kommen nach und nach – über 10 nur, wenn Wohnhäuser zufrieden sind.\nJeder Beruf, Träger, Baumeister und Soldat braucht einen freien Einwohner.	🏠 Free residents: %d of %d\nRoom in town hall and houses: %d\nNew residents arrive over time – above 10 only while houses are happy.\nEvery job, carrier, builder and soldier needs a free resident.
 ST_NO_PEOPLE	Keine freien Einwohner – baue Wohnhäuser	No free residents – build houses

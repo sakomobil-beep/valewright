@@ -29,13 +29,20 @@ var _drop: PanelContainer
 var _open := -1
 var _groups: Array = []
 var _blink := 0.0
+var row: HBoxContainer   # hier dockt hud.gd die Tempo-/Menüknöpfe an
 
 func _ready() -> void:
 	add_theme_stylebox_override("panel", UiIcons.wood(4))
-	position = Vector2(12, 12)
+	# durchgehende Leiste über die ganze Breite; rechts sitzen Tempo- und Menüknöpfe (hud.gd)
+	anchor_left = 0.0
+	anchor_right = 1.0
+	offset_left = 12
+	offset_right = -12
+	offset_top = 12
 	var hb := HBoxContainer.new()
-	hb.add_theme_constant_override("separation", 5)
+	hb.add_theme_constant_override("separation", 3)
 	add_child(hb)
+	row = hb
 	_slot(hb, "muenzen", "muenzen", "", true)
 	_gap(hb)
 	for k in PIN:
@@ -49,6 +56,9 @@ func _ready() -> void:
 	_gap(hb)
 	for p in [["pop_free", "🏠", "POP_FREE"], ["pop_work", "👥", "POP_SETTLERS"], ["pop_car", "🧺", "POP_CARRIERS"], ["pop_sold", "⚔️", "POP_SOLDIERS"]]:
 		_slot(hb, p[0], "", tr(p[2]), false, p[1])
+	var fill := Control.new()
+	fill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hb.add_child(fill)
 	_drop = PanelContainer.new()
 	_drop.add_theme_stylebox_override("panel", UiIcons.wood(6))
 	_drop.visible = false
@@ -121,7 +131,7 @@ func _slot(parent: Node, key: String, icon_item: String, sub: String, big := fal
 		sl.add_theme_color_override("font_color", DIM)
 		sl.clip_text = true
 		v.add_child(sl)
-	b.custom_minimum_size = Vector2(70 if big else (74 if sub != "" else 62), 44)
+	b.custom_minimum_size = Vector2(62 if big else (66 if sub != "" else 56), 44)
 	parent.add_child(b)
 	var s := {"btn": b, "num": num, "arrow": arrow, "sub": sl, "style": st}
 	_slots[key] = s
