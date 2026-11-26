@@ -106,7 +106,24 @@ func prepare(cfg: Dictionary) -> void:
 func river_x(z: float) -> float:
 	return RIVER_X + sin(z * 0.018) * 22.0 + sin(z * 0.047) * 7.0
 
+# Berge als Terrassen: niedriger, mit runden, ebenen Absätzen für Bergwerke
+var terraces := true
+const TERRACE_STEP := 2.8
+const MOUNT_MAX := 11.0
+
 func mountain(x: float, z: float) -> float:
+	var raw := _mountain_raw(x, z)
+	if not terraces or raw <= 0.0:
+		return raw
+	var h := MOUNT_MAX * (1.0 - exp(-raw / 9.0))   # Spitzen abflachen, Stufen über den ganzen Berg verteilt
+	var t := h / TERRACE_STEP
+	var fl := floorf(t)
+	var e := clampf((t - fl - 0.7) / 0.3, 0.0, 1.0)   # 70 % eben, 30 % runde Kante
+	e = e * e * (3.0 - 2.0 * e)
+	var ter := (fl + e) * TERRACE_STEP
+	return lerpf(h, ter, smoothstep(0.6, 2.4, h))      # am Fuß sanft auslaufend
+
+func _mountain_raw(x: float, z: float) -> float:
 	var h := 0.0
 	for m in mountains:
 		var d: float = Vector2(x, z).distance_to(m.p)
@@ -827,15 +844,30 @@ func _make_deposits() -> void:
 			if kind == "gold" and rg.find(gi) < 2 and rg.size() > 2:
 				gi = rg[rg.size() - 1]   # Gold liegt tief im Gebirge
 				m = mountains[gi]
-			for tries in 12:
+			for tries in 40:
 				var ang := rng.randf() * TAU
 				var r: float = rng.randf_range(0.3, 0.9) * m.r
 				var x: float = m.p.x + cos(ang) * r
 				var z: float = m.p.y + sin(ang) * r
+				if terraces and not _flat_spot(x, z, kind) and tries < 30:
+					continue   # nach 30 Versuchen reicht auch eine andere Stelle
 				if height(x, z) < WATER_Y + 1.0 or deposits.any(func(d): return Vector2(d.pos.x - x, d.pos.z - z).length() < 7.0):
 					continue
 				deposits.append({"pos": Vector3(x, height(x, z), z), "kind": kind, "found": false, "node": null})
 				break
+
+# ebene Terrassenstelle, passend zur Höhe: Stein/Kohle unten, Eisen Mitte, Gold oben
+func _flat_spot(x: float, z: float, kind: String) -> bool:
+	var h0 := height(x, z)
+	for a in 8:
+		var q := Vector2(cos(a * TAU / 8.0), sin(a * TAU / 8.0)) * 2.6
+		if absf(height(x + q.x, z + q.y) - h0) > 0.6:
+			return false
+	var lv := int(floorf(mountain(x, z) / TERRACE_STEP + 0.15))
+	match kind:
+		"gold": return lv >= 3
+		"eisenerz": return lv >= 1
+		_: return mountain(x, z) > 1.5 and lv <= 2
 
 func deposit_near(p: Vector3, kind: String, r: float):
 	for d in deposits:
