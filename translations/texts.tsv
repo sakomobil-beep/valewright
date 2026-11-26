@@ -690,3 +690,5 @@ SETT_120	120 m	120 m
 SET_SHOWFPS	FPS anzeigen	Show FPS
 SET_EFFECTS	Effekte (Umgebungsverdeckung)	Effects (ambient occlusion)
 SET_HAZE	Dunst in der Ferne	Haze in the distance
+INTRO_PRESENTS	präsentiert	presents
+INTRO_SUBTITLE	Ein Aufbauspiel aus dem Odenwald	A settlement game from the Odenwald

@@ -154,6 +154,126 @@ func _button(vb: Control, txt: String, cb: Callable, translate := true) -> Butto
 	vb.add_child(b)
 	return b
 
+# ---------- Intro beim Programmstart: Odenforge-Logo, dann der Spieltitel ----------
+# Schwarz → Logo blendet ein und wächst leicht, Glut-Funken stieben, Amboss-Schläge → „präsentiert“ →
+# Ausblenden → „Valewright“ in Gold → Hauptmenü. Jede Taste oder ein Klick überspringt.
+var _intro: Control
+var _intro_done: Callable
+
+func play_intro(done: Callable) -> void:
+	_intro_done = done
+	_intro = Control.new()
+	_intro.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_intro.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_intro)
+	var bg := ColorRect.new()
+	bg.color = Color(0.03, 0.02, 0.015)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_intro.add_child(bg)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_intro.add_child(center)
+	var vb := VBoxContainer.new()
+	vb.alignment = BoxContainer.ALIGNMENT_CENTER
+	vb.add_theme_constant_override("separation", 18)
+	center.add_child(vb)
+	var logo := TextureRect.new()
+	logo.texture = load("res://icons/odenforge_logo.png")
+	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var hgt := get_viewport().get_visible_rect().size.y * 0.58
+	logo.custom_minimum_size = Vector2(hgt * 800.0 / 940.0, hgt)
+	logo.pivot_offset = logo.custom_minimum_size * 0.5
+	logo.modulate.a = 0.0
+	logo.scale = Vector2.ONE * 0.92
+	vb.add_child(logo)
+	var pres := Label.new()
+	pres.text = tr("INTRO_PRESENTS")
+	pres.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pres.add_theme_font_size_override("font_size", 22)
+	pres.add_theme_color_override("font_color", Color(0.85, 0.72, 0.45))
+	pres.modulate.a = 0.0
+	vb.add_child(pres)
+	# Funken aus der Esse
+	var sparks := CPUParticles2D.new()
+	sparks.position = get_viewport().get_visible_rect().size * Vector2(0.5, 0.52)
+	sparks.amount = 60
+	sparks.lifetime = 1.6
+	sparks.emitting = false
+	sparks.direction = Vector2(0, -1)
+	sparks.spread = 55.0
+	sparks.initial_velocity_min = 120.0
+	sparks.initial_velocity_max = 320.0
+	sparks.gravity = Vector2(0, 260)
+	sparks.scale_amount_min = 2.0
+	sparks.scale_amount_max = 4.5
+	var g := Gradient.new()
+	g.set_color(0, Color(1.0, 0.85, 0.4, 1.0))
+	g.set_color(1, Color(1.0, 0.35, 0.05, 0.0))
+	sparks.color_ramp = g
+	_intro.add_child(sparks)
+	# Titel des Spiels
+	var title := Label.new()
+	title.text = "Valewright"
+	title.set_anchors_preset(Control.PRESET_FULL_RECT)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 96)
+	title.add_theme_color_override("font_color", Color(0.95, 0.8, 0.45))
+	title.add_theme_color_override("font_outline_color", Color(0.25, 0.14, 0.06))
+	title.add_theme_constant_override("outline_size", 10)
+	title.modulate.a = 0.0
+	_intro.add_child(title)
+	var sub := Label.new()
+	sub.text = tr("INTRO_SUBTITLE")
+	sub.set_anchors_preset(Control.PRESET_FULL_RECT)
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	sub.position.y = 90
+	sub.add_theme_font_size_override("font_size", 22)
+	sub.add_theme_color_override("font_color", Color(0.85, 0.78, 0.65))
+	sub.modulate.a = 0.0
+	_intro.add_child(sub)
+	var sfx = main.get_node_or_null("Sfx") if main else null
+	var hit := func():
+		sparks.restart()
+		sparks.emitting = true
+		if sfx: sfx.play("chop", -4.0)
+	var tw := create_tween()
+	tw.tween_interval(0.4)
+	tw.tween_property(logo, "modulate:a", 1.0, 1.2)
+	tw.parallel().tween_property(logo, "scale", Vector2.ONE, 2.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(hit)
+	tw.tween_interval(0.45)
+	tw.tween_callback(hit)
+	tw.tween_property(pres, "modulate:a", 1.0, 0.6)
+	tw.tween_interval(1.4)
+	tw.tween_property(logo, "modulate:a", 0.0, 0.7)
+	tw.parallel().tween_property(pres, "modulate:a", 0.0, 0.7)
+	tw.tween_callback(func(): if sfx: sfx.play("horn", -6.0))
+	tw.tween_property(title, "modulate:a", 1.0, 0.9)
+	tw.parallel().tween_property(sub, "modulate:a", 1.0, 1.3)
+	tw.tween_interval(1.4)
+	tw.tween_property(_intro, "modulate:a", 0.0, 0.8)
+	tw.tween_callback(_end_intro)
+	_intro.set_meta("tween", tw)
+	_intro.gui_input.connect(func(e): if (e is InputEventMouseButton and e.pressed) or (e is InputEventKey and e.pressed): _end_intro())
+
+func _unhandled_key_input(e: InputEvent) -> void:
+	if _intro and is_instance_valid(_intro) and e.pressed:
+		_end_intro()
+
+func _end_intro() -> void:
+	if _intro == null or not is_instance_valid(_intro):
+		return
+	var tw: Tween = _intro.get_meta("tween")
+	if tw and tw.is_valid():
+		tw.kill()
+	_intro.queue_free()
+	_intro = null
+	if _intro_done.is_valid():
+		_intro_done.call()
+
 # ---------- Hauptmenü ----------
 func main_menu() -> void:
 	var vb := _window(460)

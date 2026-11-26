@@ -105,7 +105,11 @@ func _ready() -> void:
 		ui_layer.visible = false
 		fog.reveal_all()
 		gameui.apply_settings()
-		gameui.main_menu()
+		if not Session.get_meta("intro_shown", false):
+			Session.set_meta("intro_shown", true)   # Intro nur beim Programmstart, nicht bei jeder Rückkehr ins Menü
+			gameui.play_intro(gameui.main_menu)
+		else:
+			gameui.main_menu()
 		return
 	missions.setup(ui_layer)
 	hud = Hud.new()
