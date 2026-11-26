@@ -73,6 +73,8 @@ func start(b: Dictionary, delivered := {}) -> void:
 	b.site_clips = clips
 	b.site_y0 = y0
 	b.site_y1 = y1
+	for sm in clips:
+		sm.set_shader_parameter("clip_y", y0 - 0.01)   # von Anfang an unsichtbar, wächst mit dem Bau
 	var site := Node3D.new()
 	site.position = b.pos
 	site.rotation.y = n.rotation.y
@@ -224,6 +226,7 @@ func _step(b: Dictionary, dt: float) -> void:
 	if w == null or w.get("dead", false):
 		b.site_builder = null
 		_call_builder(b)
+		_visual(b)   # auch wartende Baustellen zeigen nur ihren Baufortschritt (sonst wäre das ganze Gebäude zu sehen)
 		return
 	var r: float = float(economy.type_info(b.type).r)
 	var S: float = float(b.s)
