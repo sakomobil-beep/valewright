@@ -4,12 +4,12 @@ extends PanelContainer
 
 const PIN := ["bretter", "stein", "werkzeug"]
 const GROUPS := [
-	["GRP_BAU", ["stamm", "bretter", "stein"]],
+	["GRP_BAU", ["stamm", "bretter", "stein", "lehm", "ziegel"]],
 	["GRP_ESSEN", ["brot", "fisch", "schinken", "raeucherfisch", "wurst", "kaese", "kuchen"]],
 	["GRP_LAND", ["getreide", "mehl", "wasser", "schwein", "milch"]],
 	["GRP_ERZE", ["eisenerz", "kohle", "golderz"]],
 	["GRP_METALL", ["eisenbarren", "werkzeug", "karren"]],
-	["GRP_HANDWERK", ["schmuck", "wein", "trauben", "hopfen", "bier", "honig", "met", "kerzen", "wolle", "stoff", "kleidung", "lehm", "kruege", "ziegel"]],
+	["GRP_HANDWERK", ["schmuck", "wein", "trauben", "hopfen", "bier", "honig", "met", "kerzen", "wolle", "stoff", "kleidung", "kruege"]],
 	["GRP_WAFFEN", ["flachs", "sehne", "kampfstock", "schwert", "schild", "bogen", "pfeile"]],
 ]
 const TEXT := Color(1, 0.95, 0.85)
@@ -54,7 +54,7 @@ func _ready() -> void:
 		s.btn.pressed.connect(func(): _toggle(i))
 		_groups.append(s.btn)
 	_gap(hb)
-	for p in [["pop_free", "🏠", "POP_FREE"], ["pop_work", "👥", "POP_SETTLERS"], ["pop_car", "🧺", "POP_CARRIERS"], ["pop_bau", "👷", "POP_BUILDERS"], ["pop_sold", "⚔️", "POP_SOLDIERS"]]:
+	for p in [["pop_idle", "🧑", "POP_IDLE"], ["pop_free", "🏠", "POP_FREE"], ["pop_work", "👥", "POP_WORKERS"], ["pop_car", "🧺", "POP_CARRIERS"], ["pop_bau", "👷", "POP_BUILDERS"], ["pop_sold", "⚔️", "POP_SOLDIERS"]]:
 		_slot(hb, p[0], "", tr(p[2]), false, p[1])
 	var fill := Control.new()
 	fill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -69,7 +69,7 @@ func _ready() -> void:
 
 func _gap(hb: Node) -> void:
 	var c := Control.new()
-	c.custom_minimum_size = Vector2(6, 0)
+	c.custom_minimum_size = Vector2(3, 0)
 	hb.add_child(c)
 
 # eingelassenes Holzfach: Symbol, Zahl, Trendpfeil, darunter kleiner Name
@@ -131,7 +131,7 @@ func _slot(parent: Node, key: String, icon_item: String, sub: String, big := fal
 		sl.add_theme_color_override("font_color", DIM)
 		sl.clip_text = true
 		v.add_child(sl)
-	b.custom_minimum_size = Vector2(62 if big else (66 if sub != "" else 56), 44)
+	b.custom_minimum_size = Vector2(58 if big else (62 if sub != "" else 52), 44)
 	parent.add_child(b)
 	var s := {"btn": b, "num": num, "arrow": arrow, "sub": sl, "style": st}
 	_slots[key] = s
@@ -300,8 +300,8 @@ func _update() -> void:
 				car += 1
 				if not w.q.is_empty():
 					busy += 1
-			elif not w.role in ["soldat", "kind", "dorf"]:
-				work += 1
+			elif not w.role in ["soldat", "kind", "dorf", "bauarbeiter"]:
+				work += 1   # nur, wer wirklich in einem Gebäude arbeitet
 		var fig := 0
 		if military:
 			fig = military.soldiers.filter(func(s): return s.owner == 0).size()
@@ -310,8 +310,9 @@ func _update() -> void:
 			waiting += economy.out_total(bb)
 		var short: bool = waiting > 12 and busy >= car
 		var fr: int = economy.free_people()
-		_put("pop_free", "%d/%d" % [maxi(0, fr), economy.residents], 0, 2 if fr <= 0 else (1 if fr <= 2 else 0), tr("POP_FREE_TIP") % [maxi(0, fr), economy.residents, economy.home_cap()])
-		_put("pop_work", str(work), 0, 0, tr("POP_TIP"))
+		_put("pop_idle", str(maxi(0, fr)), 0, 2 if fr <= 0 else (1 if fr <= 2 else 0), tr("POP_IDLE_TIP") % maxi(0, fr))
+		_put("pop_free", "%d/%d" % [economy.residents, economy.home_cap()], 0, 0, tr("POP_FREE_TIP") % [economy.residents, economy.home_cap()])
+		_put("pop_work", str(work), 0, 0, tr("POP_WORKERS_TIP"))
 		var bn := int(economy.builders_n)
 		var bbusy := 0
 		var cons = settlers.get_parent().get_node_or_null("Baustellen") if settlers else null

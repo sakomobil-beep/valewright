@@ -424,6 +424,9 @@ func _enter(s: Dictionary, b: Dictionary) -> void:
 	if b.owner != s.owner or (GARRISON.has(b.type) and not slot_free(b, s)):
 		_retreat(s)
 		return
+	if s.get("ai_out", false) and s.owner > 0:
+		s.ai_out = false
+		ais[s.owner - 1].eco.out = maxi(0, int(ais[s.owner - 1].eco.get("out", 0)) - 1)
 	s.home = b
 	s.state = "garrison"
 	s.w.node.visible = false
@@ -807,11 +810,13 @@ func _fight(dt: float) -> void:
 			continue
 		# Zweikampf: Verteidiger hat einen kleinen Vorteil
 		var att: float = s.str
-		var dfn: float = 1.2 * (2.0 if b.owner != 0 and ais[b.owner - 1].diff == "schwer" else 1.0)
+		var dfn: float = 1.2   # gleiche Regeln: kein Verteidigungsbonus für die KI
 		if b.owner == 0:
 			dfn = 1.2 * _best_defender(b)
 		if randf() < att / (att + dfn):
 			b.garrison -= 1
+			if b.owner != 0:
+				_person_died(int(b.owner))   # KI-Verteidiger ist nur eine Zahl: Einwohner abziehen
 			_kill_defender(b)
 		else:
 			_kill(s)
@@ -836,6 +841,7 @@ func _kill_defender(b: Dictionary) -> void:
 
 func _kill(s: Dictionary) -> void:
 	soldiers.erase(s)
+	_person_died(int(s.owner), s.get("ai_out", false))
 	var w: Dictionary = s.w
 	w.q = []
 	w.node.visible = true
@@ -843,6 +849,18 @@ func _kill(s: Dictionary) -> void:
 	tw.tween_property(w.node, "rotation:z", PI / 2, 0.4)
 	tw.tween_interval(2.0)
 	tw.tween_callback(func(): settlers._remove(w))
+
+# Ein gefallener Kämpfer war ein Einwohner: er fehlt danach wirklich (Spieler und KI gleich).
+# Sein Platz im Haus wird frei, neue Einwohner kommen wie üblich über zufriedene Wohnhäuser nach.
+func _person_died(owner: int, was_out := false) -> void:
+	if owner == 0:
+		economy.residents = maxi(0, economy.residents - 1)
+		economy.changed.emit()
+	elif owner - 1 < ais.size() and ais[owner - 1].has("eco"):
+		var E: Dictionary = ais[owner - 1].eco
+		E.residents = maxi(0, int(E.residents) - 1)
+		if was_out:
+			E.out = maxi(0, int(E.get("out", 0)) - 1)
 
 func _capture(b: Dictionary, s: Dictionary) -> void:
 	var old: int = b.owner
@@ -1054,10 +1072,12 @@ func _ai_send(ai: Dictionary, target: Dictionary, n: int) -> void:
 	if n <= 0:
 		return
 	ai.lager.garrison -= n
+	ai.eco.out = int(ai.eco.get("out", 0)) + n   # unterwegs, zählen weiter als eingesetzte Einwohner
 	var rk: int = 0   # keine geschenkten Ränge – wie beim Spieler nur über Beförderung
 	for i in n:
 		var s := _new_soldier(ai.id, _door(ai.lager), rk, "schwert")
 		s.slot = i
+		s.ai_out = true
 		_send(s, target)
 	economy.message.emit(tr("MSG_AI_ATTACK") % tr(ai.name))
 
@@ -1109,6 +1129,16 @@ func _process(dt: float) -> void:
 	_fight(dt)
 	for ai in ais:
 		_ai_tick(ai, dt)
+	# zurückgekehrte KI-Kämpfer gehen wieder ins Lager
+	for s in soldiers.duplicate():
+		if s.owner > 0 and s.state == "returning" and s.w.q.is_empty():
+			var ai: Dictionary = ais[s.owner - 1]
+			if ai.alive:
+				ai.lager.garrison += 1
+				if s.get("ai_out", false):
+					ai.eco.out = maxi(0, int(ai.eco.get("out", 0)) - 1)
+			soldiers.erase(s)
+			settlers._remove(s.w)
 	# Spieler-Lager wird von freien Soldaten verteidigt: Gegner am Lager kämpfen gegen sie
 	for s in soldiers:
 		if s.owner == 0 and s.state == "idle" and s.w.q.is_empty() and s.w.node.position.distance_to(settlers.lager_door()) > 6.0:

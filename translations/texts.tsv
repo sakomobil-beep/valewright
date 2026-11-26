@@ -547,6 +547,10 @@ MLW_SEND	➜ Kämpfer schicken	➜ Send fighter
 MLW_OWN_TOWERS	Deine Türme	Your towers
 POP_SETTLERS	Siedler	Settlers
 POP_CARRIERS	Träger	Carriers
+POP_IDLE	Frei	Idle
+POP_IDLE_TIP	🧑 Freie Einwohner: %d\nSie können einem Beruf, als Träger, Baumeister oder Kämpfer zugeteilt werden.\nBei 0 bekommt ein neues Gebäude keinen Arbeiter.	🧑 Idle residents: %d\nThey can take a job or become carriers, builders or fighters.\nAt 0 a new building gets no worker.
+POP_WORKERS	Arbeiter	Workers
+POP_WORKERS_TIP	👥 Arbeiter in Gebäuden (Holzfäller, Bäcker …)	👥 Workers inside buildings (woodcutter, baker …)
 POP_BUILDERS	Baumeister	Builders
 POP_BUILDERS_TIP	👷 Baumeister: %d von %d bauen gerade\nMehr Baumeister bildet die Handwerkskammer aus.	👷 Builders: %d of %d busy building\nThe craftsmen's guild trains more builders.
 POP_SOLDIERS	Soldaten	Soldiers
@@ -582,5 +586,9 @@ TIP_TERRITORY	Gebiet (Radius):	Territory (radius):
 TIP_NEEDS	Braucht:	Needs:
 TIP_MAKES	Stellt her:	Produces:
 POP_FREE	Einwohner	Residents
-POP_FREE_TIP	🏠 Freie Einwohner: %d von %d\nPlatz in Haupthaus und Wohnhäusern: %d\nNeue Einwohner kommen nach und nach – über 10 nur, wenn Wohnhäuser zufrieden sind.\nJeder Beruf, Träger, Baumeister und Soldat braucht einen freien Einwohner.	🏠 Free residents: %d of %d\nRoom in town hall and houses: %d\nNew residents arrive over time – above 10 only while houses are happy.\nEvery job, carrier, builder and soldier needs a free resident.
+POP_FREE_TIP	🏠 Einwohner: %d · Platz in Haupthaus und Wohnhäusern: %d
+Neue Einwohner kommen nach und nach – über 10 nur, wenn Wohnhäuser zufrieden sind.
+Gefallene Kämpfer fehlen danach – ihr Platz wird wieder frei.	🏠 Residents: %d · room in town hall and houses: %d
+New residents arrive over time – above 10 only while houses are happy.
+Fallen fighters are gone – their place becomes free again.
 ST_NO_PEOPLE	Keine freien Einwohner – baue Wohnhäuser	No free residents – build houses

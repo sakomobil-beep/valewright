@@ -63,7 +63,7 @@ func used_people(ai: Dictionary) -> int:
 	for b in ai.buildings:
 		if b.get("worker", false):
 			n += 1
-	n += int(ai.lager.garrison)
+	n += int(ai.lager.garrison) + int(ai.eco.get("out", 0))
 	for b in ai.buildings:
 		if mil.GARRISON.has(b.type):
 			n += int(b.get("garrison", 0))
