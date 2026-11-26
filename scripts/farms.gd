@@ -7,8 +7,9 @@ class_name Farms
 # Materialien sitzen am Mesh (nicht material_override), damit die Baustelle sie von unten aufbauen kann.
 
 const TYPES := ["schweinezucht", "kuhstall", "schaefer"]
-const PEN_R := 3.4
-const PEN_BACK := 1.25 * 1.5 + 3.4 * 0.72   # Abstand Hausmitte → Gattermitte (Welt-Meter, hinter dem Stall)
+const PEN_R := 4.2   # größere Gatter passend zu den größeren Ställen
+const HOF := 1.6   # Stallgebäude größer als die Tiere (Redesign 26.11.)
+const PEN_BACK := 1.25 * 1.5 * HOF + PEN_R * 0.72   # Abstand Hausmitte → Gattermitte (Welt-Meter, hinter dem Stall)
 
 # Gatter als Teil der Bauvorschau (im Modell-Raum, Modell ist 1,5-fach skaliert)
 static func pen_preview(t: String) -> Node3D:
@@ -57,12 +58,16 @@ static func _prism(w: float, h: float, d: float) -> PrismMesh:
 	var p := PrismMesh.new(); p.size = Vector3(w, h, d); return p
 
 static func build(t: String) -> Node3D:
+	var root := Node3D.new()
 	var n := Node3D.new()
+	n.name = "Hof"
+	n.scale = Vector3.ONE * HOF
+	root.add_child(n)
 	match t:
 		"schweinezucht": _pigsty(n)
 		"kuhstall": _barn(n)
 		"schaefer": _shepherd(n)
-	return n
+	return root
 
 # Satteldach aus zwei Platten
 static func _roof(n: Node3D, w: float, d: float, y: float, pitch: float, mat: Material, cz := 0.0, cx := 0.0) -> void:
@@ -106,6 +111,7 @@ static func _pigsty(n: Node3D) -> void:
 	_p(n, _cyl(0.12, 0.1, 0.22), Vector3(-0.2, 0.11, 0.85), _m(Color(0.45, 0.45, 0.47), 0.5))
 	# Mistgabel an der Wand
 	_p(n, _box(0.03, 0.9, 0.03), Vector3(-1.62, 0.5, 0.2), wood, Vector3(0, 0, 0.15))
+	_pig_extras(n, wood, tile)
 
 # Fachwerkwand: verputzter Kasten mit Ständern, Riegeln und Streben auf allen vier Seiten
 static func _fw(n: Node3D, size: Vector3, c: Vector3, plaster: Material, beam: Material, door_back := false) -> void:
@@ -162,6 +168,7 @@ static func _barn(n: Node3D) -> void:
 		_p(n, _cyl(0.1, 0.12, 0.32), Vector3(-1.05 + i * 0.25, 0.16, 1.1), _m(Color(0.75, 0.76, 0.78), 0.35))
 		_p(n, _cyl(0.06, 0.08, 0.06), Vector3(-1.05 + i * 0.25, 0.35, 1.1), _m(Color(0.75, 0.76, 0.78), 0.35))
 	_p(n, _cyl(0.3, 0.3, 0.5), Vector3(1.05, 0.3, 1.15), _m(Color(0.85, 0.72, 0.38), 1.0), Vector3(0, 0, PI / 2))
+	_barn_extras(n, beam, roof, white)
 
 # ---------- Schäferei: kleines Fachwerkhaus, schwarze Balken, dickes Strohdach, Schäferkarren ----------
 static func _shepherd(n: Node3D) -> void:
@@ -200,6 +207,117 @@ static func _shepherd(n: Node3D) -> void:
 		_p(n, _box(0.06, 0.33, 0.06), Vector3(x, 0.17, 0.95), wood)
 	for i in 2:
 		_p(n, _sph(0.2), Vector3(0.2 + i * 0.35, 0.2, 0.95), _m(Color(0.93, 0.9, 0.8), 1.0), Vector3.ZERO, Vector3(1, 1.15, 1))
+	_shep_extras(n, wood, stone, thatch)
+
+# ---------- Einzigartige Details je Hof ----------
+# Kuhstall: offenes Tor mit Blick auf Boxen und Heu, Heuaufzug mit Seilrolle, Dachgauben, Wetterhahn, Heuballen-Stapel
+static func _barn_extras(n: Node3D, beam: Material, roof: Material, white: Material) -> void:
+	var hay := _m(Color(0.86, 0.73, 0.38), 1.0)
+	var dark := _m(Color(0.1, 0.08, 0.06))
+	var door := _m(Color(0.42, 0.26, 0.14))
+	var iron := _m(Color(0.25, 0.25, 0.27), 0.5)
+	# Tor steht offen: dunkler Innenraum, zwei aufgeschwenkte Flügel, Boxenwände und Heu drinnen
+	_p(n, _box(1.0, 1.1, 0.06), Vector3(0, 0.8, 0.9), dark)
+	for sgn in [-1.0, 1.0]:
+		_p(n, _box(0.5, 1.1, 0.05), Vector3(sgn * 0.72, 0.8, 1.12), door, Vector3(0, sgn * 1.1, 0))
+		_p(n, _box(0.05, 0.75, 0.04), Vector3(sgn * 0.72, 0.8, 1.15), white, Vector3(0, sgn * 1.1, sgn * 0.6))
+	for x in [-0.3, 0.3]:
+		_p(n, _box(0.05, 0.55, 0.6), Vector3(x, 0.55, 0.55), beam)
+	_p(n, _box(0.5, 0.2, 0.3), Vector3(0, 0.35, 0.5), hay)
+	# Heuaufzug: Balken mit Rolle, Seil, hängender Heuballen
+	_p(n, _cyl(0.07, 0.07, 0.05), Vector3(0, 2.25, 1.28), iron, Vector3(PI / 2, 0, 0))
+	_p(n, _box(0.015, 0.75, 0.015), Vector3(0.06, 1.85, 1.28), _m(Color(0.7, 0.62, 0.45)))
+	_p(n, _box(0.32, 0.22, 0.24), Vector3(0.06, 1.38, 1.28), hay)
+	# Dachgauben links und rechts
+	for x in [-0.9, 0.9]:
+		_p(n, _box(0.42, 0.36, 0.5), Vector3(x, 2.0, 0.45), _m(Color(0.95, 0.92, 0.84)))
+		_p(n, _box(0.26, 0.2, 0.03), Vector3(x, 2.0, 0.71), _m(Color(0.3, 0.45, 0.58), 0.2))
+		_roof(n, 0.5, 0.5, 2.18, 0.6, roof, 0.45, x)
+	# Wetterhahn auf dem First
+	_p(n, _box(0.03, 0.45, 0.03), Vector3(1.2, 2.75, -0.15), iron)
+	_p(n, _box(0.2, 0.14, 0.03), Vector3(1.2, 3.0, -0.15), iron)
+	_p(n, _box(0.07, 0.1, 0.03), Vector3(1.28, 3.1, -0.15), _m(Color(0.75, 0.2, 0.15)))
+	# Heuballen-Stapel und Heugabel an der Seite
+	for i in 5:
+		_p(n, _box(0.5, 0.3, 0.35), Vector3(1.75, 0.15 + (i / 3) * 0.3, -0.7 + (i % 3) * 0.38), hay)
+	_p(n, _box(0.03, 1.0, 0.03), Vector3(1.55, 0.5, 0.45), door, Vector3(0, 0, -0.25))
+	# Futterkrippe an der Wand
+	_p(n, _box(0.9, 0.22, 0.3), Vector3(-1.75, 0.25, 0.0), door, Vector3(0, PI / 2, 0))
+	_p(n, _box(0.8, 0.06, 0.24), Vector3(-1.75, 0.35, 0.0), hay, Vector3(0, PI / 2, 0))
+
+# Schweinezucht: Misthaufen mit Gabel, Schubkarre, Futterfässer, Klöntür mit Vordach, Kartoffelsäcke
+static func _pig_extras(n: Node3D, wood: Material, tile: Material) -> void:
+	var muck := _m(Color(0.33, 0.24, 0.14), 1.0)
+	var straw := _m(Color(0.8, 0.68, 0.38), 1.0)
+	var iron := _m(Color(0.3, 0.3, 0.32), 0.5)
+	var sack := _m(Color(0.72, 0.62, 0.45), 1.0)
+	# Misthaufen mit Stroh und Gabel
+	_p(n, _sph(0.45, 10), Vector3(2.1, 0.0, -0.6), muck, Vector3.ZERO, Vector3(1.2, 0.6, 1.0))
+	for i in 4:
+		_p(n, _box(0.25, 0.03, 0.05), Vector3(1.9 + i * 0.12, 0.22, -0.65 + (i % 2) * 0.2), straw, Vector3(0, i * 0.8, 0.2))
+	_p(n, _box(0.03, 1.0, 0.03), Vector3(2.2, 0.55, -0.5), wood, Vector3(0.35, 0, 0.1))
+	# Schubkarre
+	var wb := Node3D.new(); wb.position = Vector3(1.9, 0, 0.6); wb.rotation.y = -0.6; n.add_child(wb)
+	_p(wb, _box(0.4, 0.18, 0.55), Vector3(0, 0.32, 0), wood, Vector3(-0.15, 0, 0))
+	_p(wb, _cyl(0.13, 0.13, 0.05, 12), Vector3(0, 0.13, 0.35), iron, Vector3(0, 0, PI / 2))
+	for sx in [-0.15, 0.15]:
+		_p(wb, _box(0.04, 0.04, 0.5), Vector3(sx, 0.3, -0.35), wood, Vector3(-0.3, 0, 0))
+	_p(wb, _box(0.32, 0.08, 0.4), Vector3(0, 0.42, 0), muck)
+	# Futterfässer
+	for i in 2:
+		_p(n, _cyl(0.17, 0.2, 0.45), Vector3(-1.9, 0.23, 0.6 - i * 0.42), wood)
+		_p(n, _cyl(0.205, 0.205, 0.03), Vector3(-1.9, 0.3, 0.6 - i * 0.42), iron)
+	# Klöntür (geteilte Tür, obere Hälfte offen) mit kleinem Vordach am Wohnteil
+	_p(n, _box(0.42, 0.35, 0.06), Vector3(-1.15, 0.18, 0.46), _m(Color(0.32, 0.45, 0.3)))
+	_p(n, _box(0.42, 0.35, 0.06), Vector3(-1.15, 0.53, 0.46), _m(Color(0.08, 0.06, 0.05)))
+	_p(n, _box(0.7, 0.05, 0.35), Vector3(-1.15, 0.92, 0.6), tile, Vector3(0.3, 0, 0))
+	# Kartoffelsäcke neben dem Trog
+	for i in 3:
+		_p(n, _cap(0.13, 0.4), Vector3(0.0 + i * 0.25, 0.2, 1.25), sack, Vector3(0, 0, 0.1 * (i - 1)))
+
+# Schäferei: liegender Schäferhund, Wollsäcke, Schäferstab, Heuraufe, Schurbank, Glocke an der Tür
+static func _shep_extras(n: Node3D, wood: Material, stone: Material, thatch: Material) -> void:
+	var wool := _m(Color(0.95, 0.93, 0.86), 1.0)
+	var jute := _m(Color(0.68, 0.57, 0.4), 1.0)
+	var dogb := _m(Color(0.16, 0.13, 0.11))
+	var dogw := _m(Color(0.92, 0.9, 0.85))
+	var brass := _m(Color(0.8, 0.62, 0.25), 0.35)
+	# Schäferhund liegt vor der Tür (schwarz-weiß)
+	var d := Node3D.new(); d.position = Vector3(0.15, 0, 0.75); d.rotation.y = 0.9; n.add_child(d)
+	_p(d, _cap(0.1, 0.42), Vector3(0, 0.1, 0), dogb, Vector3(PI / 2, 0, 0))
+	_p(d, _sph(0.08), Vector3(0, 0.1, 0.12), dogw, Vector3.ZERO, Vector3(1, 0.9, 1.3))
+	_p(d, _sph(0.085), Vector3(0, 0.16, 0.25), dogb)
+	_p(d, _cap(0.04, 0.12), Vector3(0, 0.12, 0.34), dogw, Vector3(PI / 2, 0, 0))
+	for sx in [-1, 1]:
+		_p(d, _box(0.04, 0.07, 0.03), Vector3(sx * 0.05, 0.25, 0.23), dogb, Vector3(0, 0, sx * 0.3))
+		_p(d, _cap(0.025, 0.18), Vector3(sx * 0.05, 0.03, 0.22), dogw, Vector3(PI / 2, 0, 0))
+	_p(d, _cap(0.025, 0.25), Vector3(0.05, 0.06, -0.28), dogb, Vector3(PI / 2, 0.5, 0))
+	# Wollsäcke gestapelt
+	for i in 3:
+		_p(n, _cap(0.17, 0.5), Vector3(-1.75, 0.18 + (i / 2) * 0.3, 0.35 - (i % 2) * 0.38 - (i / 2) * 0.19), jute, Vector3(0, 0, PI / 2))
+	_p(n, _sph(0.12, 8), Vector3(-1.75, 0.62, 0.15), wool)
+	# Schäferstab an der Wand
+	_p(n, _box(0.03, 1.3, 0.03), Vector3(0.22, 0.65, 0.55), wood, Vector3(0, 0, -0.15))
+	var hk := TorusMesh.new(); hk.inner_radius = 0.06; hk.outer_radius = 0.085
+	_p(n, hk, Vector3(0.32, 1.32, 0.55), wood, Vector3(PI / 2, 0, 0))
+	# Heuraufe (V-Gestell) an der Seite
+	for x in [-0.4, 0.4]:
+		_p(n, _box(0.05, 0.7, 0.05), Vector3(-0.6 + x, 0.35, -1.25), wood)
+	for i in 5:
+		_p(n, _box(0.03, 0.5, 0.03), Vector3(-0.95 + i * 0.17, 0.5, -1.25), wood, Vector3(0.4, 0, 0))
+	_p(n, _box(0.75, 0.25, 0.2), Vector3(-0.6, 0.72, -1.18), thatch)
+	# Schurbank mit Schere
+	_p(n, _box(0.8, 0.07, 0.35), Vector3(1.0, 0.42, 1.05), wood)
+	for x in [-0.32, 0.32]:
+		_p(n, _box(0.06, 0.4, 0.3), Vector3(1.0 + x, 0.2, 1.05), wood)
+	_p(n, _box(0.2, 0.02, 0.04), Vector3(1.1, 0.47, 1.05), _m(Color(0.7, 0.7, 0.72), 0.3), Vector3(0, 0.4, 0))
+	_p(n, _sph(0.1, 8), Vector3(0.8, 0.52, 1.05), wool, Vector3.ZERO, Vector3(1.4, 0.7, 1.1))
+	# Glocke neben der Tür
+	_p(n, _box(0.2, 0.03, 0.03), Vector3(-0.08, 1.05, 0.56), wood)
+	_p(n, _cyl(0.03, 0.07, 0.1), Vector3(0.0, 0.96, 0.58), brass)
+	# Brunnentrog aus Stein
+	_p(n, _box(0.8, 0.3, 0.35), Vector3(-1.7, 0.15, -0.6), stone)
+	_p(n, _box(0.7, 0.03, 0.25), Vector3(-1.7, 0.29, -0.6), _m(Color(0.35, 0.52, 0.65), 0.15))
 
 # ---------- Tiere ----------
 # Gelenke: Node "beine" (4 Hüftpunkte), "kopf", "schwanz"
