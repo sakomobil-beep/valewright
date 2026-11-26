@@ -1124,44 +1124,109 @@ func _cart() -> Node3D:
 	g.set_meta("raeder", raeder)
 	var wood := StandardMaterial3D.new()
 	wood.albedo_color = Color(0.55, 0.38, 0.2)
-	var box := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = Vector3(0.7, 0.3, 0.9)
-	box.mesh = bm
-	box.material_override = wood
-	box.position = Vector3(0, 0.45, 0.75)
-	g.add_child(box)
-	var load_ := MeshInstance3D.new()
-	var lm := BoxMesh.new()
-	lm.size = Vector3(0.55, 0.25, 0.7)
-	load_.mesh = lm
-	var lmat := StandardMaterial3D.new()
-	lmat.albedo_color = Color(0.8, 0.7, 0.45)
-	load_.material_override = lmat
-	load_.position = Vector3(0, 0.7, 0.75)
-	g.add_child(load_)
-	for sx in [-0.4, 0.4]:
-		var wh := MeshInstance3D.new()
-		var cm := CylinderMesh.new()
-		cm.top_radius = 0.25
-		cm.bottom_radius = 0.25
-		cm.height = 0.08
-		wh.mesh = cm
-		wh.material_override = wood
-		wh.rotation.z = PI / 2
-		wh.position = Vector3(sx, 0.25, 0.75)
+	wood.roughness = 0.9
+	var dark := StandardMaterial3D.new()
+	dark.albedo_color = Color(0.36, 0.24, 0.13)
+	dark.roughness = 0.9
+	var iron := StandardMaterial3D.new()
+	iron.albedo_color = Color(0.32, 0.33, 0.35)
+	iron.metallic = 0.6
+	iron.roughness = 0.45
+	var add := func(par: Node3D, size: Vector3, pos: Vector3, mat: Material, rot := Vector3.ZERO) -> MeshInstance3D:
+		var mi := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = size
+		mi.mesh = bm
+		mi.material_override = mat
+		mi.position = pos
+		mi.rotation = rot
+		par.add_child(mi)
+		return mi
+	var cz := 0.8   # Mitte des Wagenkastens vor dem Träger
+	# Boden aus Brettern mit Fugen
+	for i in 5:
+		add.call(g, Vector3(0.66, 0.04, 0.17), Vector3(0, 0.36, cz - 0.36 + i * 0.18), wood if i % 2 == 0 else dark)
+	# Seitenwände aus zwei Planken, Stirnbretter, Eckpfosten und Eisenbeschläge
+	for sx in [-0.34, 0.34]:
+		for j in 2:
+			add.call(g, Vector3(0.04, 0.11, 0.92), Vector3(sx, 0.44 + j * 0.12, cz), wood if j == 0 else dark)
+		for zz in [-0.45, 0.45]:
+			add.call(g, Vector3(0.06, 0.3, 0.06), Vector3(sx, 0.5, cz + zz), dark)
+			add.call(g, Vector3(0.07, 0.04, 0.12), Vector3(sx, 0.62, cz + zz * 0.95), iron)
+	for zz in [-0.46, 0.46]:
+		for j in 2:
+			add.call(g, Vector3(0.66, 0.11, 0.04), Vector3(0, 0.44 + j * 0.12, cz + zz), dark if j == 0 else wood)
+	# Rahmen und Achse
+	for sx in [-0.22, 0.22]:
+		add.call(g, Vector3(0.06, 0.06, 1.05), Vector3(sx, 0.31, cz - 0.05), dark)
+	var ax := MeshInstance3D.new()
+	var am := CylinderMesh.new()
+	am.top_radius = 0.025
+	am.bottom_radius = 0.025
+	am.height = 0.92
+	ax.mesh = am
+	ax.material_override = iron
+	ax.rotation.z = PI / 2
+	ax.position = Vector3(0, 0.25, cz + 0.12)
+	g.add_child(ax)
+	# Speichenräder mit Eisenreifen und Nabe
+	for sx in [-0.42, 0.42]:
+		var wh := Node3D.new()
+		wh.position = Vector3(sx, 0.25, cz + 0.12)
 		g.add_child(wh)
+		var rim := MeshInstance3D.new()
+		var tm := TorusMesh.new()
+		tm.inner_radius = 0.2
+		tm.outer_radius = 0.26
+		tm.rings = 20
+		tm.ring_segments = 6
+		rim.mesh = tm
+		rim.material_override = wood
+		rim.rotation.z = PI / 2
+		wh.add_child(rim)
+		var tire := MeshInstance3D.new()
+		var tt := TorusMesh.new()
+		tt.inner_radius = 0.25
+		tt.outer_radius = 0.275
+		tt.rings = 20
+		tt.ring_segments = 4
+		tire.mesh = tt
+		tire.material_override = iron
+		tire.rotation.z = PI / 2
+		wh.add_child(tire)
+		for k in 6:
+			var an := k * PI / 3.0
+			add.call(wh, Vector3(0.025, 0.42, 0.03), Vector3.ZERO, dark, Vector3(an, 0, 0))
+		var hub := MeshInstance3D.new()
+		var hm := CylinderMesh.new()
+		hm.top_radius = 0.05
+		hm.bottom_radius = 0.06
+		hm.height = 0.1
+		hub.mesh = hm
+		hub.material_override = iron
+		hub.rotation.z = PI / 2
+		wh.add_child(hub)
 		raeder.append(wh)
-	# Handkarre: der Träger schiebt sie an zwei Griffen
-	for sx in [-0.28, 0.28]:
-		var hd := MeshInstance3D.new()
-		var hb := BoxMesh.new()
-		hb.size = Vector3(0.05, 0.05, 0.55)
-		hd.mesh = hb
-		hd.material_override = wood
-		hd.position = Vector3(sx, 0.55, 0.2)
-		hd.rotation.x = -0.25
-		g.add_child(hd)
+	# Stützbeine hinten und Schubgriffe mit umwickelten Enden
+	for sx in [-0.24, 0.24]:
+		add.call(g, Vector3(0.05, 0.3, 0.05), Vector3(sx, 0.16, cz - 0.4), dark)
+		var hd = add.call(g, Vector3(0.05, 0.05, 0.62), Vector3(sx * 1.15, 0.52, cz - 0.6), wood, Vector3(-0.28, 0, 0))
+		add.call(g, Vector3(0.065, 0.065, 0.14), Vector3(sx * 1.15, 0.6, cz - 0.86), dark, Vector3(-0.28, 0, 0))
+	# Ladung: Säcke und eine Kiste
+	var sack := StandardMaterial3D.new()
+	sack.albedo_color = Color(0.82, 0.72, 0.5)
+	for i in 2:
+		var sm := MeshInstance3D.new()
+		var sp := SphereMesh.new()
+		sp.radius = 0.17
+		sp.height = 0.3
+		sm.mesh = sp
+		sm.material_override = sack
+		sm.position = Vector3(-0.14 + i * 0.28, 0.55, cz + 0.2)
+		sm.scale = Vector3(1, 0.8, 1.2)
+		g.add_child(sm)
+	add.call(g, Vector3(0.3, 0.22, 0.28), Vector3(0, 0.5, cz - 0.22), dark)
+	add.call(g, Vector3(0.32, 0.03, 0.3), Vector3(0, 0.62, cz - 0.22), iron)
 	g.scale = Vector3.ONE / WORKER_SCALE
 	return g
 
