@@ -541,3 +541,5 @@ RES_PER_MIN	%s pro Min.	%s per min
 RES_WARN_RED	⚠ Eine Ware fehlt – Gebäude warten darauf!	⚠ A good is missing – buildings are waiting for it!
 RES_WARN_YELLOW	Eine Ware wird knapp.	A good is running low.
 ST_STOCK_FULL	Lager gut gefüllt – pausiert	Storage well stocked – paused
+ST_HQ	Herz deiner Siedlung – hier lagern alle Waren, und hier beginnt dein Gebiet.	Heart of your settlement – all goods are stored here and your territory starts here.
+UI_HQ_INFO	👥 Siedler: %d · 🏠 Gebäude: %d · 🛠️ Werkzeug: %d · 🪙 Münzen: %d	👥 Settlers: %d · 🏠 Buildings: %d · 🛠️ Tools: %d · 🪙 Coins: %d

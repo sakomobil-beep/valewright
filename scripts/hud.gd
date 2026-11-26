@@ -458,13 +458,13 @@ func _update_labels() -> void:
 			l = Label3D.new()
 			l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 			l.no_depth_test = true
-			l.font_size = 40
-			l.pixel_size = 0.03
-			l.outline_size = 10
-			l.modulate = Color(1, 0.95, 0.8)
+			l.font_size = 32
+			l.pixel_size = 0.011
+			l.outline_size = 8
+			l.modulate = Color(1, 0.95, 0.8, 0.85)
 			main.add_child(l)
 			b.lbl3d = l
 		var st: String = b.get("status", "")
 		l.text = tr("BLD_" + String(b.type).to_upper()) + ("\n" + tr(st) if st != "" else "")
-		l.position = b.pos + Vector3(0, 7.5, 0)
+		l.position = b.pos + Vector3(0, 6.0, 0)
 		l.visible = true

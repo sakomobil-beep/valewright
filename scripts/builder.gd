@@ -568,7 +568,7 @@ func _process(_dt: float) -> void:
 	attack_btn.visible = false
 	att_box.visible = false
 	_att_for = null
-	act_box.visible = selected != null and selected.type != "bruecke"
+	act_box.visible = selected != null and selected.type != "bruecke" and not selected.get("hq", false)
 	var tower: bool = selected != null and military and military.POSTS.has(selected.type) and selected.get("owner", 0) == 0
 	order_box.visible = selected != null and selected.build >= 1.0 and (selected.type in ["kaserne", "waffenschmied", "wagner"] or tower)
 	if order_box.visible:
@@ -581,7 +581,13 @@ func _process(_dt: float) -> void:
 		act_btns.up.visible = selected.build >= 1.0 and selected.get("worker") != null and economy.is_unlocked("toepfer")
 		act_btns.up.disabled = selected.get("up", 0) > 0
 		var b: Dictionary = selected
-		var txt := (tr("BLD_HAUPTHAUS") if b.type == "lager" and b == economy.buildings[0] else tr(_key(b.type))) + "\n" + tr(b.status)
+		if b.get("hq", false):
+			var n_set := 0
+			if settlers:
+				n_set = settlers.get_child_count()
+			info_label.text = tr("BLD_HAUPTHAUS") + "\n" + tr("ST_HQ") + "\n" + tr("UI_HQ_INFO") % [n_set, economy.buildings.filter(func(x): return int(x.get("owner", 0)) == 0 and not x.get("removed", false)).size(), int(economy.stock.get("werkzeug", 0)), int(economy.stock.get("muenzen", 0))]
+			return
+		var txt := (tr("BLD_HAUPTHAUS") if b.type == "lager" and not economy.buildings.is_empty() and b == economy.buildings[0] else tr(_key(b.type))) + "\n" + tr(b.status)
 		if b.type == "wohnhaus" and b.has("lvl") and b.build >= 1.0:
 			txt = "%s – %s\n%s" % [tr(_key(b.type)), tr("HOUSE_%d" % b.lvl), tr(b.status)]
 			if not b.miss.is_empty():
@@ -772,13 +778,38 @@ func _select_at(screen: Vector2) -> void:
 		if enemy != null:
 			info_panel.visible = true
 			return
-	if p != null:
-		var best := 999.0
-		for b in buildings:
-			var d := Vector2(b.pos.x - p.x, b.pos.z - p.z).length()
-			if d < float(economy.data.types[b.type].r) * SCALE + 0.5 and d < best:
-				best = d
-				selected = b
+	# Haupthaus (steht nicht in der Gebäudeliste) zuerst prüfen
+	var hqn: Node3D = get_parent().get_node_or_null("Haupthaus")
+	if hqn and camera and not camera.is_position_behind(hqn.position):
+		var hc := camera.unproject_position(hqn.position + Vector3(0, 4.0, 0))
+		var he := camera.unproject_position(hqn.position + Vector3(0, 4.0, 0) + camera.global_transform.basis.x * 4.5)
+		var hp_ground: bool = p != null and Vector2(p.x - hqn.position.x, p.z - hqn.position.z).length() < 4.5
+		if hp_ground or hc.distance_to(screen) < maxf(24.0, hc.distance_to(he)):
+			selected = {"type": "lager", "hq": true, "pos": hqn.position, "build": 1.0, "status": "ST_HQ", "in": {}, "out": {}}
+			info_panel.visible = true
+			return
+	# Auswahl über die Bildschirm-Position: auch Dächer und hohe Gebäude (z. B. das Haupthaus) sind anklickbar
+	var best := 1e9
+	for b in economy.buildings:
+		if b.get("removed", false) or int(b.get("owner", 0)) != 0 or not b.has("pos"):
+			continue
+		var r := float(economy.data.types[b.type].r) * SCALE
+		var hits := false
+		var d := 1e9
+		if p != null:
+			d = Vector2(b.pos.x - p.x, b.pos.z - p.z).length()
+			hits = d < r + 0.5
+		if camera and not camera.is_position_behind(b.pos + Vector3(0, r, 0)):
+			var c := camera.unproject_position(b.pos + Vector3(0, r * 0.9, 0))
+			var edge := camera.unproject_position(b.pos + Vector3(0, r * 0.9, 0) + camera.global_transform.basis.x * (r + 0.3))
+			var rad := maxf(18.0, c.distance_to(edge))
+			var sd := c.distance_to(screen)
+			if sd < rad:
+				hits = true
+				d = minf(d, sd / rad * r)
+		if hits and d < best:
+			best = d
+			selected = b
 	info_panel.visible = selected != null
 
 func _unhandled_input(e: InputEvent) -> void:
