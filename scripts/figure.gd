@@ -58,6 +58,8 @@ static func dress(root: Node3D) -> void:
 	var old: Node3D = root.find_child("worker", true, false)
 	if old == null or old.has_meta("figur"):
 		return
+	for c in root.find_children("*", "", true, false):
+		c.owner = null   # Teile werden umgehängt – Besitzer der Szene lösen, sonst Warnungen
 	# Oberkörper = der Knoten, an dem die Arme hängen (beim Träger heißt er anders als sonst)
 	var o_arm: Node3D = old.find_child("arm_r", true, false)
 	var o_up: Node3D = o_arm.get_parent() if o_arm else null

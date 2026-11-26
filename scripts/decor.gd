@@ -110,6 +110,9 @@ func _make_animals(b: Dictionary) -> void:
 			h.position = _around(b, 4.5, b.node.rotation.y + PI + (k - 1) * 0.5) + Vector3(0, 0.3, 0)
 			add_child(h)
 		return
+	if b.type in Farms.TYPES:
+		_make_farm_animals(b, info)
+		return
 	# Zaun
 	var fence := StandardMaterial3D.new()
 	fence.albedo_color = Color(0.45, 0.31, 0.18)
@@ -252,7 +255,32 @@ func _plots_step(dt: float) -> void:
 			if is_instance_valid(pg.node):
 				pg.node.scale = Vector3.ONE * (0.55 + 0.45 * pg.growth)
 
+# Bauernhof-Gatter mit detaillierten, animierten Tieren (scripts/farms.gd)
+func _make_farm_animals(b: Dictionary, info: Dictionary) -> void:
+	var center := _around(b, 7.0, b.node.rotation.y + PI)
+	var pen: Node3D = Farms.pen(b.type, 3.2)
+	pen.position = center
+	var to_b: Vector3 = b.pos - center
+	pen.rotation.y = atan2(to_b.x, to_b.z) - PI / 2   # Tor zeigt zum Hof
+	add_child(pen)
+	b.pen = pen
+	for k in info.n:
+		var an: Node3D = Farms.animal(b.type)
+		an.position = center + Vector3(randf_range(-1.8, 1.8), 0, randf_range(-1.8, 1.8))
+		an.rotation.y = randf() * TAU
+		add_child(an)
+		if b.type == "schweinezucht":
+			if not b.has("pigs"):
+				b.pigs = []
+			var pl: Array = b.get("pigs_load", [])
+			b.pigs.append({"growth": float(pl[k]) if k < pl.size() else 0.15 + 0.2 * k, "node": an})
+			b.trough = center + to_b.normalized() * 2.6
+		_animals.append({"node": an, "home": center, "target": an.position, "t": randf() * 3.0, "farm": true, "ph": randf() * 10.0, "graze": false, "b": b})
+
 func _move_animal(a: Dictionary, dt: float) -> void:
+	if a.get("farm", false):
+		_move_farm_animal(a, dt)
+		return
 	a.t -= dt
 	var n: Node3D = a.node
 	if a.t <= 0.0:
@@ -266,3 +294,31 @@ func _move_animal(a: Dictionary, dt: float) -> void:
 		n.position += d.normalized() * minf(d.length(), 0.6 * dt)
 		n.rotation.y = lerp_angle(n.rotation.y, atan2(-d.z, d.x), minf(1.0, dt * 4.0))
 	n.position.y = terrain.height(n.position.x, n.position.z)
+
+func _move_farm_animal(a: Dictionary, dt: float) -> void:
+	var n: Node3D = a.node
+	if not is_instance_valid(n):
+		return
+	if a.b.get("removed", false):
+		n.queue_free()
+		if a.b.has("pen") and is_instance_valid(a.b.pen):
+			a.b.pen.queue_free()
+		return
+	a.t -= dt
+	a.ph += dt
+	if a.t <= 0.0:
+		a.t = randf_range(2.5, 7.0)
+		a.graze = randf() < 0.6
+		if a.graze:
+			a.target = n.position   # stehen bleiben und grasen
+		else:
+			var ang := randf() * TAU
+			a.target = a.home + Vector3(cos(ang), 0, sin(ang)) * randf_range(0.0, 2.3)
+	var d: Vector3 = a.target - n.position
+	d.y = 0
+	var moving := d.length() > 0.08
+	if moving:
+		n.position += d.normalized() * minf(d.length(), 0.55 * dt)
+		n.rotation.y = lerp_angle(n.rotation.y, atan2(d.x, d.z), minf(1.0, dt * 3.0))
+	n.position.y = terrain.height(n.position.x, n.position.z)
+	Farms.animate(n, moving, a.ph, dt, a.graze)

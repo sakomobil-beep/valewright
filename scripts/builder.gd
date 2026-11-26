@@ -511,6 +511,11 @@ func model(t: String, lvl := 0) -> Node3D:
 		ps = load("res://models/lagerhaus.tscn")
 	elif t == "handwerkskammer":
 		ps = load("res://models/handwerkskammer.tscn")
+	elif t in Farms.TYPES:
+		var fm: Node3D = Farms.build(t)   # Tierzucht als kleiner Bauernhof (scripts/farms.gd)
+		fm.scale = Vector3.ONE * SCALE
+		_shadows(fm)
+		return fm
 	else:
 		ps = load("res://models/%s.glb" % file)
 	var n: Node3D = ps.instantiate()
