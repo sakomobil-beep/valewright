@@ -561,41 +561,113 @@ func _carry(w: Dictionary, item) -> void:
 		w.carry = _cart()
 		w.node.add_child(w.carry)
 		return
-	var m := MeshInstance3D.new()
-	var mat := StandardMaterial3D.new()
+	# Waren realistisch tragen: Stämme und Bretter auf der Schulter, alles andere vor dem Bauch
+	# (Sack, Kiste oder Korb) – am Oberkörper befestigt, damit die Last mit dem Körper mitschwingt
+	var par: Node3D = w.get("torso") if w.get("torso") != null else w.node
+	var g := Node3D.new()
+	par.add_child(g)
+	w.carry = g
+	_build_load(g, String(item))
+
+const SACK_ITEMS := ["getreide", "mehl", "wolle", "kohle", "eisenerz", "golderz", "hopfen", "flachs", "lehm", "trauben"]
+const BASKET_ITEMS := ["brot", "fisch", "schinken", "raeucherfisch", "wurst", "kaese", "kuchen", "honig", "milch"]
+
+func _lm(c: Color, r := 0.85) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = c
+	m.roughness = r
+	return m
+
+func _lpart(g: Node3D, mesh: Mesh, pos: Vector3, mat: Material, rot := Vector3.ZERO, sc := Vector3.ONE) -> void:
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.position = pos
+	mi.rotation = rot
+	mi.scale = sc
+	mi.material_override = mat
+	g.add_child(mi)
+
+func _build_load(g: Node3D, item: String) -> void:
+	var front := Vector3(0, 0.24, 0.3)   # vor dem Bauch, zwischen den Händen
 	if item == "stamm":
+		g.set_meta("pose", "schulter")
 		var c := CylinderMesh.new()
-		c.top_radius = 0.09
-		c.bottom_radius = 0.09
-		c.height = 0.9
-		m.mesh = c
-		m.rotation.z = PI / 2
-		mat.albedo_color = Color(0.45, 0.3, 0.17)
-	elif item == "bretter":
-		var bx := BoxMesh.new()
-		bx.size = Vector3(0.8, 0.1, 0.3)
-		m.mesh = bx
-		mat.albedo_color = Color(0.75, 0.55, 0.32)
-	elif UiIcons.item_tex(String(item)) != null:
-		var sp := Sprite3D.new()
-		sp.texture = UiIcons.item_tex(String(item))
-		sp.pixel_size = 0.0055
-		sp.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
-		sp.position = Vector3(0, 1.3, 0.25)
-		w.node.add_child(sp)
-		w.carry = sp
-		m.free()
+		c.top_radius = 0.075
+		c.bottom_radius = 0.085
+		c.height = 1.05
+		c.radial_segments = 10
+		_lpart(g, c, Vector3(0.19, 0.52, 0.0), _lm(Color(0.45, 0.3, 0.17)), Vector3(PI / 2 + 0.12, 0, 0))
+		var e := CylinderMesh.new()
+		e.top_radius = 0.07
+		e.bottom_radius = 0.07
+		e.height = 0.01
+		_lpart(g, e, Vector3(0.19, 0.58, 0.53), _lm(Color(0.8, 0.66, 0.42)), Vector3(PI / 2 + 0.12, 0, 0))   # Schnittfläche
 		return
-	else:
-		var s := SphereMesh.new()
-		s.radius = 0.17
-		s.height = 0.26
-		m.mesh = s
-		mat.albedo_color = Color(0.6, 0.58, 0.55)
-	m.material_override = mat
-	m.position = Vector3(0, 1.25, 0)
-	w.node.add_child(m)
-	w.carry = m
+	if item == "bretter":
+		g.set_meta("pose", "schulter")
+		for i in 3:
+			var bx := BoxMesh.new()
+			bx.size = Vector3(0.16, 0.025, 1.0)
+			_lpart(g, bx, Vector3(0.19 + (i - 1) * 0.01, 0.5 + i * 0.028, 0.0), _lm(Color(0.75, 0.55, 0.32).darkened(i * 0.06)), Vector3(0.1, 0, 0))
+		return
+	g.set_meta("pose", "bauch")
+	if item == "stein":
+		var bm := BoxMesh.new()
+		bm.size = Vector3(0.26, 0.17, 0.2)
+		_lpart(g, bm, front, _lm(Color(0.62, 0.6, 0.57), 0.95), Vector3(0.05, 0.2, 0.04))
+		return
+	if item in SACK_ITEMS:
+		var col := Color(0.8, 0.7, 0.5)
+		if item in ["kohle", "eisenerz", "golderz"]:
+			col = Color(0.5, 0.42, 0.32)
+		var sp := SphereMesh.new()
+		sp.radius = 0.15
+		sp.height = 0.32
+		sp.radial_segments = 10
+		sp.rings = 6
+		_lpart(g, sp, front, _lm(col, 1.0), Vector3.ZERO, Vector3(1.05, 1.0, 0.8))
+		var tie := CylinderMesh.new()
+		tie.top_radius = 0.035
+		tie.bottom_radius = 0.06
+		tie.height = 0.08
+		_lpart(g, tie, front + Vector3(0, 0.17, 0), _lm(col.darkened(0.15), 1.0))
+		_add_badge(g, item, front + Vector3(0, 0.02, 0.13))
+		return
+	if item in BASKET_ITEMS:
+		var bk := CylinderMesh.new()
+		bk.top_radius = 0.16
+		bk.bottom_radius = 0.12
+		bk.height = 0.14
+		bk.radial_segments = 12
+		_lpart(g, bk, front, _lm(Color(0.62, 0.45, 0.24)))
+		var rim := TorusMesh.new()
+		rim.inner_radius = 0.145
+		rim.outer_radius = 0.17
+		_lpart(g, rim, front + Vector3(0, 0.07, 0), _lm(Color(0.5, 0.35, 0.18)))
+		_add_badge(g, item, front + Vector3(0, 0.13, 0.0), true)
+		return
+	# Handwerkswaren: Holzkiste mit Eisenband
+	var cr := BoxMesh.new()
+	cr.size = Vector3(0.28, 0.2, 0.22)
+	_lpart(g, cr, front, _lm(Color(0.58, 0.4, 0.22)))
+	var band := BoxMesh.new()
+	band.size = Vector3(0.29, 0.03, 0.23)
+	_lpart(g, band, front + Vector3(0, 0.05, 0), _lm(Color(0.35, 0.35, 0.37), 0.5))
+	_add_badge(g, item, front + Vector3(0, -0.01, 0.115))
+
+# kleines Warensymbol auf Sack, Korb oder Kiste (statt schwebendem Bild über dem Kopf)
+func _add_badge(g: Node3D, item: String, pos: Vector3, on_top := false) -> void:
+	var tex = UiIcons.item_tex(item)
+	if tex == null:
+		return
+	var sp := Sprite3D.new()
+	sp.texture = tex
+	sp.pixel_size = 0.0022
+	sp.position = pos
+	if on_top:
+		sp.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+		sp.pixel_size = 0.0028
+	g.add_child(sp)
 
 func _remove(w: Dictionary) -> void:
 	w.dead = true
@@ -867,6 +939,16 @@ func _animate(w: Dictionary, dt: float) -> void:
 				for wh in cart.get_meta("raeder"):
 					wh.rotation.x -= dt * 7.0
 				cart.rotation.x = sin(t * 18.0) * 0.012   # leichtes Rumpeln über den Weg
+			elif carrying and cart != null and cart.get_meta("pose", "") == "schulter":
+				# Last auf der rechten Schulter: rechte Hand hält sie fest, linker Arm schwingt mit
+				P.arx = -2.75
+				P.arz = 0.32
+				P.alx = -k * 0.45
+				P.alz = -0.1
+				P.tx = 0.1
+				P.ty = k * 0.04
+				P.hy = -0.12
+				P.bob *= 0.8
 			elif carrying:
 				# Last mit beiden Händen vor dem Bauch, leicht nach hinten gelehnt
 				P.alx = -1.15
@@ -1025,8 +1107,15 @@ func _animate(w: Dictionary, dt: float) -> void:
 			P.arz = 0.08 + sin(t * 1.6) * 0.02
 			P.bob = sin(t * 1.6) * 0.006
 			if carrying:
-				P.alx = -1.1
-				P.arx = -1.1
+				var ld = w.get("carry")
+				if ld is Node and ld.get_meta("pose", "") == "schulter":
+					P.arx = -2.75
+					P.arz = 0.32
+				else:
+					P.alx = -1.15
+					P.arx = -1.15
+					P.alz = 0.18
+					P.arz = -0.18
 			snap = 6.0
 	var k := minf(1.0, dt * snap)
 	ll.rotation.x = lerpf(ll.rotation.x, P.llx, k)

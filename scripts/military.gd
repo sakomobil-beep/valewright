@@ -47,6 +47,7 @@ func _ready() -> void:
 	_seam_mat = ShaderMaterial.new()
 	_seam_mat.shader = load("res://shaders/border_seam.gdshader")
 	_seam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_seam.visible = false   # nur Grenzsteine, kein farbiger Saum mehr
 	add_child(_seam)
 	var smat := ShaderMaterial.new()
 	smat.shader = load("res://shaders/fogged.gdshader")

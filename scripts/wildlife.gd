@@ -179,27 +179,120 @@ func _make_deer(p: Vector3, buck: bool, rng: RandomNumberGenerator) -> Dictionar
 	return {"node": n, "neck": neck, "legs": legs, "home": p, "target": p, "state": "graze", "t": rng.randf_range(1, 5), "ph": rng.randf() * 5.0}
 
 # ---------- Boote ----------
+# Ruderboot aus Planken: spitzer Bug, Spiegelheck, Spanten, Ruderbank, Dollborde
+func _hull_pt(z: float, f: float, side: float) -> Vector3:
+	# z: -1.2 (Heck) … 1.35 (Bug); f: 0 = Kiel … 1 = Bordkante
+	var u := clampf((z + 1.2) / 2.55, 0.0, 1.0)
+	var hw := 0.5 * (1.0 - pow(maxf(u - 0.45, 0.0) / 0.55, 1.6)) * (0.82 + 0.18 * sin(u * PI))
+	var sheer := 0.4 + pow(u, 3.0) * 0.22 + (1.0 - u) * 0.04
+	var y := f * sheer
+	var w := hw * (0.35 + 0.65 * sin(f * PI * 0.5))
+	return Vector3(w * side, y, z)
+
+func _hull_mesh() -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var cols := [Color(0.47, 0.31, 0.18), Color(0.55, 0.37, 0.21), Color(0.5, 0.33, 0.19), Color(0.58, 0.4, 0.23)]
+	var NZ := 16
+	var strakes := 4
+	for side in [-1.0, 1.0]:
+		for k in strakes:
+			for i in NZ:
+				var z0 := -1.2 + 2.55 * i / NZ
+				var z1 := -1.2 + 2.55 * (i + 1) / NZ
+				var f0 := float(k) / strakes
+				var f1 := float(k + 1) / strakes
+				var a := _hull_pt(z0, f0, side); var b := _hull_pt(z1, f0, side)
+				var c := _hull_pt(z0, f1, side); var e := _hull_pt(z1, f1, side)
+				var col: Color = cols[k]
+				for tri in [[a, b, c], [b, e, c]]:
+					var nrm: Vector3 = (tri[1] - tri[0]).cross(tri[2] - tri[0]).normalized() * side
+					st.set_color(col); st.set_normal(nrm)
+					for v in tri: st.add_vertex(v)
+	# Boden zwischen den Kielplanken
+	for i in NZ:
+		var z0 := -1.2 + 2.55 * i / NZ
+		var z1 := -1.2 + 2.55 * (i + 1) / NZ
+		var a := _hull_pt(z0, 0, -1); var b := _hull_pt(z1, 0, -1); var c := _hull_pt(z0, 0, 1); var e := _hull_pt(z1, 0, 1)
+		for tri in [[a, c, b], [b, c, e]]:
+			st.set_color(Color(0.36, 0.24, 0.14)); st.set_normal(Vector3.UP)
+			for v in tri: st.add_vertex(v)
+	# Spiegelheck
+	for k in strakes:
+		var f0 := float(k) / strakes
+		var f1 := float(k + 1) / strakes
+		var a := _hull_pt(-1.2, f0, -1); var b := _hull_pt(-1.2, f0, 1); var c := _hull_pt(-1.2, f1, -1); var e := _hull_pt(-1.2, f1, 1)
+		for tri in [[a, b, c], [b, e, c]]:
+			st.set_color(cols[(k + 1) % 4]); st.set_normal(Vector3.BACK)
+			for v in tri: st.add_vertex(v)
+	return st.commit()
+
 func _make_boat(d: Dictionary) -> Dictionary:
 	var n := Node3D.new()
 	add_child(n)
-	var wood := Color(0.5, 0.34, 0.2)
-	_box(n, Vector3(0.9, 0.3, 2.4), Vector3(0, 0.15, 0), wood)
-	_box(n, Vector3(0.7, 0.08, 2.2), Vector3(0, 0.31, 0), wood.darkened(0.3))
-	_box(n, Vector3(0.5, 0.32, 0.5), Vector3(0, 0.3, 1.25), wood, Vector3(0.5, 0, 0))
-	# Fischer im Boot
+	var hull := MeshInstance3D.new()
+	hull.mesh = _hull_mesh()
+	var hm := StandardMaterial3D.new()
+	hm.vertex_color_use_as_albedo = true
+	hm.roughness = 0.9
+	hm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	hull.material_override = hm
+	n.add_child(hull)
+	var dark := Color(0.34, 0.22, 0.12)
+	var light := Color(0.66, 0.48, 0.3)
+	# Dollbord (Bordkante) als Leisten entlang der Seiten
+	for side in [-1.0, 1.0]:
+		for i in 8:
+			var z0 := -1.2 + 2.55 * i / 8.0
+			var z1 := -1.2 + 2.55 * (i + 1) / 8.0
+			var a := _hull_pt(z0, 1.0, side)
+			var b := _hull_pt(z1, 1.0, side)
+			var mid := (a + b) * 0.5
+			var len := a.distance_to(b)
+			var bx := _box(n, Vector3(0.05, 0.05, len + 0.02), mid + Vector3(0, 0.02, 0), dark)
+			bx.look_at_from_position(n.global_position + mid + Vector3(0, 0.02, 0), n.global_position + b + Vector3(0, 0.02, 0), Vector3.UP)
+			# Spanten innen
+			if i > 0 and i < 7:
+				var bot := _hull_pt(z0, 0.0, side)
+				var top := _hull_pt(z0, 0.95, side)
+				var sp := _box(n, Vector3(0.04, bot.distance_to(top), 0.04), (bot + top) * 0.5 - Vector3(side * 0.03, 0, 0), dark)
+				sp.rotation.z = -side * atan2(absf(top.x - bot.x), top.y - bot.y)
+	# Steven am Bug, Kiel, Ruderbänke, Bodenbretter
+	_box(n, Vector3(0.06, 0.66, 0.08), Vector3(0, 0.32, 1.33), dark, Vector3(-0.25, 0, 0))
+	_box(n, Vector3(0.06, 0.06, 2.4), Vector3(0, -0.01, 0.05), dark)
+	for zz in [-0.55, 0.25]:
+		var hw := absf(_hull_pt(zz, 0.75, 1).x) * 2.0
+		_box(n, Vector3(hw, 0.04, 0.22), Vector3(0, 0.3, zz), light)
+	_box(n, Vector3(0.5, 0.03, 1.6), Vector3(0, 0.04, -0.05), light.darkened(0.1))
+	# Fischer im Boot: Siedlerfigur, sitzend auf der Ruderbank
 	var man := Node3D.new()
-	man.position = Vector3(0, 0.35, -0.2)
+	man.position = Vector3(0, 0.14, -0.55)
 	n.add_child(man)
-	_box(man, Vector3(0.36, 0.5, 0.28), Vector3(0, 0.3, 0), Color(0.18, 0.54, 0.54))
-	_box(man, Vector3(0.24, 0.24, 0.24), Vector3(0, 0.68, 0), Color(0.85, 0.64, 0.48))
-	_box(man, Vector3(0.3, 0.08, 0.3), Vector3(0, 0.82, 0), Color(0.35, 0.25, 0.12))
+	var fm: Node3D = load("res://models/w_fischer.glb").instantiate()
+	Figure.dress(fm)
+	fm.scale = Vector3.ONE * 1.25
+	man.add_child(fm)
+	for leg in ["leg_l", "leg_r"]:
+		var l: Node3D = fm.find_child(leg, true, false)
+		if l: l.rotation.x = -1.45
+	for arm in ["arm_l", "arm_r"]:
+		var ar: Node3D = fm.find_child(arm, true, false)
+		if ar: ar.rotation.x = -1.0
+	var wk: Node3D = fm.find_child("worker", true, false)
+	if wk: wk.position.y = -0.3
+	# Riemen mit Blatt, in Dollen
 	var oars: Array = []
 	for sx in [-1, 1]:
 		var o := Node3D.new()
-		o.position = Vector3(0.45 * sx, 0.45, -0.1)
+		o.position = Vector3(_hull_pt(-0.2, 1.0, sx).x, 0.45, -0.2)
 		n.add_child(o)
-		_box(o, Vector3(1.3, 0.05, 0.07), Vector3(0.6 * sx, -0.1, 0), Color(0.6, 0.45, 0.28), Vector3(0, 0, -0.25 * sx))
+		_box(o, Vector3(0.05, 0.12, 0.05), Vector3(0, -0.04, 0), dark)   # Dolle
+		_box(o, Vector3(1.4, 0.04, 0.04), Vector3(0.55 * sx, -0.12, 0), Color(0.6, 0.45, 0.28), Vector3(0, 0, -0.22 * sx))
+		_box(o, Vector3(0.36, 0.02, 0.13), Vector3(1.2 * sx, -0.27, 0), light, Vector3(0, 0, -0.22 * sx))
 		oars.append(o)
+	# kleine Fischkiste und Netz
+	_box(n, Vector3(0.3, 0.14, 0.24), Vector3(0, 0.12, 0.75), dark)
+	_box(n, Vector3(0.28, 0.06, 0.3), Vector3(0.12, 0.08, -0.95), Color(0.72, 0.68, 0.55))
 	d.node = n
 	d.man = man
 	d.oars = oars

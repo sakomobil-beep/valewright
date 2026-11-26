@@ -24,6 +24,8 @@ Session="*res://scripts/session.gd"
 
 [display]
 
+mouse_cursor/tooltip_position_offset=Vector2(12, 58)
+
 window/size/viewport_width=1600
 window/size/viewport_height=900
 window/stretch/aspect="expand"
