@@ -764,7 +764,8 @@ func _process(_dt: float) -> void:
 				n_set = settlers.get_child_count()
 			_set_head("lager", tr("BLD_HAUPTHAUS"), tr("UI_HQ_SUB"))
 			info_label.text = tr("ST_HQ") + "\n" + tr("UI_HQ_INFO") % [n_set, economy.buildings.filter(func(x): return int(x.get("owner", 0)) == 0 and not x.get("removed", false)).size(), int(economy.stock.get("werkzeug", 0)), int(economy.stock.get("muenzen", 0))]
-			info_label.text += "\n📦 " + tr("UI_STORED")
+			if _hq_tab == "lager":
+				info_label.text += "\n📦 " + tr("UI_STORED")
 			_hq_panel()
 			return
 		var txt := (tr("BLD_HAUPTHAUS") if b.type == "lager" and not economy.buildings.is_empty() and b == economy.buildings[0] else tr(_key(b.type))) + "\n" + tr(b.status)
@@ -1184,20 +1185,44 @@ func _hk_panel(b: Dictionary) -> void:
 	_lbl(hb3, tr("UI_HK_COST"), 13, C_DIM, 230)
 	_lbl(hb3, tr("UI_IN_STOCK_N") % tools, 13, C_OK if tools > 0 else C_BAD)
 
-# Haupthaus: Wache am Tor (Einberufen/Entlassen) + Lagerbestand
+# Haupthaus: zwei Reiter – „Lager“ (Bestand) und „Wache“ (Wächter am Tor, Einberufen/Entlassen)
+var _hq_tab := "lager"
+
 func _hq_panel() -> void:
 	if not military:
 		_set_chips(_stock_sections())
 		return
 	var g: Array = military.hq_guards()
 	var idle: int = military.soldiers.filter(func(x): return x.owner == 0 and x.state == "idle").size()
-	var sig := "HQ%s|%d|%s" % [str(g.map(func(x): return [x.kind, x.rank])), idle, str(_stock_sections())]
+	var sig := "HQ%s|%s|%d|%s" % [_hq_tab, str(g.map(func(x): return [x.kind, x.rank])), idle, str(_stock_sections()) if _hq_tab == "lager" else ""]
 	if sig == _chip_sig:
 		return
-	_set_chips(_stock_sections())   # Lager-Karten
+	if _hq_tab == "lager":
+		_set_chips(_stock_sections())
+	else:
+		info_label.visible = false
+		for ch in info_chips.get_children():
+			ch.queue_free()
 	_chip_sig = sig
+	# Reiter oben
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 6)
+	info_chips.add_child(tabs)
+	info_chips.move_child(tabs, 0)
+	for tb in [["lager", "📦 " + tr("UI_HQ_TAB_STOCK")], ["wache", "🛡️ " + tr("UI_HQ_TAB_GUARD") + " %d/%d" % [g.size(), military.HQ_SLOTS]]]:
+		var b := Button.new()
+		b.text = tb[1]
+		b.toggle_mode = true
+		b.button_pressed = _hq_tab == tb[0]
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var key: String = tb[0]
+		b.pressed.connect(func():
+			_hq_tab = key
+			_chip_sig = "")
+		tabs.add_child(b)
+	if _hq_tab == "lager":
+		return
 	var c := _hpcard(info_chips, Color(0.1, 0.18, 0.3, 0.45))
-	info_chips.move_child(c.get_parent(), 0)
 	var hb := HBoxContainer.new(); hb.add_theme_constant_override("separation", 8); c.add_child(hb)
 	_lbl(hb, "🛡️ " + tr("UI_HQ_GUARD"), 14, C_GOLD, 150)
 	_bar(hb, g.size(), military.HQ_SLOTS, C_OK if g.size() >= 2 else (C_BAD if g.is_empty() else C_GOLD), 120)

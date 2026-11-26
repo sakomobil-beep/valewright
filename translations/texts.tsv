@@ -640,3 +640,5 @@ UI_HQ_DISMISS	Entlassen	Dismiss
 UI_HQ_DISMISS_TIP	Ein Wächter wird wieder freier Soldat (z. B. für Angriffe).	A guard becomes a free soldier again (e.g. for attacks).
 MSG_HQ_NO_SOLDIER	Kein freier Soldat – bilde in der Kaserne Kämpfer aus.	No free soldier – train fighters in the barracks.
 UI_HQ_GUARD_HINT	Greifen Feinde das Haupthaus an, kämpfen zuerst die Wächter, danach deine freien Soldaten – immer mit ihrem Rang. Fällt der letzte, ist das Spiel verloren.	If enemies attack the town hall, the guards fight first, then your free soldiers – always with their rank. If the last one falls, the game is lost.
+UI_HQ_TAB_STOCK	Lager	Stock
+UI_HQ_TAB_GUARD	Wache	Guard
