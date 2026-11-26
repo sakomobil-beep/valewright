@@ -44,6 +44,7 @@ func _ready() -> void:
 
 func spawn(job: String, at: Vector3) -> Dictionary:
 	var n: Node3D = load("res://models/w_%s.glb" % job).instantiate()
+	Figure.dress(n)
 	n.scale = Vector3.ONE * WORKER_SCALE
 	n.position = at
 	add_child(n)
