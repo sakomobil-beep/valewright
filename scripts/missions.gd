@@ -79,10 +79,10 @@ func tutorial_steps() -> Array:
 func setup(layer: CanvasLayer) -> void:
 	panel = PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", UiIcons.wood(8))
-	panel.anchor_left = 1.0
-	panel.anchor_right = 1.0
-	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	panel.offset_right = -14
+	# links oben unter der Leiste – rechts sitzt das Gebäude-Infofenster
+	panel.anchor_left = 0.0
+	panel.anchor_right = 0.0
+	panel.offset_left = 14
 	panel.offset_top = 80
 	panel.custom_minimum_size = Vector2(300, 0)
 	panel.visible = mission != 0 or _victory() != "endless"

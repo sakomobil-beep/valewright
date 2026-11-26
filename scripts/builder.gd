@@ -788,6 +788,11 @@ func _process(_dt: float) -> void:
 			_set_chips([["🧱 " + tr("UI_SITE_MAT"), need]] if not need.is_empty() else [])
 		elif b.type == "lager":
 			_set_chips(_stock_sections())
+		elif b.type == "wohnhaus" and b.has("lvl"):
+			info_label.text += "\n" + tr("UI_HOUSE_PEOPLE") % [economy.HOUSE_PEOPLE[clampi(b.lvl, 0, 4)]]
+			if b.lvl < 4:
+				info_label.text += "\n" + tr("UI_HOUSE_NEXT") % [tr("HOUSE_%d" % (b.lvl + 1)), economy.HOUSE_PEOPLE[b.lvl + 1]]
+			_set_chips(_house_sections(b))
 		else:
 			_set_chips(_io_sections(b))
 
@@ -866,6 +871,32 @@ func _io_sections(b: Dictionary) -> Array:
 	if not outs.is_empty():
 		out.append(["⬆ " + tr("UI_MAKES"), outs])
 	return out
+
+# Wohnhaus: zuerst nur, was es JETZT braucht (Vorrat im Lager), dann was der Aufstieg zusätzlich kostet
+func _house_needs(needs: Array) -> Array:
+	var out := []
+	for k in needs:
+		var opts: Array = [k]
+		if k == "*food":
+			opts = economy.FOODS
+		elif k == "*fine":
+			opts = economy.FINE
+		for o in opts:
+			out.append([o, int(economy.stock.get(o, 0))])
+	return out
+
+func _house_sections(b: Dictionary) -> Array:
+	var L: Dictionary = economy.HOUSE_LV[b.lvl]
+	var res := [["🏠 " + tr("UI_HOUSE_NOW"), _house_needs(L.needs)]]
+	if b.lvl < 4:
+		var nx: Dictionary = economy.HOUSE_LV[b.lvl + 1]
+		var extra: Array = nx.needs.filter(func(k): return not k in L.needs)
+		var more := _house_needs(extra)
+		for k in economy.UPCOST.get(b.lvl + 1, {}):
+			more.append([k, int(economy.stock.get(k, 0))])
+		if not more.is_empty():
+			res.append(["⬆ " + tr("UI_HOUSE_UPNEEDS") % tr("HOUSE_%d" % (b.lvl + 1)), more])
+	return res
 
 func _stock_sections() -> Array:
 	var res := []
