@@ -341,7 +341,7 @@ func _card(t: String) -> Button:
 	var nm := Label.new()
 	nm.text = tr(_key(t))
 	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	nm.add_theme_font_size_override("font_size", 14)
+	nm.add_theme_font_size_override("font_size", 14 if nm.text.length() <= 12 else (12 if nm.text.length() <= 15 else 11))
 	nm.add_theme_color_override("font_color", Color(1, 0.93, 0.75))
 	nm.clip_text = true
 	vb.add_child(nm)
