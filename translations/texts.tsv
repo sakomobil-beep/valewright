@@ -546,6 +546,8 @@ MLW_SEND	➜ Kämpfer schicken	➜ Send fighter
 MLW_OWN_TOWERS	Deine Türme	Your towers
 POP_SETTLERS	Siedler	Settlers
 POP_CARRIERS	Träger	Carriers
+POP_BUILDERS	Baumeister	Builders
+POP_BUILDERS_TIP	👷 Baumeister: %d von %d bauen gerade\nMehr Baumeister bildet die Handwerkskammer aus.	👷 Builders: %d of %d busy building\nThe craftsmen's guild trains more builders.
 POP_SOLDIERS	Soldaten	Soldiers
 RES_PER_MIN	%s pro Min.	%s per min
 RES_WARN_RED	⚠ Eine Ware fehlt – Gebäude warten darauf!	⚠ A good is missing – buildings are waiting for it!
