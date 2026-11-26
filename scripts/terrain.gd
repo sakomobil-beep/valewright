@@ -356,12 +356,14 @@ func _build_trees() -> void:
 		var dens := noise.get_noise_2d(x * 3.0 + 50.0, z * 3.0 - 20.0)
 		if dens < forest_k or not _free_spot(x, z):
 			continue
-		var conifer := mountain(x, z) > 1.5 or rng.randf() > 0.5
+		# Odenwald-Mischwald: Buche häufigste Art, dazu Eiche, Ahorn, Birke; Fichte und Kiefer v. a. am Berg
+		var conifer := mountain(x, z) > 1.5 or rng.randf() > 0.62
 		var sp: String
 		if conifer:
-			sp = "fir" if rng.randf() > 0.45 else "pine"
+			sp = "fichte" if rng.randf() > 0.3 else "pine"
 		else:
-			sp = "birch" if rng.randf() > 0.7 else "oak"
+			var r := rng.randf()
+			sp = "buche" if r < 0.42 else ("eiche" if r < 0.66 else ("ahorn" if r < 0.84 else "birch"))
 		if rng.randf() < 0.025:
 			sp = "dead"
 		var key := "%s%d" % [sp, rng.randi() % TREE_VARIANTS[sp]]
@@ -377,30 +379,198 @@ func _build_trees() -> void:
 	var mat := ShaderMaterial.new()
 	mat.shader = load("res://shaders/tree.gdshader")
 	var mms := {}
+	var mms2 := {}
 	for key in groups:
 		var sp: String = key.rstrip("0123456789")
 		var vi := int(key.substr(sp.length()))
-		var mesh := _tree_mesh(sp, vi)
-		mesh.surface_set_material(0, mat)
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.use_colors = true
-		mm.mesh = mesh
-		mm.instance_count = groups[key].size()
-		for i in groups[key].size():
-			mm.set_instance_transform(i, groups[key][i])
-			var tint := rng.randf_range(0.9, 1.08)
-			mm.set_instance_color(i, Color(tint, tint, tint))
-		var mmi := MultiMeshInstance3D.new()
-		mmi.multimesh = mm
-		mmi.name = "Baeume_" + key
-		add_child(mmi)
-		mms[key] = mm
+		# Detailstufen: nah das neue, detaillierte Modell – ab LOD_DIST das einfache (spart Leistung)
+		var near := _tree_mesh_hd(sp, vi)
+		var far := _tree_mesh(FAR_OF.get(sp, sp), vi if sp != "ahorn" or vi % 4 != 3 else 3)
+		for pair in [[near, mms, 0.0, LOD_DIST], [far, mms2, LOD_DIST, 0.0]]:
+			var mesh: ArrayMesh = pair[0]
+			mesh.surface_set_material(0, mat)
+			var mm := MultiMesh.new()
+			mm.transform_format = MultiMesh.TRANSFORM_3D
+			mm.use_colors = true
+			mm.mesh = mesh
+			mm.instance_count = groups[key].size()
+			var trng := RandomNumberGenerator.new()
+			trng.seed = hash(key)
+			for i in groups[key].size():
+				mm.set_instance_transform(i, groups[key][i])
+				var tint := trng.randf_range(0.9, 1.08)
+				mm.set_instance_color(i, Color(tint, tint, tint))
+			var mmi := MultiMeshInstance3D.new()
+			mmi.multimesh = mm
+			mmi.name = "Baeume_" + key + ("_nah" if pair[1] == mms else "_fern")
+			mmi.visibility_range_begin = pair[2]
+			mmi.visibility_range_end = pair[3]
+			mmi.visibility_range_begin_margin = 6.0
+			mmi.visibility_range_end_margin = 6.0
+			mmi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+			add_child(mmi)
+			pair[1][key] = mm
 	for o in order:
 		var t: Transform3D = groups[o[0]][o[1]]
-		trees.append({"pos": t.origin, "mm": mms[o[0]], "i": o[1], "t": t, "alive": true})
+		trees.append({"pos": t.origin, "mm": mms[o[0]], "mm2": mms2[o[0]], "i": o[1], "t": t, "alive": true})
 
-const TREE_VARIANTS := {"oak": 10, "birch": 4, "fir": 4, "pine": 4, "dead": 2}
+const LOD_DIST := 75.0
+const FAR_OF := {"buche": "oak", "eiche": "oak", "ahorn": "oak", "fichte": "fir"}
+
+# ---------- Detaillierte Bäume (nah) ----------
+# Stamm mit Wurzelansatz und Rinde (Längsrillen), sichtbare Äste, Krone aus vielen Laubklumpen
+func _hd_trunk(st: SurfaceTool, h: float, r0: float, c: Color, rng: RandomNumberGenerator, rough: float, spots := false, lean := Vector3.ZERO) -> void:
+	var n := 10
+	var rings := 6
+	for r in rings:
+		var u0 := float(r) / rings
+		var u1 := float(r + 1) / rings
+		for i in n:
+			var a0 := i * TAU / n
+			var a1 := (i + 1) * TAU / n
+			var pts := []
+			for uv in [[u0, a0], [u0, a1], [u1, a1], [u1, a0]]:
+				var u: float = uv[0]
+				var a: float = uv[1]
+				var rad := r0 * lerpf(1.0, 0.42, u)
+				if u == 0.0:
+					rad *= 1.55 + 0.45 * maxf(0.0, sin(a * 5.0 + 0.7))   # Wurzelanläufe
+				elif u < 0.2:
+					rad *= 1.12
+				rad *= 1.0 + rough * 0.08 * sin(a * n * 0.5 * 2.0)   # Rindenrillen
+				pts.append(Vector3(cos(a) * rad, u * h, sin(a) * rad) + lean * u * u * h)
+			var shade := (0.8 if i % 2 == 0 else 1.0) if rough > 0.0 else 1.0
+			var col := c * shade * (0.75 + u0 * 0.35) * rng.randf_range(0.93, 1.07)
+			if spots and u0 > 0.15 and rng.randf() < 0.3:
+				col = Color(0.12, 0.11, 0.1)
+			col.a = 1.0
+			var cy := Vector3(0, (u0 + u1) * 0.5 * h, 0) + lean * ((u0 + u1) * 0.5) * ((u0 + u1) * 0.5) * h
+			var t := Transform3D(Basis(), cy)
+			_tri(st, t, pts[0] - cy, pts[3] - cy, pts[2] - cy, col, col, col)
+			_tri(st, t, pts[0] - cy, pts[2] - cy, pts[1] - cy, col, col, col)
+
+func _hd_branch(st: SurfaceTool, from: Vector3, to: Vector3, r: float, c: Color) -> void:
+	var d := to - from
+	var up := d.normalized()
+	var side := up.cross(Vector3(0.3, 0, 1).normalized()).normalized()
+	var fwd := up.cross(side).normalized()
+	var n := 6
+	for i in n:
+		var a0 := i * TAU / n
+		var a1 := (i + 1) * TAU / n
+		var A := from + (side * cos(a0) + fwd * sin(a0)) * r
+		var B := from + (side * cos(a1) + fwd * sin(a1)) * r
+		var C := to + (side * cos(a1) + fwd * sin(a1)) * r * 0.45
+		var D := to + (side * cos(a0) + fwd * sin(a0)) * r * 0.45
+		var col := c * (0.85 if i % 2 == 0 else 1.0)
+		col.a = 1.0
+		var m := (from + to) * 0.5
+		var t := Transform3D(Basis(), m)
+		_tri(st, t, A - m, D - m, C - m, col, col, col)
+		_tri(st, t, A - m, C - m, B - m, col, col, col)
+
+# Laubklumpen: Ikosaeder mit leicht verbeulten Ecken (wirkt weicher, buschiger)
+func _clump(st: SurfaceTool, p: Vector3, size: Vector3, c: Color, rng: RandomNumberGenerator) -> void:
+	var bas := Basis.from_euler(Vector3(rng.randf() * 0.6, rng.randf() * TAU, rng.randf() * 0.4)).scaled(size)
+	_add_ico(st, Transform3D(bas, p), c.lightened(rng.randf_range(-0.05, 0.06)))
+
+func _tree_mesh_hd(sp: String, vi: int) -> ArrayMesh:
+	if sp == "dead":
+		return _tree_mesh(sp, vi)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(sp) + vi * 131
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	match sp:
+		"buche":
+			# glatter, silbergrauer Stamm, hohe ovale Krone, frisches Grün
+			var bark := Color("8f8b80")
+			var h := 3.0 + rng.randf() * 0.6
+			_hd_trunk(st, h, 0.24, bark, rng, 0.0)
+			var leaf: Color = [Color("5f9638"), Color("6fa23c"), Color("58902f"), Color("c0812c")][vi % 4]
+			_crown(st, rng, bark, leaf, h, 1.6, 2.4, 5, 13, 0.75, 0.62)
+		"eiche":
+			# dunkle, stark gefurchte Rinde, kurzer dicker Stamm, breite ausladende Krone
+			var bark := Color("5e4632")
+			var h := 2.2 + rng.randf() * 0.4
+			_hd_trunk(st, h, 0.32, bark, rng, 1.0)
+			var leaf: Color = [Color("4c7a2e"), Color("557f30"), Color("466f2b"), Color("a8752a")][vi % 4]
+			_crown(st, rng, bark, leaf, h, 2.3, 1.7, 6, 15, 0.85, 0.32)
+		"ahorn":
+			# grau-brauner Stamm, runde dichte Krone; manche Ahorne schon herbstlich rot
+			var bark := Color("6e6354")
+			var h := 2.6 + rng.randf() * 0.5
+			_hd_trunk(st, h, 0.26, bark, rng, 0.5)
+			var leaf: Color = [Color("5a8c34"), Color("66953a"), Color("e08a2a"), Color("c4452a")][vi % 4]
+			_crown(st, rng, bark, leaf, h, 1.9, 2.0, 5, 14, 0.8, 0.5)
+		"birch":
+			var h := 4.0 + rng.randf() * 0.6
+			_hd_trunk(st, h, 0.15, Color("efece4"), rng, 0.0, true, Vector3(rng.randf_range(-0.05, 0.05), 0, rng.randf_range(-0.05, 0.05)))
+			var leaf: Color = [Color("9cbf4a"), Color("a9c650"), Color("d8c050")][vi % 3]
+			_crown(st, rng, Color("d9d5cc"), leaf, h * 0.7, 1.1, 2.4, 4, 11, 0.55, 0.8)
+		"fichte":
+			# schlanker Stamm, 9 hängende Astetagen mit gezackten Rändern, dunkles Grün
+			var h := 5.6 + rng.randf() * 1.2
+			_hd_trunk(st, h, 0.2, Color("5a4434"), rng, 0.6)
+			var c: Color = [Color("2f5c36"), Color("36643c"), Color("2b5432")][vi % 3]
+			var tiers := 9
+			for k in tiers:
+				var u := float(k) / (tiers - 1)
+				var y := 1.2 + u * (h - 1.0)
+				var rad := lerpf(1.7, 0.25, u) * rng.randf_range(0.92, 1.08)
+				_tier(st, y, rad, 0.75 - u * 0.25, c * lerpf(0.85, 1.12, u), rng, 11)
+			_tier(st, h + 0.55, 0.18, 0.7, c * 1.15, rng, 6)
+		"pine":
+			# Kiefer: hoher, rötlicher Stamm, schirmförmige Krone oben
+			var h := 4.6 + rng.randf() * 0.8
+			_hd_trunk(st, h, 0.2, Color("806250"), rng, 0.7)
+			var c: Color = [Color("3f6b34"), Color("4a7838")][vi % 2]
+			for k in 4:
+				var a := k * TAU / 4.0 + rng.randf() * 0.6
+				_hd_branch(st, Vector3(0, h * 0.75, 0), Vector3(cos(a) * 1.1, h + 0.2, sin(a) * 1.1), 0.07, Color("6e5544"))
+				_clump(st, Vector3(cos(a) * 1.2, h + 0.35, sin(a) * 1.2), Vector3(0.75, 0.38, 0.75), c, rng)
+			_clump(st, Vector3(0, h + 0.6, 0), Vector3(0.9, 0.45, 0.9), c * 1.05, rng)
+	return st.commit()
+
+# Krone für Laubbäume: Hauptäste vom Stamm zu den Laubklumpen, darum viele kleinere Klumpen
+func _crown(st: SurfaceTool, rng: RandomNumberGenerator, bark: Color, leaf: Color, h: float, spread: float, tall: float, branches: int, clumps: int, csize: float, up: float) -> void:
+	var tips: Array = []
+	for k in branches:
+		var a := k * TAU / branches + rng.randf() * 0.7
+		var start := Vector3(0, h * rng.randf_range(0.6, 0.95), 0)
+		var tip := Vector3(cos(a) * spread * rng.randf_range(0.55, 0.85), h + tall * rng.randf_range(0.25, 0.6) * (0.6 + up), sin(a) * spread * rng.randf_range(0.55, 0.85))
+		_hd_branch(st, start, tip, 0.09, bark)
+		tips.append(tip)
+	var center := Vector3(0, h + tall * 0.5, 0)
+	for i in clumps:
+		var p: Vector3
+		if i < tips.size():
+			p = tips[i] + Vector3(0, 0.25, 0)
+		else:
+			var a := rng.randf() * TAU
+			var r := sqrt(rng.randf()) * spread * 0.75
+			p = center + Vector3(cos(a) * r, rng.randf_range(-0.45, 0.55) * tall, sin(a) * r)
+		var sz := csize * rng.randf_range(0.75, 1.15)
+		var shade := lerpf(0.85, 1.12, clampf((p.y - h) / maxf(tall, 0.1), 0.0, 1.0))   # oben heller
+		_clump(st, p, Vector3(sz, sz * 0.82, sz), leaf * shade, rng)
+
+# eine hängende Fichten-Etage: Kegel mit gezacktem, nach unten hängendem Rand
+func _tier(st: SurfaceTool, y: float, rad: float, hgt: float, c: Color, rng: RandomNumberGenerator, n: int) -> void:
+	var top := Vector3(0, y + hgt, 0)
+	var rim: Array = []
+	for i in n:
+		var a := i * TAU / n + rng.randf() * 0.1
+		var rr := rad * (1.0 if i % 2 == 0 else 0.72)
+		var dy := -0.12 if i % 2 == 0 else 0.05
+		rim.append(Vector3(cos(a) * rr, y + dy, sin(a) * rr))
+	for i in n:
+		var p0: Vector3 = rim[i]
+		var p1: Vector3 = rim[(i + 1) % n]
+		var tf := Transform3D(Basis(), Vector3(0, y, 0))
+		_tri(st, tf, p0 - Vector3(0, y, 0), p1 - Vector3(0, y, 0), top - Vector3(0, y, 0), c * 0.8, c * 0.8, c * 1.1)
+		_tri(st, tf, p1 - Vector3(0, y, 0), p0 - Vector3(0, y, 0), Vector3(0, 0.05, 0), c * 0.45, c * 0.45, c * 0.5)
+
+const TREE_VARIANTS := {"oak": 10, "birch": 4, "fir": 4, "pine": 4, "dead": 2, "buche": 8, "eiche": 8, "ahorn": 8, "fichte": 6}
 const LEAF_COLS := [Color("3f6b34"), Color("557a35"), Color("6f8a2e"), Color("c9822e"), Color("b4532a")]
 const FIR_COLS := [Color("4f8a58"), Color("579460"), Color("477f50")]   # etwas heller als im Browser, wegen anderer Beleuchtung
 const BIRCH_COLS := [Color("9cbf4a"), Color("d8c050"), Color("b8c84a")]
@@ -587,11 +757,17 @@ func nearest_tree(p: Vector3, r: float, alive := true):
 			best = t
 	return best
 
+# Baum in beiden Detailstufen (nah/fern) gleich setzen
+func _tree_set(t: Dictionary, xf: Transform3D) -> void:
+	t.mm.set_instance_transform(t.i, xf)
+	if t.get("mm2") != null:
+		t.mm2.set_instance_transform(t.i, xf)
+
 func fell_tree(t: Dictionary, from = null, instant := false) -> void:
 	t.alive = false
 	_show_stump(t, true)
 	if instant:
-		t.mm.set_instance_transform(t.i, Transform3D(Basis().scaled(Vector3.ONE * 0.001), t.pos))
+		_tree_set(t, Transform3D(Basis().scaled(Vector3.ONE * 0.001), t.pos))
 		return
 	# Baum kippt vom Holzfäller weg um (wie im Browser) und verschwindet dann
 	var away := Vector3(0, 0, 1)
@@ -604,16 +780,16 @@ func fell_tree(t: Dictionary, from = null, instant := false) -> void:
 	var tw := create_tween()
 	tw.tween_method(func(k: float):
 		var ang := k * k * 1.5
-		t.mm.set_instance_transform(t.i, Transform3D(Basis(axis, ang) * base, t.pos)), 0.0, 1.0, 1.6)
+		_tree_set(t, Transform3D(Basis(axis, ang) * base, t.pos)), 0.0, 1.0, 1.6)
 	tw.tween_interval(0.6)
 	tw.tween_method(func(k: float):
-		t.mm.set_instance_transform(t.i, Transform3D((Basis(axis, 1.5) * base).scaled(Vector3.ONE * maxf(1.0 - k, 0.001)), t.pos)), 0.0, 1.0, 0.5)
+		_tree_set(t, Transform3D((Basis(axis, 1.5) * base).scaled(Vector3.ONE * maxf(1.0 - k, 0.001)), t.pos)), 0.0, 1.0, 0.5)
 
 func plant_tree(t: Dictionary) -> void:
 	t.alive = true
 	_show_stump(t, false)
 	var tw := create_tween()
-	tw.tween_method(func(k): t.mm.set_instance_transform(t.i, Transform3D(t.t.basis.scaled(Vector3.ONE * maxf(k, 0.001)), t.pos)), 0.05, 1.0, 20.0)
+	tw.tween_method(func(k): _tree_set(t, Transform3D(t.t.basis.scaled(Vector3.ONE * maxf(k, 0.001)), t.pos)), 0.05, 1.0, 20.0)
 
 # ---------- Baumstümpfe ----------
 var stump_mm: MultiMesh
