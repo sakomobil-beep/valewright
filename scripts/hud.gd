@@ -161,8 +161,7 @@ func _unhandled_input(e: InputEvent) -> void:
 # ---------- Tageszeit ----------
 func _process(dt: float) -> void:
 	_game_time += dt
-	if labels_on and Engine.get_process_frames() % 30 == 0:
-		_update_labels()
+	_update_plates()
 	# keine Tageszeit: immer heller Tag, die Sonne steht fest
 	if not _sun_set:
 		_sun_set = true
@@ -460,28 +459,123 @@ func toggle_labels() -> void:
 	labels_on = not labels_on
 	_update_labels()
 
+# Gebäudeschilder als gut lesbare Tafeln (2D, immer scharf): Name + Status in Farbe.
+# Gestoppte Produktion zeigt immer – auch ohne Schilder – ein rotes Pause-Zeichen über dem Haus.
+var _plates := {}     # Gebäude-Schlüssel -> {panel, name, status, pause}
+var _plate_layer: Control
+
 func _update_labels() -> void:
+	pass   # Inhalt wird in _update_plates() jedes Bild aktualisiert
+
+func _make_plate() -> Dictionary:
+	var pc := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.13, 0.09, 0.06, 0.88)
+	sb.border_color = Color(0.72, 0.55, 0.3, 0.9)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(6)
+	sb.content_margin_left = 8
+	sb.content_margin_right = 8
+	sb.content_margin_top = 3
+	sb.content_margin_bottom = 4
+	pc.add_theme_stylebox_override("panel", sb)
+	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 0)
+	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pc.add_child(vb)
+	var nm := Label.new()
+	nm.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	nm.add_theme_font_size_override("font_size", 15)
+	nm.add_theme_color_override("font_color", Color(1, 0.86, 0.5))
+	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(nm)
+	var st := Label.new()
+	st.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	st.add_theme_font_size_override("font_size", 12)
+	st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(st)
+	_plate_layer.add_child(pc)
+	# Pause-Zeichen: roter Kreis mit ⏸
+	var pz := PanelContainer.new()
+	var ps := StyleBoxFlat.new()
+	ps.bg_color = Color(0.78, 0.16, 0.12, 0.95)
+	ps.border_color = Color(1, 0.9, 0.8)
+	ps.set_border_width_all(2)
+	ps.set_corner_radius_all(18)
+	ps.content_margin_left = 7
+	ps.content_margin_right = 7
+	ps.content_margin_top = 2
+	ps.content_margin_bottom = 2
+	pz.add_theme_stylebox_override("panel", ps)
+	pz.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var pl := Label.new()
+	pl.text = "⏸"
+	pl.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	pl.add_theme_font_size_override("font_size", 20)
+	pl.add_theme_color_override("font_color", Color.WHITE)
+	pz.add_child(pl)
+	_plate_layer.add_child(pz)
+	return {"panel": pc, "name": nm, "status": st, "pause": pz}
+
+func _status_col(st: String, b: Dictionary) -> Color:
+	if b.get("paused", false):
+		return Color(1, 0.45, 0.38)
+	if st in ["ST_WORKING", "ST_BUILDING", "ST_HOUSE_OK", "ST_HK_TRAIN", "ST_SEARCHING"] or st.begins_with("ST_TRAIN"):
+		return Color(0.6, 0.95, 0.5)
+	if st in ["ST_MISSING", "ST_NO_PEOPLE", "ST_OUT_FULL", "ST_HOUSE_MISSING", "ST_NOTHING_FOUND"] or st.begins_with("SITE_WAIT"):
+		return Color(1, 0.75, 0.35)
+	return Color(0.9, 0.86, 0.78)
+
+func _update_plates() -> void:
+	if _plate_layer == null:
+		_plate_layer = Control.new()
+		_plate_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_plate_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		layer.add_child(_plate_layer)
+		layer.move_child(_plate_layer, 0)   # unter allen Fenstern
+	var cam: Camera3D = get_viewport().get_camera_3d()
+	if cam == null:
+		return
+	var seen := {}
+	var vs := get_viewport().get_visible_rect().size
 	for b in main.economy.buildings:
-		var l = b.get("lbl3d")
-		if b.get("removed", false) or not is_instance_valid(b.node):
-			if l and is_instance_valid(l):
-				l.queue_free()
+		if b.get("removed", false) or not is_instance_valid(b.node) or int(b.get("owner", 0)) != 0:
 			continue
-		if not labels_on:
-			if l and is_instance_valid(l):
-				l.visible = false
+		var key := str(b.node.get_instance_id())
+		var paused: bool = b.get("paused", false)
+		if not labels_on and not paused:
 			continue
-		if l == null or not is_instance_valid(l):
-			l = Label3D.new()
-			l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-			l.no_depth_test = true
-			l.font_size = 32
-			l.pixel_size = 0.011
-			l.outline_size = 8
-			l.modulate = Color(1, 0.95, 0.8, 0.85)
-			main.add_child(l)
-			b.lbl3d = l
-		var st: String = b.get("status", "")
-		l.text = tr("BLD_" + String(b.type).to_upper()) + ("\n" + tr(st) if st != "" else "")
-		l.position = b.pos + Vector3(0, 6.0, 0)
-		l.visible = true
+		seen[key] = true
+		if not _plates.has(key):
+			_plates[key] = _make_plate()
+		var P: Dictionary = _plates[key]
+		var top: Vector3 = b.pos + Vector3(0, 5.2, 0)
+		var dist: float = cam.global_position.distance_to(b.pos)
+		var vis: bool = not cam.is_position_behind(top) and dist < 140.0
+		var sp: Vector2 = cam.unproject_position(top)
+		vis = vis and sp.x > -100 and sp.x < vs.x + 100 and sp.y > -60 and sp.y < vs.y + 60
+		var fade := clampf((140.0 - dist) / 30.0, 0.0, 1.0)
+		var pc: PanelContainer = P.panel
+		pc.visible = vis and labels_on
+		if pc.visible:
+			var st: String = String(b.get("status", ""))
+			P.name.text = tr("BLD_" + String(b.type).to_upper())
+			P.status.text = (tr("ST_PAUSED") if paused else tr(st)) if (st != "" or paused) else ""
+			P.status.visible = P.status.text != ""
+			P.status.add_theme_color_override("font_color", _status_col(st, b))
+			pc.reset_size()
+			pc.position = (sp - Vector2(pc.size.x * 0.5, pc.size.y)).round()
+			pc.modulate.a = fade
+		var pz: PanelContainer = P.pause
+		pz.visible = vis and paused
+		if pz.visible:
+			pz.reset_size()
+			var off := Vector2(0, pc.size.y + 6) if pc.visible else Vector2.ZERO
+			pz.position = (sp - Vector2(pz.size.x * 0.5, pz.size.y) - off).round()
+			pz.modulate.a = maxf(0.6, fade)
+	for key in _plates.keys():
+		if not seen.has(key):
+			_plates[key].panel.queue_free()
+			_plates[key].pause.queue_free()
+			_plates.erase(key)
