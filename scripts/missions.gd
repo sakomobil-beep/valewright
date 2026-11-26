@@ -77,7 +77,7 @@ func tutorial_steps() -> Array:
 		["TUT_5", func(): return built.call("brunnen") >= 1 and e.buildings.any(func(b): return b.type == "wohnhaus" and int(b.get("sat", 0)) > 0), ["brunnen", "wohnhaus"]],
 		["TUT_6", func(): return main.builder.selected != null and not main.builder.selected.get("hq", false), []],
 		["TUT_7", func(): return built.call("bauernhof") >= 1 and built.call("muehle") >= 1 and built.call("baeckerei") >= 1, ["bauernhof", "muehle", "baeckerei"]],
-		["TUT_8", func(): return built.call("handwerkskammer") >= 1 and (e.builders_n >= 2 or e.buildings.any(func(b): return b.type == "handwerkskammer" and not b.get("tq", []).is_empty())), ["handwerkskammer"]],
+		["TUT_8", func(): return built.call("handwerkskammer") >= 1 and (e.builders_n >= 3 or e.buildings.any(func(b): return b.type == "handwerkskammer" and not b.get("tq", []).is_empty())), ["handwerkskammer"]],
 		["TUT_9", func(): return e.buildings.any(func(b): return b.type in ["wachstube", "wachturm"] and int(b.get("garrison", 0)) > 0), ["wachstube"]],
 		["TUT_10", func(): return built.call("rutengaenger") >= 1 and main.terrain.deposits.any(func(d): return d.found), ["rutengaenger"]],
 		["TUT_11", func(): return e.buildings.any(func(b): return b.type in ["kohlemine", "eisenmine", "steinmine", "goldmine"] and b.build >= 1.0), ["kohlemine"]],
