@@ -346,9 +346,10 @@ MG_RES	Rohstoffe	Resources
 MG_START	Startmaterial	Starting goods
 MG_TEMPO	Tempo	Pace
 MG_SEED	Kartennummer	Map number
-MGV_KLEIN	Klein	Small
-MGV_MITTEL	Mittel	Medium
-MGV_GROSS	Groß	Large
+MGV_KLEIN	Klein (360 m)	Small (360 m)
+MGV_MITTEL	Mittel (480 m)	Medium (480 m)
+MGV_GROSS	Groß (640 m)	Large (640 m)
+MGV_RIESIG	Riesig (800 m)	Huge (800 m)
 MGV_FLACH	Flach	Flat
 MGV_HUEGEL	Hügelig	Hilly
 MGV_GEBIRGE	Gebirge	Mountains

@@ -282,7 +282,7 @@ func new_game_menu() -> void:
 	right.add_child(legend)
 	var redraw := func(): prev.texture = _map_preview(c)
 	var opts := [
-		["size", "MG_SIZE", ["klein", "mittel", "gross"], 1],
+		["size", "MG_SIZE", ["klein", "mittel", "gross", "riesig"], 1],
 		["terrain", "MG_TERRAIN", ["flach", "huegel", "gebirge", "gemischt"], 3],
 		["water", "MG_WATER", ["wenig", "normal", "viel"], 1],
 		["forest", "MG_FOREST", ["licht", "normal", "dicht"], 1],
@@ -292,6 +292,7 @@ func new_game_menu() -> void:
 		["modus", "MG_MODUS", ["kampf", "frieden"], 0],
 		["unlock", "MG_UNLOCK", ["schritt", "alle"], 0],
 	]
+	c.map_m = MAP_M["mittel"]
 	for o in opts:
 		var key: String = o[0]
 		var vals: Array = o[2]
@@ -305,7 +306,11 @@ func new_game_menu() -> void:
 		for v in vals:
 			ob2.add_item(tr("MGV_" + String(v).to_upper()))
 		ob2.selected = o[3]
-		ob2.item_selected.connect(func(i): c[key] = vals[i]; redraw.call())
+		ob2.item_selected.connect(func(i):
+			c[key] = vals[i]
+			if key == "size":
+				c.map_m = MAP_M[vals[i]]
+			redraw.call())
 		g.add_child(ob2)
 	var sl := Label.new()
 	sl.text = tr("MG_SEED")
@@ -603,6 +608,8 @@ func settings_menu(in_game: bool) -> void:
 
 
 # Vorschaubild der Karte (Höhen, Wasser, Berge)
+const MAP_M := {"klein": 360, "mittel": 480, "gross": 640, "riesig": 800}   # Kartengrößen in Metern
+
 func _map_preview(c: Dictionary) -> ImageTexture:
 	var t = load("res://scripts/terrain.gd").new()
 	t.prepare(c)

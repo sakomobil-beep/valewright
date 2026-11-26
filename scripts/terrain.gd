@@ -40,7 +40,12 @@ func prepare(cfg: Dictionary) -> void:
 	world_seed = int(cfg.get("seed", 4711))
 	noise.seed = world_seed
 	detail.seed = world_seed + 88
-	SIZE = {"klein": 260.0, "mittel": 360.0, "gross": 480.0}.get(gen.size, 360.0)
+	# Kartengröße in Metern: neue Spiele geben map_m mit (360/480/640/800),
+	# ältere Spielstände und Missionen ohne map_m behalten die alten Maße
+	if cfg.has("map_m"):
+		SIZE = float(cfg.map_m)
+	else:
+		SIZE = {"klein": 260.0, "mittel": 360.0, "gross": 480.0, "riesig": 640.0}.get(gen.size, 360.0)
 	RES = int(SIZE / 2.0)
 	var sc := SIZE / 360.0
 	hill_amp = {"flach": 2.0, "huegel": 9.0, "gebirge": 7.0, "gemischt": 6.0}.get(gen.terrain, 6.0)
@@ -59,21 +64,29 @@ func prepare(cfg: Dictionary) -> void:
 		]:
 			_add_range(chain.map(func(c): return {"p": Vector2(c[0], c[1]), "r": float(c[2]), "h": float(c[3])}))
 		lakes = [{"p": Vector2(-55, 60), "r": 16.0}, {"p": Vector2(85, -70), "r": 12.0}]
-		return
+		if SIZE <= 380.0:
+			return
+		# größere Karte: der bekannte Kern bleibt, außen kommen weitere Gebirge und Seen dazu
 	var rng := RandomNumberGenerator.new()
 	rng.seed = world_seed * 7 + 13
-	var nm: int = {"flach": 1, "huegel": 2, "gebirge": 4, "gemischt": 3}.get(gen.terrain, 3)
+	var rsc := minf(sc, 1.15)   # Berge/Seen nicht riesig aufblasen – lieber mehr davon
+	var area := pow(SIZE / 360.0, 1.7)   # mehr Fläche → mehr Gebirgszüge und Seen
+	var nm: int = int(round({"flach": 1, "huegel": 2, "gebirge": 4, "gemischt": 3}.get(gen.terrain, 3) * area))
+	if classic:
+		nm = maxi(0, nm - 3)
 	var big := 1.2 if gen.terrain == "gebirge" else 1.0
 	for i in nm:
 		for tries in 80:
 			var ang := rng.randf() * TAU
-			var start := Vector2(cos(ang), sin(ang)) * rng.randf_range(72.0, 96.0) * sc
+			# erster Gebirgszug nah am Start, die weiteren über die ganze Karte verteilt
+			var near := i == 0 and not classic
+			var start := Vector2(cos(ang), sin(ang)) * (rng.randf_range(72.0, 96.0) * rsc if near else rng.randf_range(175.0 if classic else 80.0 * rsc, SIZE * 0.4))
 			var dir := start.normalized().rotated(rng.randf_range(-0.7, 0.7))
 			var n: int = rng.randi_range(3, 5) + (1 if gen.terrain == "gebirge" else 0)
 			var chain: Array = []
 			var p := start
 			for k in n:
-				var r: float = (rng.randf_range(16.0, 22.0) if k == 0 else rng.randf_range(22.0, 34.0)) * sc * big
+				var r: float = (rng.randf_range(16.0, 22.0) if k == 0 else rng.randf_range(22.0, 34.0)) * rsc * big
 				var h: float = (rng.randf_range(9.0, 13.0) if k == 0 else rng.randf_range(15.0, 26.0)) * big
 				chain.append({"p": p, "r": r, "h": h})
 				dir = dir.rotated(rng.randf_range(-0.45, 0.45))
@@ -93,14 +106,15 @@ func prepare(cfg: Dictionary) -> void:
 				continue
 			_add_range(chain)
 			break
-	var nl: int = {"wenig": 0, "normal": 2, "viel": 4}.get(gen.water, 2)
-	lakes = []
+	var nl: int = int(round({"wenig": 0, "normal": 2, "viel": 4}.get(gen.water, 2) * area))
+	if not classic:
+		lakes = []
 	for i in nl:
 		for tries in 50:
 			var p := Vector2(rng.randf_range(-0.38, 0.38), rng.randf_range(-0.38, 0.38)) * SIZE
 			if p.length() < 50.0 * sc or mountains.any(func(m): return m.p.distance_to(p) < m.r * 1.8 + 20.0):
 				continue
-			lakes.append({"p": p, "r": rng.randf_range(10.0, 17.0) * sc})
+			lakes.append({"p": p, "r": rng.randf_range(10.0, 17.0) * rsc})
 			break
 
 func river_x(z: float) -> float:
