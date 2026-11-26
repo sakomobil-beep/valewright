@@ -50,6 +50,7 @@ func _process(dt: float) -> void:
 			"spin3x": if w: n.rotate_object_local(Vector3(1, 0, 0), -dt * 5.0)
 			"seilscheibe": if w: n.rotate_object_local(Vector3(0, 0, 1), -dt * 2.2)
 			"haspel": if w: n.rotate_object_local(Vector3(0, 0, 1), dt * 3.8)
+			"muehle": n.rotate_object_local(Vector3(0, 0, 1), -dt * (1.6 if w else 0.15))   # dreht beim Mahlen, sonst ganz langsam im Wind
 			"blade": if w: n.rotate_object_local(Vector3(0, 0, 1), -dt * 14.0)   # Kreissäge dreht
 	_t -= dt
 	if _t > 0.0 or not economy:
@@ -68,6 +69,10 @@ func _process(dt: float) -> void:
 				var zn: Node = b.node.find_child(k, true, false)
 				if zn:
 					_spins.append([zn, k, b])
+			if b.type == "muehle":
+				var rot: Node = b.node.find_child("Node7", true, false)   # Flügelkreuz (Name ging beim Export verloren)
+				if rot:
+					_spins.append([rot, "muehle", b])
 			if b.type == "saegewerk":
 				var bl: Node = b.node.find_child("Node7", true, false)
 				if bl:
