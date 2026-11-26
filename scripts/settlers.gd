@@ -53,8 +53,25 @@ func spawn(job: String, at: Vector3) -> Dictionary:
 		"arm_l": n.find_child("arm_l", true, false), "arm_r": n.find_child("arm_r", true, false),
 		"carry": null, "home": null,
 	}
+	_rig(w)
 	workers.append(w)
 	return w
+
+# Oberkörper bekommt ein Hüftgelenk, damit sich die Siedler beugen, drehen und knien können
+func _rig(w: Dictionary) -> void:
+	var n: Node3D = w.node
+	var up: Node3D = n.find_child("Node3", true, false)
+	w.root = n.find_child("worker", true, false)
+	w.ph = randf() * 10.0
+	if up == null or up.get_parent() == null:
+		return
+	var piv := Node3D.new()
+	piv.name = "huefte"
+	piv.position = up.position + Vector3(0, 0.4, 0)
+	up.get_parent().add_child(piv)
+	up.reparent(piv, true)
+	w.torso = piv
+	w.head = up.get_node_or_null("Node")
 
 # ---------- Wegfindung ----------
 func _build_grid() -> void:
@@ -809,89 +826,206 @@ func _step(w: Dictionary, dt: float) -> void:
 
 func _animate(w: Dictionary, dt: float) -> void:
 	w.t += dt
-	var t: float = w.t
+	var t: float = w.t + float(w.get("ph", 0.0))
 	var ll: Node3D = w.leg_l
 	var lr: Node3D = w.leg_r
 	var al: Node3D = w.arm_l
 	var ar: Node3D = w.arm_r
 	if ll == null or ar == null:
 		return
+	var to = w.get("torso")
+	var hd = w.get("head")
+	# Zielhaltung: Rumpf (vor, Drehung, seitlich), Kopf, Arme (vor, seitlich), Beine, Federn in den Knien
+	var P := {"tx": 0.0, "ty": 0.0, "tz": 0.0, "hx": 0.0, "hy": 0.0, "alx": 0.0, "alz": -0.06, "arx": 0.0, "arz": 0.06, "llx": 0.0, "lrx": 0.0, "bob": 0.0}
+	var carrying: bool = w.get("carry") != null
+	var snap := 14.0
 	match w.anim:
 		"walk":
-			var k := sin(t * 9.0) * 0.6
-			ll.rotation.x = k
-			lr.rotation.x = -k
-			al.rotation.x = -k * 0.8
-			ar.rotation.x = k * 0.8
-		"chop", "build":
-			ll.rotation.x = 0.0
-			lr.rotation.x = 0.0
-			ar.rotation.x = -1.4 + sin(t * 7.0) * 1.1
-			al.rotation.x = -0.4
+			var k := sin(t * 9.0)
+			P.llx = k * 0.62
+			P.lrx = -k * 0.62
+			P.bob = absf(cos(t * 9.0)) * 0.045
+			P.ty = k * 0.07
+			P.hy = -k * 0.05
+			P.tx = 0.07
+			if carrying:
+				# Last mit beiden Händen vor dem Bauch, leicht nach hinten gelehnt
+				P.alx = -1.15
+				P.arx = -1.15
+				P.alz = 0.18
+				P.arz = -0.18
+				P.tx = -0.06
+				P.bob *= 0.7
+			else:
+				P.alx = -k * 0.55
+				P.arx = k * 0.55
+				P.alz = -0.1
+				P.arz = 0.1
+			snap = 20.0
+		"chop":
+			# Axt mit beiden Händen: ausholen über die Schulter, kräftig durchziehen
+			var c := fmod(t * 1.15, 1.0)
+			var wind := c < 0.6
+			var e := c / 0.6 if wind else (c - 0.6) / 0.4
+			var up := 1.0 - pow(1.0 - e, 2.0) if wind else 1.0 - e * e * (3.0 - 2.0 * e)
+			P.arx = lerpf(-0.5, -2.7, up)
+			P.alx = lerpf(-0.45, -2.5, up)
+			P.arz = lerpf(-0.25, 0.1, up)
+			P.alz = lerpf(0.25, -0.05, up)
+			P.tx = lerpf(0.45, -0.18, up)
+			P.ty = lerpf(-0.15, 0.35, up)
+			P.hx = lerpf(0.25, -0.1, up)
+			P.llx = 0.22
+			P.lrx = -0.25
+			P.bob = -0.03
+			snap = 30.0
+		"build":
+			# Hammer: linke Hand hält, rechte schlägt schnell zu
+			var c2 := fmod(t * 1.8, 1.0)
+			var hit := c2 > 0.7
+			P.arx = -2.2 if not hit else lerpf(-2.2, -0.7, (c2 - 0.7) / 0.3)
+			P.alx = -0.95
+			P.alz = 0.2
+			P.tx = 0.3 + (0.1 if hit else 0.0)
+			P.hx = 0.3
+			P.llx = 0.15
+			P.lrx = -0.15
+			snap = 28.0
+		"saw":
+			var k2 := sin(t * 6.5)
+			P.arx = -1.1 + k2 * 0.35
+			P.alx = -1.0 + k2 * 0.3
+			P.arz = -0.15
+			P.alz = 0.15
+			P.tx = 0.28 + k2 * 0.08
+			P.hx = 0.3
+			P.llx = 0.3
+			P.lrx = -0.3
+			snap = 22.0
+		"plant":
+			# hinknien, nach vorn beugen, abwechselnd mit beiden Händen in die Erde
+			var k3 := sin(t * 3.6)
+			P.bob = -0.17
+			P.llx = -1.1
+			P.lrx = 0.55
+			P.tx = 0.6 + absf(k3) * 0.08
+			P.hx = 0.35
+			P.arx = -0.75 + k3 * 0.4
+			P.alx = -0.75 - k3 * 0.4
+			P.ty = k3 * 0.1
+		"shovel":
+			# einstechen, Erde anheben, über die Schulter werfen
+			var k4 := fmod(t * 1.1, 1.0)
+			var stab := k4 < 0.35
+			var lift := k4 >= 0.35 and k4 < 0.7
+			P.llx = 0.35
+			P.lrx = -0.2
+			P.arx = (-0.9 + k4 * 1.2) if stab else ((-0.5 - (k4 - 0.35) * 3.2) if lift else (-1.6 + (k4 - 0.7) * 2.3))
+			P.alx = P.arx * 0.85
+			P.tx = 0.45 if stab else (0.3 - (k4 - 0.35) * 0.8 if lift else 0.05)
+			P.ty = 0.0 if stab else (0.4 if lift else 0.15)
+			P.hx = 0.25
+			P.bob = -0.04 if stab else 0.0
+			if lift and k4 > 0.6 and not w.get("thrown", false):
+				w.thrown = true
+				_dirt(w)
+			if k4 < 0.3:
+				w.thrown = false
+			snap = 22.0
+		"stoke":
+			var k5 := sin(t * 3.0)
+			P.arx = -0.8 + k5 * 0.55
+			P.alx = -0.7 + k5 * 0.55
+			P.tx = 0.3 + k5 * 0.12
+			P.hx = 0.2
+			P.llx = 0.35
+			P.lrx = -0.25
+			P.bob = -0.03
 		"fish":
-			ll.rotation.x = 0.0
-			lr.rotation.x = 0.0
-			ar.rotation.x = -0.9 + sin(t * 1.5) * 0.15
-			al.rotation.x = -0.9 + sin(t * 1.5) * 0.15
+			# Rute halten, ab und zu auswerfen und einholen
+			var c3 := fmod(t, 7.0)
+			if c3 < 0.6:
+				P.arx = lerpf(-1.0, -2.4, c3 / 0.6)
+				P.tx = -0.12
+			elif c3 < 1.0:
+				P.arx = lerpf(-2.4, -0.7, (c3 - 0.6) / 0.4)
+				P.tx = 0.2
+			else:
+				P.arx = -0.9 + sin(t * 1.5) * 0.08
+				P.tx = 0.08
+			P.alx = -0.8
+			P.alz = 0.15
+			P.hx = 0.25 + sin(t * 0.7) * 0.05
+			P.hy = sin(t * 0.3) * 0.15
 		"hop":
 			var hp := absf(sin(t * 7.0))
 			w.node.position.y = terrain.walk_height(w.node.position.x, w.node.position.z) + hp * 0.35
-			al.rotation.x = -2.6 * hp
-			ar.rotation.x = -2.6 * hp
-			ll.rotation.x = 0.0
-			lr.rotation.x = 0.0
+			P.alx = -2.6 * hp
+			P.arx = -2.6 * hp
+			P.alz = -0.4 * hp
+			P.arz = 0.4 * hp
+			P.llx = -0.3 * hp
+			P.lrx = -0.3 * hp
+			P.hx = -0.2 * hp
+			snap = 30.0
 		"talk":
-			ll.rotation.x = 0.0
-			lr.rotation.x = 0.0
-			ar.rotation.x = -0.5 + sin(t * 3.3) * 0.35
-			al.rotation.x = lerpf(al.rotation.x, 0.0, dt * 4.0)
-		"saw":
-			ll.rotation.x = 0.0
-			lr.rotation.x = 0.0
-			ar.rotation.x = -1.2 + sin(t * 9.0) * 0.35
-			al.rotation.x = -1.2 + sin(t * 9.0) * 0.35
+			var g := sin(t * 3.3)
+			P.arx = -0.6 + g * 0.35
+			P.arz = 0.25 + sin(t * 1.7) * 0.15
+			P.alx = -0.3 - maxf(0.0, -g) * 0.3
+			P.hx = sin(t * 2.6) * 0.08
+			P.hy = sin(t * 0.9) * 0.25
+			P.ty = sin(t * 0.9) * 0.1
 		"push", "carve":
-			ll.rotation.x = 0.0
-			lr.rotation.x = 0.0
 			var f := 6.0 if w.anim == "push" else 10.0
-			ar.rotation.x = -1.0 + sin(t * f) * 0.3
-			al.rotation.x = -1.0 + sin(t * f + (0.0 if w.anim == "push" else 1.5)) * 0.3
+			P.arx = -1.0 + sin(t * f) * 0.3
+			P.alx = -1.0 + sin(t * f + (0.0 if w.anim == "push" else 1.5)) * 0.3
+			P.tx = 0.35 if w.anim == "push" else 0.25
+			P.hx = 0.35
+			P.llx = 0.25 if w.anim == "push" else 0.0
+			P.lrx = -0.3 if w.anim == "push" else 0.0
 		"shoot":
-			# Bogen spannen: linker Arm gestreckt, rechter zieht die Sehne und lässt los
-			ll.rotation.x = 0.15
-			lr.rotation.x = -0.15
-			al.rotation.x = -1.5
+			# seitlich stehen, Bogenarm gestreckt, Sehne ziehen und loslassen
 			var ph := fmod(t, 2.5) / 2.5
-			ar.rotation.x = -1.5 + (0.0 if ph > 0.85 else ph * 0.5)
-		"stoke":
-			ll.rotation.x = 0.2
-			lr.rotation.x = -0.1
-			ar.rotation.x = -0.6 + sin(t * 3.0) * 0.6
-			al.rotation.x = -0.6 + sin(t * 3.0) * 0.6
-		"shovel":
-			# wie im Browser: einstechen, Erde anheben, über die Schulter werfen
-			var k := fmod(t * 1.1, 1.0)
-			var stab := k < 0.35
-			var lift := k >= 0.35 and k < 0.7
-			ll.rotation.x = 0.3
-			lr.rotation.x = -0.2
-			ar.rotation.x = (-0.9 + k * 1.2) if stab else ((-0.5 - (k - 0.35) * 3.2) if lift else (-1.6 + (k - 0.7) * 2.3))
-			al.rotation.x = ar.rotation.x * 0.85
-			if lift and k > 0.6 and not w.get("thrown", false):
-				w.thrown = true
-				_dirt(w)
-			if k < 0.3:
-				w.thrown = false
-		"plant":
-			ll.rotation.x = 0.3
-			lr.rotation.x = -0.2
-			ar.rotation.x = -0.9 + sin(t * 4.0) * 0.4
-			al.rotation.x = -0.9 + sin(t * 4.0 + 1.0) * 0.4
+			P.alx = -1.55
+			P.alz = 0.1
+			P.arx = -1.5 + (0.0 if ph > 0.85 else ph * 0.5)
+			P.arz = -0.35 * (0.0 if ph > 0.85 else ph)
+			P.ty = 0.7
+			P.hy = -0.7
+			P.llx = 0.2
+			P.lrx = -0.2
+			snap = 24.0
 		_:
-			ll.rotation.x = lerpf(ll.rotation.x, 0.0, dt * 8.0)
-			lr.rotation.x = lerpf(lr.rotation.x, 0.0, dt * 8.0)
-			al.rotation.x = lerpf(al.rotation.x, 0.0, dt * 8.0)
-			ar.rotation.x = lerpf(ar.rotation.x, 0.0, dt * 8.0)
+			# Ruhe: atmen, Gewicht verlagern, sich ab und zu umschauen
+			P.tx = sin(t * 1.6) * 0.025
+			P.tz = sin(t * 0.5) * 0.03
+			P.hy = sin(t * 0.37) * 0.45 * smoothstep(0.3, 0.8, absf(sin(t * 0.21)))
+			P.hx = sin(t * 0.8) * 0.05
+			P.alz = -0.08 - sin(t * 1.6) * 0.02
+			P.arz = 0.08 + sin(t * 1.6) * 0.02
+			P.bob = sin(t * 1.6) * 0.006
+			if carrying:
+				P.alx = -1.1
+				P.arx = -1.1
+			snap = 6.0
+	var k := minf(1.0, dt * snap)
+	ll.rotation.x = lerpf(ll.rotation.x, P.llx, k)
+	lr.rotation.x = lerpf(lr.rotation.x, P.lrx, k)
+	al.rotation.x = lerpf(al.rotation.x, P.alx, k)
+	ar.rotation.x = lerpf(ar.rotation.x, P.arx, k)
+	al.rotation.z = lerpf(al.rotation.z, P.alz, k)
+	ar.rotation.z = lerpf(ar.rotation.z, P.arz, k)
+	if to:
+		to.rotation.x = lerpf(to.rotation.x, P.tx, k)
+		to.rotation.y = lerpf(to.rotation.y, P.ty, k)
+		to.rotation.z = lerpf(to.rotation.z, P.tz, k)
+	if hd:
+		hd.rotation.x = lerpf(hd.rotation.x, P.hx, k)
+		hd.rotation.y = lerpf(hd.rotation.y, P.hy, k)
+	var rt = w.get("root")
+	if rt:
+		rt.position.y = lerpf(rt.position.y, P.bob, k)
 
 
 # Erdbrocken fliegen von der Schaufel
@@ -1119,7 +1253,7 @@ func _seq_next(w: Dictionary) -> void:
 		if h == "IN": h = first
 		elif h == "OUT": h = out
 		var look := _local(b, st.l)
-		var anim: String = {"hammer": "chop", "dig": "plant", "saw": "saw", "carve": "carve", "push": "push", "stoke": "stoke", "chop": "chop", "shoot": "shoot", "shovel": "shovel"}.get(String(st.get("a")) if st.get("a") != null else "", "push")
+		var anim: String = {"hammer": "build", "dig": "plant", "saw": "saw", "carve": "carve", "push": "push", "stoke": "stoke", "chop": "chop", "shoot": "shoot", "shovel": "shovel"}.get(String(st.get("a")) if st.get("a") != null else "", "push")
 		q.append({"walk": _local(b, st.p)})
 		q.append({"face": look})
 		q.append({"fn": func(): _carry(w, h); _show_prop(b, st, out)})

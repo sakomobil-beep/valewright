@@ -243,7 +243,7 @@ func _step(b: Dictionary, dt: float) -> void:
 			var rr := (r + 0.75) * S
 			var p2: Vector3 = b.pos + Vector3(sin(a2) * rr, 0, cos(a2) * rr)
 			p2.y = terrain.walk_height(p2.x, p2.z)
-			w.q = [{"walk": p2}, {"face": b.pos}, {"anim": "plant" if b.build < 0.15 else "chop", "wait": randf_range(1.0, 1.8)}]
+			w.q = [{"walk": p2}, {"face": b.pos}, {"anim": "plant" if b.build < 0.15 else "build", "wait": randf_range(1.0, 1.8)}]
 	var working: bool = b.site_at and not w.q.is_empty() and w.q[0].has("wait")
 	if working:
 		if b.site_level < 1.0:
