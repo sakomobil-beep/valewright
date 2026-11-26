@@ -48,6 +48,7 @@ func _process(dt: float) -> void:
 			"spin2": n.rotate_object_local(Vector3(0, 0, 1), -dt * (4.0 if w else 0.6))
 			"spin3": n.rotate_object_local(Vector3(0, 1, 0), -dt * (1.2 if w else 0.15))
 			"spin3x": if w: n.rotate_object_local(Vector3(1, 0, 0), -dt * 5.0)
+			"blade": if w: n.rotate_object_local(Vector3(0, 0, 1), -dt * 14.0)   # Kreissäge dreht
 	_t -= dt
 	if _t > 0.0 or not economy:
 		return
@@ -61,6 +62,10 @@ func _process(dt: float) -> void:
 				var sn: Node = b.node.find_child(k, true, false)
 				if sn:
 					_spins.append([sn, k, b])
+			if b.type == "saegewerk":
+				var bl: Node = b.node.find_child("Node7", true, false)
+				if bl:
+					_spins.append([bl, "blade", b])
 		var f: Dictionary = FX.get(b.type, {}).duplicate()
 		f.merge(FX_EXTRA.get(b.type, {}))
 		if f.is_empty():
