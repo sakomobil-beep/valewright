@@ -72,6 +72,7 @@ func _process(dt: float) -> void:
 		mil = main.military
 	var battle: bool = mil != null and "_warns" in mil and not mil._warns.is_empty()
 	if battle:
-		play("kampf", true)
-	elif _track == "" or _track == "kampf" or _track == "menu":
+		if not _track.begins_with("kampf"):
+			play(["kampf", "kampf_2"][randi() % 2], true)
+	elif _track == "" or _track.begins_with("kampf") or _track == "menu":
 		play(_build[_bi])
