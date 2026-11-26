@@ -372,7 +372,7 @@ func _pop_houses() -> void:
 	var need := {}
 	for lv in 5:
 		var n := houses.filter(func(b): return int(b.get("lvl", 0)) == lv).size()
-		_tile(g2, ["🛖", "🏡", "🏘️", "🏛️", "🏰"][lv], str(n), tr("HOUSE_%d" % lv))
+		_tile(g2, ["🛖", "🏡", "🏠", "🏛️", "🏰"][lv], str(n), tr("HOUSE_%d" % lv))
 	for b in houses:
 		for k in b.get("miss", []):
 			need[k] = int(need.get(k, 0)) + 1

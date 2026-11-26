@@ -1032,7 +1032,7 @@ func _house_panel(b: Dictionary) -> void:
 		sb.content_margin_left = 6; sb.content_margin_right = 6; sb.content_margin_top = 2; sb.content_margin_bottom = 2
 		pc.add_theme_stylebox_override("panel", sb)
 		pc.tooltip_text = "%s · %d %s" % [tr("HOUSE_%d" % i), economy.HOUSE_PEOPLE[i], tr("UI_RESIDENTS")]
-		var l := _lbl(pc, ["🛖", "🏡", "🏘️", "🏛️", "🏰"][i] + (" " + tr("HOUSE_%d" % i) if i == lv else ""), 13, Color.WHITE if i == lv else C_DIM)
+		var l := _lbl(pc, ["🛖", "🏡", "🏠", "🏛️", "🏰"][i] + (" " + tr("HOUSE_%d" % i) if i == lv else ""), 13, Color.WHITE if i == lv else C_DIM)
 		lad.add_child(pc)
 		l.get_parent().remove_child(l); pc.add_child(l)
 	# Bewohner + Zufriedenheit
