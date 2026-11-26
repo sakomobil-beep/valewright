@@ -329,6 +329,9 @@ func _update_plot(pl: Dictionary) -> void:
 		basis = Basis(Quaternion(Vector3.UP, up)) * basis
 		pl.mm.set_instance_transform(i, Transform3D(basis.scaled(Vector3(1, h, 1)), d.base + up * h * 0.5))
 		pl.mm2.set_instance_transform(i, Transform3D(basis.scaled(Vector3.ONE * maxf(0.001, ear_s)), d.base + up * (h + 0.06)))
+	# leeres Feld: gar keine Halme zeigen (flach gedrückte Blätter sahen sonst wie Keimlinge aus)
+	pl.mm.visible_instance_count = 0 if pl.state == "leer" else -1
+	pl.mm2.visible_instance_count = 0 if pl.state == "leer" else -1
 	pl.shown = pl.growth if pl.state != "leer" else -1.0
 
 func _plots_step(dt: float) -> void:
