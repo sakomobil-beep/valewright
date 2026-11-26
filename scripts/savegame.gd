@@ -41,7 +41,7 @@ func save(slot: String) -> void:
 		if t.deposits[i].found:
 			dep.append(i)
 	d.deposits = dep
-	d.soldiers = m.soldiers.filter(func(s): return s.owner == 0 and s.state != "garrison").map(func(s): return [s.kind, s.rank])
+	d.soldiers = m.soldiers.filter(func(s): return s.owner == 0 and s.state != "garrison").map(func(s): return [s.kind, s.rank, s.state == "hq"])
 	d.ais = m.ais.map(func(a): return {"id": a.id, "diff": a.diff, "alive": a.alive, "pos": _v(a.pos),
 		"lager": a.lager.garrison, "peaceful": a.get("peaceful", false), "t_grow": a.t_grow, "t_expand": a.t_expand, "t_attack": a.t_attack,
 		"towers": a.buildings.filter(func(b): return b.type == "wachturm").map(func(b): return {"pos": _v(b.pos), "g": b.garrison}),
@@ -81,7 +81,9 @@ func apply(d: Dictionary) -> void:
 		bld.place_loaded(b)
 	for st in d.soldiers:
 		if st is Array:
-			m._new_soldier(0, main.settlers.lager_door(), int(st[1]), String(st[0]))
+			var ns: Dictionary = m._new_soldier(0, main.settlers.lager_door(), int(st[1]), String(st[0]))
+			if st.size() > 2 and bool(st[2]):
+				m.hq_post(ns)
 		else:
 			m._new_soldier(0, main.settlers.lager_door(), int(st))
 	for a in d.ais:

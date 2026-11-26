@@ -765,7 +765,7 @@ func _process(_dt: float) -> void:
 			_set_head("lager", tr("BLD_HAUPTHAUS"), tr("UI_HQ_SUB"))
 			info_label.text = tr("ST_HQ") + "\n" + tr("UI_HQ_INFO") % [n_set, economy.buildings.filter(func(x): return int(x.get("owner", 0)) == 0 and not x.get("removed", false)).size(), int(economy.stock.get("werkzeug", 0)), int(economy.stock.get("muenzen", 0))]
 			info_label.text += "\n📦 " + tr("UI_STORED")
-			_set_chips(_stock_sections())
+			_hq_panel()
 			return
 		var txt := (tr("BLD_HAUPTHAUS") if b.type == "lager" and not economy.buildings.is_empty() and b == economy.buildings[0] else tr(_key(b.type))) + "\n" + tr(b.status)
 		if b.type == "wohnhaus" and b.has("lvl") and b.build >= 1.0:
@@ -1183,6 +1183,48 @@ func _hk_panel(b: Dictionary) -> void:
 	var tools := int(economy.stock.get("werkzeug", 0))
 	_lbl(hb3, tr("UI_HK_COST"), 13, C_DIM, 230)
 	_lbl(hb3, tr("UI_IN_STOCK_N") % tools, 13, C_OK if tools > 0 else C_BAD)
+
+# Haupthaus: Wache am Tor (Einberufen/Entlassen) + Lagerbestand
+func _hq_panel() -> void:
+	if not military:
+		_set_chips(_stock_sections())
+		return
+	var g: Array = military.hq_guards()
+	var idle: int = military.soldiers.filter(func(x): return x.owner == 0 and x.state == "idle").size()
+	var sig := "HQ%s|%d|%s" % [str(g.map(func(x): return [x.kind, x.rank])), idle, str(_stock_sections())]
+	if sig == _chip_sig:
+		return
+	_set_chips(_stock_sections())   # Lager-Karten
+	_chip_sig = sig
+	var c := _hpcard(info_chips, Color(0.1, 0.18, 0.3, 0.45))
+	info_chips.move_child(c.get_parent(), 0)
+	var hb := HBoxContainer.new(); hb.add_theme_constant_override("separation", 8); c.add_child(hb)
+	_lbl(hb, "🛡️ " + tr("UI_HQ_GUARD"), 14, C_GOLD, 150)
+	_bar(hb, g.size(), military.HQ_SLOTS, C_OK if g.size() >= 2 else (C_BAD if g.is_empty() else C_GOLD), 120)
+	_lbl(hb, "%d/%d" % [g.size(), military.HQ_SLOTS], 13, C_DIM)
+	for i in military.HQ_SLOTS:
+		_slot_row(c, "schwert", g[i] if i < g.size() else null)
+	var bh := HBoxContainer.new(); bh.add_theme_constant_override("separation", 8); c.add_child(bh)
+	var up := Button.new()
+	up.text = "⬆ " + tr("UI_HQ_CALL") + " (%d)" % idle
+	up.disabled = idle == 0 or g.size() >= military.HQ_SLOTS
+	up.tooltip_text = tr("UI_HQ_CALL_TIP")
+	up.pressed.connect(func():
+		if military.hq_call_up():
+			if settlers: settlers.sfx("place")
+		else:
+			economy.message.emit(tr("MSG_HQ_NO_SOLDIER"))
+		_chip_sig = "")
+	bh.add_child(up)
+	var dn := Button.new()
+	dn.text = "⬇ " + tr("UI_HQ_DISMISS")
+	dn.disabled = g.is_empty()
+	dn.tooltip_text = tr("UI_HQ_DISMISS_TIP")
+	dn.pressed.connect(func():
+		military.hq_dismiss()
+		_chip_sig = "")
+	bh.add_child(dn)
+	_lbl(c, tr("UI_HQ_GUARD_HINT"), 12, C_DIM).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 func _enemy_panel(e: Dictionary) -> void:
 	var sig := "E%d|%s" % [int(e.garrison), str(e.get("owner", 0))]

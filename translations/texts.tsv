@@ -633,3 +633,10 @@ UI_QUEUE	Warteschlange	Queue
 UI_HK_IDLE	Gerade keine Ausbildung – unten 👷 +1 oder 🧺 +1 wählen.	No training right now – pick 👷 +1 or 🧺 +1 below.
 UI_HK_COST	Je Ausbildung 1 Werkzeug · 5 Minuten	Each training: 1 tool · 5 minutes
 UI_IN_STOCK_N	Lager: %d	in stock: %d
+UI_HQ_GUARD	Wache am Haupthaus	Town hall guard
+UI_HQ_CALL	Einberufen	Call up
+UI_HQ_CALL_TIP	Holt deinen stärksten freien Soldaten als Wächter ans Haupthaus.	Posts your strongest free soldier as town hall guard.
+UI_HQ_DISMISS	Entlassen	Dismiss
+UI_HQ_DISMISS_TIP	Ein Wächter wird wieder freier Soldat (z. B. für Angriffe).	A guard becomes a free soldier again (e.g. for attacks).
+MSG_HQ_NO_SOLDIER	Kein freier Soldat – bilde in der Kaserne Kämpfer aus.	No free soldier – train fighters in the barracks.
+UI_HQ_GUARD_HINT	Greifen Feinde das Haupthaus an, kämpfen zuerst die Wächter, danach deine freien Soldaten – immer mit ihrem Rang. Fällt der letzte, ist das Spiel verloren.	If enemies attack the town hall, the guards fight first, then your free soldiers – always with their rank. If the last one falls, the game is lost.

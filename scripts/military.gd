@@ -133,7 +133,7 @@ func _spawn_ai(id: int, p: Vector3, diff: String) -> void:
 		"t_grow": 0.0, "t_expand": 0.0, "t_attack": 0.0, "diff": diff, "alive": true}
 	ais.append(ai)
 	var lager := _ai_building(ai, "lager", p, 0)
-	lager.garrison = 0   # wie der Spieler: keine geschenkten Soldaten
+	lager.garrison = 2   # wie der Spieler: 2 Wächter bewachen das Lager von Anfang an
 	ai.lager = lager
 	ai.reserve = 0
 	claims.append({"pos": p, "r": CLAIM.lager, "owner": id, "b": lager})
@@ -541,6 +541,58 @@ func _sash(node: Node3D, col: Color) -> void:
 	m.position = Vector3(0, 0.62, 0)
 	node.add_child(m)
 
+# ---------- Wache am Haupthaus ----------
+const HQ_SLOTS := 4          # so viele Wächter passen ans Tor
+const HQ_START_GUARDS := 2   # ab Spielbeginn zugeteilt
+
+func hq_guards() -> Array:
+	return soldiers.filter(func(x): return x.owner == 0 and x.state == "hq")
+
+func start_hq_guards() -> void:
+	for i in HQ_START_GUARDS:
+		var s := _new_soldier(0, settlers.lager_door(), 0, "schwert")
+		hq_post(s)
+
+func hq_post(s: Dictionary) -> void:
+	s.state = "hq"
+	s.home = null
+	_place_hq_guards()
+
+func hq_call_up() -> bool:
+	if hq_guards().size() >= HQ_SLOTS:
+		return false
+	var best = null
+	for x in soldiers:
+		if x.owner == 0 and x.state == "idle" and (best == null or float(x.str) > float(best.str)):
+			best = x
+	if best == null:
+		return false
+	hq_post(best)
+	return true
+
+func hq_dismiss() -> bool:
+	var g := hq_guards()
+	if g.is_empty():
+		return false
+	var s: Dictionary = g[-1]
+	s.state = "idle"
+	_place_hq_guards()
+	return true
+
+# Wächter stehen links und rechts der Tür und schauen nach draußen
+func _place_hq_guards() -> void:
+	var door: Vector3 = settlers.lager_door()
+	var out := door - Vector3.ZERO
+	out.y = 0.0
+	out = out.normalized() if out.length() > 0.1 else Vector3(0, 0, 1)
+	var side := Vector3(out.z, 0, -out.x)
+	var g := hq_guards()
+	for i in g.size():
+		var k: float = (1.3 + float(i / 2) * 1.1) * (1.0 if i % 2 == 0 else -1.0)
+		var p: Vector3 = door + side * k + out * 0.6
+		p.y = terrain.height(p.x, p.z)
+		g[i].w.q = [{"go": p}, {"face": p + out * 10.0}]
+
 func _free_soldier(owner: int):
 	for s in soldiers:
 		if s.owner == owner and s.state == "idle":
@@ -796,7 +848,7 @@ func _fight(dt: float) -> void:
 			_retreat(s)
 			continue
 		if b.type == "lager" and b.owner == 0:
-			b.garrison = soldiers.filter(func(d): return d.owner == 0 and d.state == "idle").size()
+			b.garrison = soldiers.filter(func(d): return d.owner == 0 and (d.state == "idle" or d.state == "hq")).size()
 		s.fight_t = s.get("fight_t", 0.0) + dt
 		if s.fight_t < 2.5:
 			continue
@@ -823,6 +875,12 @@ func _fight(dt: float) -> void:
 
 func _best_defender(b: Dictionary) -> float:
 	var best := 1.0
+	if b.type == "lager" and b.owner == 0:
+		# Haupthaus: der stärkste Wächter bzw. freie Soldat kämpft – mit seinem Rang
+		for d in soldiers:
+			if d.owner == 0 and (d.state == "hq" or d.state == "idle"):
+				best = maxf(best, float(d.get("str", 1.0)))
+		return best
 	for d in soldiers:
 		if d.owner == 0 and d.state == "garrison" and d.home == b:
 			best = maxf(best, float(d.get("str", 1.0)))
@@ -830,7 +888,8 @@ func _best_defender(b: Dictionary) -> float:
 
 func _kill_defender(b: Dictionary) -> void:
 	if b.type == "lager" and b.owner == 0:
-		var d = _free_soldier(0)
+		var g := hq_guards()   # zuerst fallen die Wächter am Tor, dann freie Soldaten
+		var d = g[0] if not g.is_empty() else _free_soldier(0)
 		if d:
 			_kill(d)
 		return
@@ -1049,7 +1108,7 @@ func _ai_targets(ai: Dictionary) -> Array:
 	var posts: Array = economy.buildings.filter(func(b): return b.get("owner", 0) == 0 and GARRISON.has(b.type) and b.get("claimed", false) and not b.get("destroyed", false))
 	var list: Array = posts
 	if posts.is_empty():
-		var pl := {"type": "lager", "pos": Vector3.ZERO, "node": get_parent().get_node("Haupthaus"), "owner": 0, "garrison": soldiers.filter(func(x): return x.owner == 0 and x.state == "idle").size()}
+		var pl := {"type": "lager", "pos": Vector3.ZERO, "node": get_parent().get_node("Haupthaus"), "owner": 0, "garrison": soldiers.filter(func(x): return x.owner == 0 and (x.state == "idle" or x.state == "hq")).size()}
 		list = [pl]
 	var out: Array = []
 	for b in list:

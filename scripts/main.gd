@@ -123,6 +123,7 @@ func _ready() -> void:
 		Session.load_data = null
 	else:
 		military.start_ais(int(Session.cfg.get("ais", 1)), String(Session.cfg.get("diff", "leicht")), Session.cfg.get("ai_list", []))
+		military.start_hq_guards()   # 2 Wächter bewachen das Haupthaus ab Spielbeginn
 		military.recompute()
 		if missions.mission != 0:
 			_toast(tr("MSG_GOALS_RIGHT"))
