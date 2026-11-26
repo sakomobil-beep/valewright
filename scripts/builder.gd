@@ -113,6 +113,8 @@ func setup_ui(layer: CanvasLayer) -> void:
 	var ivb := VBoxContainer.new()
 	info_panel.add_child(ivb)
 	info_label = Label.new()
+	info_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info_label.custom_minimum_size.x = 460
 	info_label.add_theme_color_override("font_color", Color(0.96, 0.9, 0.78))
 	ivb.add_child(info_label)
 	attack_btn = Button.new()
@@ -585,7 +587,7 @@ func _process(_dt: float) -> void:
 			var n_set := 0
 			if settlers:
 				n_set = settlers.get_child_count()
-			info_label.text = tr("BLD_HAUPTHAUS") + "\n" + tr("ST_HQ") + "\n" + tr("UI_HQ_INFO") % [n_set, economy.buildings.filter(func(x): return int(x.get("owner", 0)) == 0 and not x.get("removed", false)).size(), int(economy.stock.get("werkzeug", 0)), int(economy.stock.get("muenzen", 0))]
+			info_label.text = tr("BLD_HAUPTHAUS") + "\n" + tr("ST_HQ") + "\n" + tr("UI_HQ_INFO") % [n_set, economy.buildings.filter(func(x): return int(x.get("owner", 0)) == 0 and not x.get("removed", false)).size(), int(economy.stock.get("werkzeug", 0)), int(economy.stock.get("muenzen", 0))] + _stock_text()
 			return
 		var txt := (tr("BLD_HAUPTHAUS") if b.type == "lager" and not economy.buildings.is_empty() and b == economy.buildings[0] else tr(_key(b.type))) + "\n" + tr(b.status)
 		if b.type == "wohnhaus" and b.has("lvl") and b.build >= 1.0:
@@ -599,9 +601,37 @@ func _process(_dt: float) -> void:
 			txt += "  %d %%" % int(b.build * 100.0)
 		else:
 			txt += _orders_text(b) + _bufs_text(b)
+			if b.type == "lager":
+				txt += "\n" + tr("UI_SHARED_STOCK") + _stock_text()
 		info_label.text = txt
 
 var order_box: HBoxContainer
+
+# Lagerbestand für Haupthaus und Lagerhäuser (gemeinsamer Vorrat), nach Gruppen
+const STOCK_GROUPS := [
+	["GRP_BAU", ["stamm", "bretter", "stein", "lehm", "ziegel"]],
+	["GRP_ESSEN", ["brot", "fisch", "schinken", "raeucherfisch", "wurst", "kaese", "kuchen"]],
+	["GRP_LAND", ["getreide", "mehl", "wasser", "schwein", "milch", "hopfen", "trauben", "wolle", "flachs", "honig"]],
+	["GRP_ERZE", ["eisenerz", "kohle", "golderz"]],
+	["GRP_METALL", ["eisenbarren", "werkzeug", "karren", "muenzen"]],
+	["GRP_HANDWERK", ["bier", "met", "wein", "kerzen", "stoff", "kleidung", "kruege", "schmuck", "sehne"]],
+	["GRP_WAFFEN", ["kampfstock", "schwert", "schild", "bogen", "pfeile"]],
+]
+func _stock_text() -> String:
+	var out := "\n📦 " + tr("UI_STORED")
+	var any := false
+	for g in STOCK_GROUPS:
+		var parts := []
+		for k in g[1]:
+			var n := int(economy.stock.get(k, 0))
+			if n > 0:
+				parts.append("%s %s %d" % [economy.icon(k), tr("ITEM_" + String(k).to_upper()), n])
+		if not parts.is_empty():
+			any = true
+			out += "\n" + tr(g[0]) + ": " + " · ".join(parts)
+	if not any:
+		out += "\n–"
+	return out
 var att_box: VBoxContainer
 var att_sl := {}
 var _att_for = null
