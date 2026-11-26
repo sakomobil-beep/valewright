@@ -520,8 +520,25 @@ func model(t: String, lvl := 0) -> Node3D:
 		ps = load("res://models/%s.glb" % file)
 	var n: Node3D = ps.instantiate()
 	n.scale = Vector3.ONE * SCALE
+	if t == "saegewerk":
+		_sawmill_layout(n)
 	_shadows(n)
 	return n
+
+# Sägewerk: Sägebank stand direkt vor der Tür – jetzt seitlich links am Haus (längs),
+# Stammstapel dahinter. So bleibt der Weg zur Tür frei, der Säger arbeitet neben dem Haus.
+func _sawmill_layout(n: Node3D) -> void:
+	var bench: Node3D = n.find_child("Mesh188", true, false)
+	var saw: Node3D = n.find_child("Node7", true, false)
+	if bench and saw:
+		bench.position = Vector3(-1.8, 0.4, 0.15)
+		bench.rotation.y = PI / 2
+		saw.position = Vector3(-1.8, 0.9, 0.15)
+		saw.rotation.y = PI / 2
+	for k in ["Node8", "Node9", "Node10", "Node11"]:
+		var lg: Node3D = n.find_child(k, true, false)
+		if lg:
+			lg.position.z = -1.55
 
 func _shadows(n: Node) -> void:
 	if n is GeometryInstance3D:
