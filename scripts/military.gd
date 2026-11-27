@@ -340,7 +340,7 @@ func _man_tower(b: Dictionary) -> void:
 			break
 	if s == null:
 		# leerer Turm: Wächter mit Kampfstock (Miliz) wie im Browser
-		if b.garrison + b.get("incoming", 0) == 0 and economy.stock.get("kampfstock", 0) > 0 and economy.free_people() > 0:
+		if b.garrison + b.get("incoming", 0) == 0 and economy.stock.get("kampfstock", 0) > 0 and economy.take_person():
 			economy.stock.kampfstock -= 1
 			economy.changed.emit()
 			s = _new_soldier(0, settlers.lager_door(), 0, "schwert")
@@ -736,7 +736,7 @@ func _barracks(dt: float) -> void:
 			if b.train_t <= 0.0:
 				_train_done(b)
 			continue
-		var people_ok: bool = economy.free_people() > 0
+		var people_ok: bool = economy.free_people() > 0 or ((int(b.get("trS", 0)) > 0 or int(b.get("trB", 0)) > 0) and economy.take_person())
 		if (int(b.get("trS", 0)) > 0 or int(b.get("trB", 0)) > 0) and not people_ok and int(b.get("promo", 0)) == 0:
 			b.running = false
 			b.status = "ST_NO_PEOPLE"

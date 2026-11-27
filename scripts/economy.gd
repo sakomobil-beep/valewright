@@ -287,6 +287,12 @@ func used_people() -> int:
 func free_people() -> int:
 	return residents - used_people()
 
+# Für eine Einstellung: ist jemand frei? Wenn nicht, wird ein zweiter Nachbarschaftshelfer abgerufen.
+func take_person() -> bool:
+	if free_people() >= 1:
+		return true
+	return pop_src != null and pop_src.has_method("release_helper") and pop_src.release_helper()
+
 func _grow(dt: float) -> void:
 	_grow_t += dt
 	if _grow_t < GROW_TIME * tf():
@@ -324,7 +330,7 @@ func _train(b: Dictionary, dt: float) -> void:
 	b.tq_t = float(b.get("tq_t", 0.0)) + dt
 	b.status = "ST_HK_TRAIN"
 	if b.tq_t >= TRAIN_TIME:
-		if free_people() < 1:
+		if not take_person():
 			b.status = "ST_NO_PEOPLE"
 			b.tq_t = TRAIN_TIME
 			return

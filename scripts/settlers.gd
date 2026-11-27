@@ -313,7 +313,7 @@ func _on_built(b: Dictionary) -> void:
 		# Jeder neue Arbeiter braucht Werkzeug
 		if b.get("loaded", false):
 			pass
-		elif economy.free_people() < 1:
+		elif not economy.take_person():
 			b.status = "ST_NO_PEOPLE"
 			get_tree().create_timer(5.0).timeout.connect(func(): _on_built(b))
 			return
@@ -825,7 +825,7 @@ func _remove(w: Dictionary) -> void:
 func used_people() -> int:
 	var n := 0
 	for w in workers:
-		if w.get("dead", false) or w.role in ["bauarbeiter", "soldat", "kind", "dorf"] or w.get("hq", false) or w.get("home") != null:
+		if w.get("dead", false) or w.role in ["bauarbeiter", "soldat", "kind", "dorf"] or w.get("hq", false) or (w.get("home") != null and not w.get("second", false)):
 			continue   # Haupthaus-Träger sind ein Geschenk und zählen nicht
 		n += 1
 	n += int(economy.builders_n)
@@ -838,12 +838,15 @@ func carrier_target() -> int:
 
 # ---------- Nachbarschaftshilfe ----------
 # Jedes eigene Wohnhaus stellt einen Helfer (ab der zweiten Stufe zwei). Helfer tragen nur in ihrem Viertel
-# (Abholen UND Abliefern im Umkreis von HELP_R um ihr Haus) und zählen nicht als Arbeitskraft.
+# (Abholen UND Abliefern im Umkreis von HELP_R um ihr Haus).
+# Der erste Helfer ist fest und zählt nicht als Arbeitskraft. Der zweite ist ein Bewohner: er zählt mit,
+# kommt nur, wenn jemand frei ist, und wird als Erster abgerufen, wenn ein Betrieb einen Arbeiter braucht.
 const HELP_R := 25.0
 func helpers_of(h: Dictionary) -> int:
 	return 2 if int(h.get("lvl", 0)) >= 1 else 1
 
 func _helper_spawn() -> void:
+	_help_cool -= 0.5
 	var have := {}
 	for w in workers:
 		if w.get("dead", false) or w.get("home") == null:
@@ -860,11 +863,33 @@ func _helper_spawn() -> void:
 		var id: int = h.node.get_instance_id()
 		var want := helpers_of(h)
 		_helper_mark(h, true)
-		if int(have.get(id, 0)) < want:
+		var n: int = int(have.get(id, 0))
+		if n < want and (n == 0 or (economy.free_people() >= 2 and _help_cool <= 0.0)):
 			var t := spawn("traeger", door_of(h))
 			t.role = "traeger"
 			t.home = h
-			have[id] = int(have.get(id, 0)) + 1
+			t.second = n >= 1
+			have[id] = n + 1
+
+# ein Betrieb braucht einen Arbeiter, aber niemand ist frei: einen zweiten Helfer abrufen
+func release_helper() -> bool:
+	var idle_h = null
+	var busy_h = null
+	for w in workers:
+		if w.get("dead", false) or not w.get("second", false):
+			continue
+		if w.q.is_empty() or (w.q.size() == 1 and w.q[0].has("wait")):
+			idle_h = w
+			break
+		busy_h = w
+	if idle_h == null:
+		if busy_h != null:
+			busy_h.release = true   # trägt noch fertig ab, dann geht er zur Arbeit
+		return false
+	_remove(idle_h)
+	_help_cool = 20.0   # nicht sofort wieder einen neuen Helfer nachschicken
+	return true
+var _help_cool := 0.0
 
 # kleine Kiepe neben der Haustür: hier wohnt ein Nachbarschaftshelfer
 func _helper_mark(h: Dictionary, on: bool) -> void:
@@ -919,6 +944,9 @@ func _carrier_jobs() -> void:
 	var idle: Array = []
 	for w in workers:
 		if w.role != "traeger" or not w.q.is_empty() or w.get("dead", false):
+			continue
+		if w.get("release", false):
+			_remove(w)   # abgerufener Helfer: Auftrag fertig, jetzt frei für einen Beruf
 			continue
 		if w.get("home") == null and not w.get("cart", false) and _fetch_cart(w):
 			continue
