@@ -1,7 +1,7 @@
 class_name Mill
 # Mühle nach Kingmans Vorlage, offen und „wuselig“ in drei Bereichen:
 #  links  – Anlieferung: Getreidegarben, Kisten, Trichter an der Wand
-#  Mitte  – Mechanik: großes Zahnrad an der Hauswand, Windflügel, Mühlsteine unter kleinem, hohem Vordach
+#  Mitte  – Mechanik: großes Zahnrad an der Hauswand, Windflügel, Mühlsteine offen (Vordach entfernt, war den Flügeln im Weg)
 #  rechts – Abtransport: Holzrutsche, Mehlsäcke rutschen herunter, Stapel
 # Bewegliche Teile tragen Namen – die Animation steckt in workshops.gd (_a_muehle).
 
@@ -114,9 +114,6 @@ static func _mechanics(r: Node3D) -> void:
 	Sawmill.cyl(top2, 0.18, 0.19, 0.1, Vector3.ZERO, m(STONE.darkened(0.1)), Vector3.ZERO, 18)
 	var flour := Sawmill.node(t, "MehlFleck", Vector3(0, 0.67, 0.0))
 	Sawmill.cyl(flour, 0.5, 0.5, 0.01, Vector3.ZERO, m(Color(0.97, 0.95, 0.9), 1.0), Vector3.ZERO, 18)
-	for x in [-0.55, 0.55]:
-		Sawmill.box(t, Vector3(0.07, 1.5, 0.07), Vector3(x, 1.4, -0.45), m(TIMBER))
-	Sawmill.box(t, Vector3(1.35, 0.06, 0.5), Vector3(0, 2.15, -0.35), m(ROOF.darkened(0.05), 0.8), Vector3(0.35, 0, 0))
 
 static func _intake(r: Node3D) -> void:
 	# Trichter auf Holzkasten links an der Wand
@@ -173,7 +170,7 @@ static func _output(r: Node3D) -> void:
 	Sawmill.box(ch, Vector3(0.07, mid.y - 0.05, 0.07), Vector3(mid.x, (mid.y - 0.05) / 2, mid.z), m(TIMBER))
 	var sk := Sawmill.node(r, "Sack", a)
 	_sack(sk)
-	var st := Sawmill.node(r, "Saecke", Vector3(3.2, 0, 1.0), Vector3(0, -0.4, 0))
+	var st := Sawmill.node(r, "Saecke", Vector3(1.7, 0, 2.25), Vector3(0, 0.2, 0))
 	for i in 9:
 		var lay := 0 if i < 5 else (1 if i < 8 else 2)
 		var idx := i if i < 5 else (i - 5 if i < 8 else 0)

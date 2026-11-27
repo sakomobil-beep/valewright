@@ -22,7 +22,7 @@ const STEPS := {
 		{"id": "pour", "hw": "getreide", "p": [-1.75, 1.15], "l": [-1.75, 0.35], "a": "push", "t": 0.14},
 		{"id": "grind", "p": [0.6, 1.75], "l": [0.6, 0.75], "a": "carve", "t": 0.34},
 		{"id": "chute", "p": [2.45, 2.35], "l": [2.75, 1.75], "a": "push", "t": 0.2},
-		{"id": "stack", "hw": "mehl", "p": [3.0, 1.85], "l": [3.2, 1.0], "a": "push", "t": 0.14}],
+		{"id": "stack", "hw": "mehl", "p": [1.0, 2.75], "l": [1.7, 2.25], "a": "push", "t": 0.14}],
 	"saegewerk": [
 		{"id": "take", "p": [-2.95, 1.6], "l": [-2.95, 0.55], "a": "push", "t": 0.1},
 		{"id": "load", "hw": "stamm", "p": [-1.75, 2.05], "l": [-1.75, 1.0], "a": "push", "t": 0.1},
@@ -2049,4 +2049,4 @@ func _a_muehle(b: Dictionary, P: Dictionary, s: String, f: float, dt: float, t: 
 	for i in 9:
 		var n: Node3D = st.get_node_or_null("S%d" % i)
 		if n:
-			n.visible = i < int(P.n)
+			n.visible = i < mini(9, int(b.get("out", {}).get("mehl", 0)))

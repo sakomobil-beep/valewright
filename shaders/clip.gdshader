@@ -18,7 +18,7 @@ void fragment() {
 	vec4 c = albedo;
 	if (use_tex) { c *= texture(tex, UV); }
 	if (use_vcol) { c.rgb *= COLOR.rgb; }
-	ALBEDO = c.rgb;
+	ALBEDO = FRONT_FACING ? c.rgb : c.rgb * 0.45;   // Innenseiten der hohlen Mauern dunkler
 	ROUGHNESS = roughness;
 	METALLIC = metallic;
 	EMISSION = emission;

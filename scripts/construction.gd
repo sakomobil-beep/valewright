@@ -33,7 +33,7 @@ func start(b: Dictionary, delivered := {}) -> void:
 	n.scale = Vector3.ONE * float(b.s)
 	var r: float = float(economy.type_info(b.type).r)
 	# Bauplatz einebnen (Stufe 1) – wie im Browser über eine Höhenfläche
-	var lv0: float = float(b.get("site_level_load", 1.0 if delivered else 0.0))
+	var lv0: float = 1.0   # kein Einebnen mehr: der Bauplatz ist sofort eben
 	b.flat = terrain.add_flat(b.pos.x, b.pos.z, (r + 0.4) * float(b.s), lv0)
 	n.position.y = b.flat.y
 	b.pos.y = b.flat.y
@@ -45,6 +45,7 @@ func start(b: Dictionary, delivered := {}) -> void:
 	var y0 := 1e9
 	var y1 := -1e9
 	var bits: Array = []
+	var csh: Shader = load("res://shaders/clip.gdshader")
 	for m in n.find_children("*", "MeshInstance3D", true, false):
 		var mi: MeshInstance3D = m
 		if mi.mesh == null or not mi.is_visible_in_tree():
@@ -53,8 +54,38 @@ func start(b: Dictionary, delivered := {}) -> void:
 		y0 = minf(y0, bb.position.y)
 		y1 = maxf(y1, bb.end.y)
 		var leaf: bool = mi.find_children("*", "MeshInstance3D", true, false).is_empty()
-		bits.append({"mi": mi, "mesh": mi.mesh, "y": bb.position.y + bb.size.y * 0.25, "x": bb.get_center().x + bb.get_center().z * 0.3, "sc": mi.scale, "leaf": leaf, "on": false, "t": -1.0})
-		mi.mesh = null
+		bits.append({"mi": mi, "mesh": mi.mesh, "y": bb.position.y + bb.size.y * 0.25, "x": bb.get_center().x + bb.get_center().z * 0.3, "sc": mi.scale, "leaf": leaf, "on": true, "t": -1.0, "mo": mi.material_override})
+		# hohl hochbauen: Schnittebene von unten nach oben, Innenseiten sichtbar
+		var src = mi.material_override
+		if src == null and mi.mesh.get_surface_count() > 0:
+			src = mi.get_active_material(0)
+		var sm := ShaderMaterial.new()
+		sm.shader = csh
+		if src is BaseMaterial3D:
+			var bm: BaseMaterial3D = src
+			sm.set_shader_parameter("albedo", bm.albedo_color)
+			sm.set_shader_parameter("roughness", bm.roughness)
+			sm.set_shader_parameter("use_vcol", bm.vertex_color_use_as_albedo)
+			if bm.albedo_texture:
+				sm.set_shader_parameter("tex", bm.albedo_texture)
+				sm.set_shader_parameter("use_tex", true)
+		if mi.material_override == null and mi.mesh.get_surface_count() > 1:
+			for si in mi.mesh.get_surface_count():
+				var om = mi.get_active_material(si)
+				var sm2 := ShaderMaterial.new()
+				sm2.shader = csh
+				if om is BaseMaterial3D:
+					sm2.set_shader_parameter("albedo", (om as BaseMaterial3D).albedo_color)
+					sm2.set_shader_parameter("use_vcol", (om as BaseMaterial3D).vertex_color_use_as_albedo)
+					if (om as BaseMaterial3D).albedo_texture:
+						sm2.set_shader_parameter("tex", (om as BaseMaterial3D).albedo_texture)
+						sm2.set_shader_parameter("use_tex", true)
+				parts.append([mi, si, mi.get_surface_override_material(si)])
+				mi.set_surface_override_material(si, sm2)
+				clips.append(sm2)
+		else:
+			mi.material_override = sm
+			clips.append(sm)
 	bits.sort_custom(func(u, v): return u.y < v.y - 0.05 or (absf(u.y - v.y) <= 0.05 and u.x < v.x))
 	b.site_bits = bits
 	b.site_parts = parts
@@ -112,7 +143,11 @@ func start(b: Dictionary, delivered := {}) -> void:
 	var brown := _mat(Color("5c3d22"))
 	var dirt := _mat(Color("7a5a3a"))
 	# Abgesteckte Baufläche: Erdfleck, 4 Eckpfosten, Schnur
-	_box(site, Vector3(FW + 0.3, 0.03, FD + 0.3), Vector3(0, 0.015, 0), dirt)
+	# großes X in der Mitte der Absteckung
+	var xl := Vector2(FW, FD).length() * 0.8
+	for sgn in [-1, 1]:
+		var xb := _box(site, Vector3(0.14, 0.03, xl), Vector3(0, 0.02, 0), _mat(Color("f2ead8")))
+		xb.rotation.y = sgn * atan2(FW, FD)
 	var cord := _mat(Color("e8dcc0"))
 	for sx in [-1, 1]:
 		for sz in [-1, 1]:
@@ -125,8 +160,7 @@ func start(b: Dictionary, delivered := {}) -> void:
 	var rp := Vector3(FW / 2 + 1.1, 0, FD / 2 + 0.9)
 	b.site_lp = lp
 	b.site_rp = rp
-	for q in [lp, rp]:
-		_box(site, Vector3(1.3, 0.025, 1.0), q + Vector3(0, 0.012, 0), _mat(Color("8c6a44")))
+
 	var planks: Array = []
 	for i in 12:
 		var pl := _box(site, Vector3(1.15, 0.07, 0.2), lp + Vector3(0, 0.07 + floor(i / 3.0) * 0.075, -0.25 + (i % 3) * 0.25), _mat(Color("c79a62") if i % 2 == 0 else Color("b88a55")))
@@ -445,26 +479,10 @@ func _work_q(b: Dictionary, w: Dictionary) -> Array:
 	var sp: int = b.site_spot
 	var edge := Vector3(-FW / 2 + (sp % 4 + 0.5) * FW / 4, 0, (FD / 2 + 0.55) * (1 if sp < 4 else -1))
 	var cen := Vector3(edge.x, 0, 0)
-	if p < 0.30:
-		var spot := Vector3(edge.x, 0, (FD / 2 - 0.3) * (1 if sp < 4 else -1))
-		return [{"walk": _w(b, b.site_rp + Vector3(-0.8, 0, 0.2))}, {"face": _w(b, b.site_rp)}, {"anim": "plant", "wait": 0.7},
-			{"fn": func(): settlers._carry(w, "stein")}, {"walk": _w(b, edge)}, {"face": _w(b, cen)},
-			{"fn": func(): settlers._carry(w, null); _puff(b, b.site_dust, spot)}, {"anim": "plant", "wait": 0.9, "work": true},
-			{"fn": func(): _puff(b, b.site_dust, spot)}, {"anim": "build", "wait": 1.3, "work": true}]
-	if p < 0.65:
-		var sawp: Vector3 = b.site_saw.position
-		return [{"walk": _w(b, sawp + Vector3(0, 0, 0.6))}, {"face": _w(b, sawp)},
-			{"fn": func(): _puff(b, b.site_chips, sawp + Vector3(0.3, 0.75, 0))}, {"anim": "saw", "wait": 1.4},
-			{"fn": func(): _puff(b, b.site_chips, sawp + Vector3(0.3, 0.75, 0)); settlers._carry(w, "bretter")},
-			{"walk": _w(b, edge)}, {"face": _w(b, cen)}, {"fn": func(): settlers._carry(w, null)},
-			{"anim": "build", "wait": 2.2, "work": true}]
-	var lad: Vector3 = b.site_ladder
-	var top: float = b.site_plat
-	return [{"walk": _w(b, b.site_lp + Vector3(0.8, 0, 0.3))}, {"face": _w(b, b.site_lp)}, {"anim": "plant", "wait": 0.6},
-		{"fn": func(): settlers._carry(w, "bretter")}, {"walk": _w(b, lad)}, {"face": _w(b, lad + Vector3(-1, 0, 0).rotated(Vector3.UP, b.site.rotation.y))},
-		{"climb": top}, {"walk_up": _w(b, Vector3(lad.x - 0.9, 0, lad.z - 0.4 - randf() * 1.2)), "h": top}, {"face": _w(b, Vector3(0, 0, lad.z - 0.6))},
-		{"fn": func(): settlers._carry(w, null)}, {"anim": "build", "wait": 2.8, "work": true},
-		{"walk_up": _w(b, lad), "h": top}, {"climb": 0.0}]
+	var spot := Vector3(edge.x, 0.3, (FD / 2 - 0.2) * (1 if sp < 4 else -1))
+	return [{"walk": _w(b, edge)}, {"face": _w(b, cen)},
+		{"fn": func(): _puff(b, b.site_dust, spot)}, {"anim": "build", "wait": 1.6, "work": true},
+		{"anim": "plant", "wait": 0.8, "work": true}, {"anim": "build", "wait": 1.4, "work": true}]
 
 func _visual(b: Dictionary) -> void:
 	var p: float = b.build
@@ -475,29 +493,19 @@ func _visual(b: Dictionary) -> void:
 		b.site_found[i].visible = false
 	# Gerüst ploppt bei 30 % auf und verschwindet bei 100 %
 	var sc: Node3D = b.site_scaf
-	sc.visible = on and p >= 0.30 and p < 0.995
+	sc.visible = false
 	sc.scale.y = clampf((p - 0.30) / 0.03, 0.05, 1.0) if p < 0.995 else 0.05
 	for i in b.site_levels.size():
 		b.site_levels[i].visible = p > 0.31 + i * 0.1
-	b.site_saw.visible = on and p >= 0.29 and p < 0.995
+	b.site_saw.visible = false
 	# Fachwerk 30–45 %, danach wachsen die Wände bis zur Traufe (bis 65 %)
 	var fp := clampf((p - 0.30) / 0.15, 0.0, 1.0)
 	var n: int = b.site_frame.size()
 	for i in n:
 		b.site_frame[i].visible = false
-	var nb2: int = b.site_bits.size()
-	var show := int(round(nb2 * clampf((p - 0.02) / 0.96, 0.0, 1.0)))
-	for i in nb2:
-		var e: Dictionary = b.site_bits[i]
-		if i < show and not e.on:
-			e.on = true
-			e.t = 0.0
-			if is_instance_valid(e.mi):
-				e.mi.mesh = e.mesh
-				if e.leaf:
-					e.mi.scale = e.sc * 0.4
-				if randf() < 0.35:
-					_puff(b, b.site_dust, b.site.to_local(e.mi.global_position))
+	var cut: float = b.node.global_position.y + lerpf(float(b.site_hy0) - 0.02, float(b.site_hy1) + 0.05, clampf(p, 0.0, 1.0))
+	for sm in b.site_clips:
+		sm.set_shader_parameter("clip_y", cut)
 	# Dachstuhl 65–85 %
 	var nr: int = b.site_rafters.size()
 	var rp := clampf((p - 0.65) / 0.2, 0.0, 1.0)
@@ -513,18 +521,18 @@ func _visual(b: Dictionary) -> void:
 	if nb > 0:
 		b_left = (float(b.site_in.get("bretter", 0)) - nb * clampf((p - 0.30) / 0.68, 0.0, 1.0)) / nb
 	for i in b.site_rocks.size():
-		b.site_rocks[i].visible = p < 0.995 and i < int(ceil(b.site_rocks.size() * s_left - 0.01))
+		b.site_rocks[i].visible = false and i < int(ceil(b.site_rocks.size() * s_left - 0.01))
 	for i in b.site_planks.size():
-		b.site_planks[i].visible = p < 0.995 and i < int(ceil(b.site_planks.size() * b_left - 0.01))
+		b.site_planks[i].visible = false and i < int(ceil(b.site_planks.size() * b_left - 0.01))
 	for e in b.site_pile:
 		var need: int = int(b.site_need.get(e.k, 1))
 		var got: float = minf(1.0, float(b.site_in.get(e.k, 0)) / need)
-		e.n.visible = e.q < int(round(e.of * got)) - int(round(e.of * p))
+		e.n.visible = false
 
 func _end(b: Dictionary) -> void:
 	for e in b.get("site_bits", []):
 		if is_instance_valid(e.mi):
-			e.mi.mesh = e.mesh
+			e.mi.material_override = e.mo
 			e.mi.scale = e.sc
 	for e in b.get("site_parts", []):
 		if is_instance_valid(e[0]):
