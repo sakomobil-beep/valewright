@@ -1080,16 +1080,28 @@ func _carrier_jobs() -> void:
 				u.res_in = int(u.get("res_in", 0)) + int(job.n)
 		idle.erase(best)
 		best.idle_t = 0.0
+		if best.get("inside", false):
+			# kommt aus dem Haus heraus und legt los
+			best.inside = false
+			best.node.visible = true
+			best.node.position = best.get("inside_door", best.node.position)
 		taken[key] = true
 		taken[src] = true
 		_start_carry(best, job)
-	# wer leer ausgeht: kurz stehen bleiben, erst nach einer Weile zum nächsten Lager zurück
+	# wer leer ausgeht: kurz stehen bleiben, nach einer Weile ins nächste Lager (Helfer: ins eigene Haus) hineingehen
+	# und drinnen warten – niemand steht untätig vor dem Haupthaus herum
 	for w in idle:
-		w.idle_t = float(w.get("idle_t", 0.0)) + 0.25
-		var p: Vector3 = w.node.position
-		var l := nearest_lager(p) if w.get("home") == null else door_of(w.home)
-		if float(w.idle_t) > 4.0 and Vector2(l.x - p.x, l.z - p.z).length() > 3.0:
-			w.q = [{"go": l}, {"wait": 1.0}]
+		w.idle_t = float(w.get("idle_t", 0.0)) + 0.4
+		if w.get("inside", false):
+			w.q = [{"wait": 0.5}]
+			continue
+		var l := nearest_lager(w.node.position) if w.get("home") == null else door_of(w.home)
+		if float(w.idle_t) > 4.0:
+			var c: Vector3 = _lager_center(l) if w.get("home") == null else w.home.pos
+			var dir := Vector3(c.x - l.x, 0, c.z - l.z)
+			var ins := l + (dir.normalized() * minf(2.2, dir.length() * 0.8) if dir.length() > 0.1 else Vector3.ZERO)
+			ins.y = terrain.walk_height(ins.x, ins.z)
+			w.q = [{"go": l}, {"walk": ins, "checked": true}, {"fn": func(): w.node.visible = false; w.inside = true; w.inside_door = l}]
 		else:
 			w.q = [{"wait": 0.5}]
 

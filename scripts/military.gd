@@ -666,6 +666,7 @@ func _wall_mesh(level: int, building: bool) -> void:
 		g.position = p + Vector3(0, gb.size.y / 2.0 - 0.1, 0)
 		_wall_node.add_child(g)
 
+var _hq_chk := 4.0
 func hq_guards() -> Array:
 	return soldiers.filter(func(x): return x.owner == 0 and x.state == "hq")
 
@@ -709,8 +710,9 @@ func _place_hq_guards() -> void:
 	var side := Vector3(out.z, 0, -out.x)
 	var g := hq_guards()
 	for i in g.size():
-		var k: float = (1.3 + float(i / 2) * 1.1) * (1.0 if i % 2 == 0 else -1.0)
-		var p: Vector3 = door + side * k + out * 0.6
+		# links und rechts vom Eingang, etwas abgerückt (die Träger gehen in der Mitte durch)
+		var k: float = (2.4 + float(i / 2) * 1.0) * (1.0 if i % 2 == 0 else -1.0)
+		var p: Vector3 = door + side * k + out * 0.9
 		p.y = terrain.height(p.x, p.z)
 		g[i].w.q = [{"go": p}, {"face": p + out * 10.0}]
 
@@ -1376,6 +1378,13 @@ func _process(dt: float) -> void:
 					ai.eco.out = maxi(0, int(ai.eco.get("out", 0)) - 1)
 			soldiers.erase(s)
 			settlers._remove(s.w)
+	# Haupthaus-Wachen: zurück auf den Posten, wenn sie nach einem Kampf woanders stehen
+	_hq_chk -= dt
+	if _hq_chk <= 0.0:
+		_hq_chk = 4.0
+		var g := hq_guards()
+		if g.any(func(s): return s.w.q.is_empty() and s.w.node.position.distance_to(settlers.lager_door()) > 4.5):
+			_place_hq_guards()
 	# Spieler-Lager wird von freien Soldaten verteidigt: Gegner am Lager kämpfen gegen sie
 	for s in soldiers:
 		if s.owner == 0 and s.state == "idle" and s.w.q.is_empty() and s.w.node.position.distance_to(settlers.lager_door()) > 6.0:
