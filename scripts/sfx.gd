@@ -158,12 +158,13 @@ func _process(dt: float) -> void:
 				continue
 			if Vector2(b.pos.x - t.x, b.pos.z - t.z).length() > r:
 				continue
-			var cd: float = float(_cool.get(b, 0.0)) - 0.3
-			_cool[b] = cd
+			var bid: int = b.node.get_instance_id() if is_instance_valid(b.get("node")) else 0
+			var cd: float = float(_cool.get(bid, 0.0)) - 0.3
+			_cool[bid] = cd
 			if cd > 0.0:
 				continue
 			var wk: Array = WORK[b.type]
-			_cool[b] = randf_range(float(wk[1]), float(wk[2])) + 1.0
+			_cool[bid] = randf_range(float(wk[1]), float(wk[2])) + 1.0
 			_amb_play3d(String(wk[0]), b.pos, float(wk[3]))
 	# Vogelgezwitscher, wenn Bäume in der Nähe sind
 	_bird_t -= dt

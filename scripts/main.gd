@@ -276,6 +276,12 @@ func _setup_stock() -> void:
 	sfx.rig = $Kamera
 	sfx.economy = economy
 	add_child(sfx)
+	var wsh := preload("res://scripts/workshops.gd").new()
+	wsh.name = "Werkstaetten"
+	wsh.economy = economy
+	wsh.settlers = settlers
+	wsh.rig = $Kamera
+	add_child(wsh)
 	var ach := preload("res://scripts/achievements.gd").new()
 	ach.name = "Erfolge"
 	ach.main = self

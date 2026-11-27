@@ -1688,6 +1688,8 @@ func _ws() -> Dictionary:
 	return _ws_data
 
 func _seq_for(t: String) -> Array:
+	if Workshops.has(t):
+		return Workshops.steps(t)   # neue, detaillierte Werkstatt-Abläufe (scripts/workshops.gd)
 	var d := _ws()
 	if d.SEQ.has(t):
 		return d.SEQ[t]
@@ -1733,18 +1735,19 @@ func _seq_next(w: Dictionary) -> void:
 	var ins: Array = economy.inputs(b.type)
 	var first = String(ins[0]).split("|")[0] if ins.size() else null
 	var q: Array = []
-	for st in steps:
+	for si in steps.size():
+		var st: Dictionary = steps[si]
 		var dur: float = maxf(0.4, economy.WORK_TIME * 0.8 * float(st.get("t", 0.2)) / tot)
 		var h = st.get("h")
 		if h == "IN": h = first
 		elif h == "OUT": h = out
 		var look := _local(b, st.l)
-		var anim: String = {"hammer": "build", "dig": "plant", "saw": "saw", "carve": "carve", "push": "push", "stoke": "stoke", "chop": "chop", "shoot": "shoot", "shovel": "shovel"}.get(String(st.get("a")) if st.get("a") != null else "", "push")
+		var anim: String = {"hammer": "build", "dig": "plant", "saw": "saw", "carve": "carve", "push": "push", "stoke": "stoke", "chop": "chop", "shoot": "shoot", "shovel": "shovel", "sow": "sow", "reap": "reap"}.get(String(st.get("a")) if st.get("a") != null else "", "push")
 		if st.has("via"):
 			q.append({"walk": _local(b, st.via)})   # Umweg, z. B. um die Sägebank herum
 		q.append({"walk": _local(b, st.p)})
 		q.append({"face": look})
-		q.append({"fn": func(): _carry(w, h); _show_prop(b, st, out)})
+		q.append({"fn": func(): _carry(w, h); _show_prop(b, st, out); b.ws_i = si; b.ws_el = 0.0; b.ws_d = dur})
 		q.append({"anim": anim, "wait": dur})
 	q.append({"fn": func(): _carry(w, null); _clear_props(b)})
 	w.q = q
