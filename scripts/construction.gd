@@ -472,10 +472,10 @@ func _visual(b: Dictionary) -> void:
 	# Fundament wächst Reihe für Reihe (0–30 %)
 	var nf := int(ceil(b.site_found.size() * clampf(p / 0.30, 0.0, 1.0)))
 	for i in b.site_found.size():
-		b.site_found[i].visible = i < nf
+		b.site_found[i].visible = false
 	# Gerüst ploppt bei 30 % auf und verschwindet bei 100 %
 	var sc: Node3D = b.site_scaf
-	sc.visible = on and p >= 0.30
+	sc.visible = on and p >= 0.30 and p < 0.995
 	sc.scale.y = clampf((p - 0.30) / 0.03, 0.05, 1.0) if p < 0.995 else 0.05
 	for i in b.site_levels.size():
 		b.site_levels[i].visible = p > 0.31 + i * 0.1
@@ -486,7 +486,7 @@ func _visual(b: Dictionary) -> void:
 	for i in n:
 		b.site_frame[i].visible = false
 	var nb2: int = b.site_bits.size()
-	var show := int(round(nb2 * clampf((p - 0.30) / 0.68, 0.0, 1.0)))
+	var show := int(round(nb2 * clampf((p - 0.02) / 0.96, 0.0, 1.0)))
 	for i in nb2:
 		var e: Dictionary = b.site_bits[i]
 		if i < show and not e.on:
