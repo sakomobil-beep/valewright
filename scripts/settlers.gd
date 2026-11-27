@@ -825,7 +825,7 @@ func _remove(w: Dictionary) -> void:
 func used_people() -> int:
 	var n := 0
 	for w in workers:
-		if w.get("dead", false) or w.role in ["bauarbeiter", "soldat", "kind", "dorf"] or w.get("hq", false):
+		if w.get("dead", false) or w.role in ["bauarbeiter", "soldat", "kind", "dorf"] or w.get("hq", false) or w.get("home") != null:
 			continue   # Haupthaus-Träger sind ein Geschenk und zählen nicht
 		n += 1
 	n += int(economy.builders_n)
@@ -836,8 +836,61 @@ func used_people() -> int:
 func carrier_target() -> int:
 	return economy.HQ_CARRIERS + int(economy.carriers_n)
 
+# ---------- Nachbarschaftshilfe ----------
+# Jedes eigene Wohnhaus stellt einen Helfer (ab der zweiten Stufe zwei). Helfer tragen nur in ihrem Viertel
+# (Abholen UND Abliefern im Umkreis von HELP_R um ihr Haus) und zählen nicht als Arbeitskraft.
+const HELP_R := 25.0
+func helpers_of(h: Dictionary) -> int:
+	return 2 if int(h.get("lvl", 0)) >= 1 else 1
+
+func _helper_spawn() -> void:
+	var have := {}
+	for w in workers:
+		if w.get("dead", false) or w.get("home") == null:
+			continue
+		var h: Dictionary = w.home
+		if h.get("removed", false) or not is_instance_valid(h.get("node")):
+			_remove(w)
+			continue
+		var id: int = h.node.get_instance_id()
+		have[id] = int(have.get(id, 0)) + 1
+	for h in economy.buildings:
+		if h.type != "wohnhaus" or h.get("owner", 0) != 0 or h.build < 1.0 or h.get("removed", false) or not is_instance_valid(h.get("node")):
+			continue
+		var id: int = h.node.get_instance_id()
+		var want := helpers_of(h)
+		_helper_mark(h, true)
+		if int(have.get(id, 0)) < want:
+			var t := spawn("traeger", door_of(h))
+			t.role = "traeger"
+			t.home = h
+			have[id] = int(have.get(id, 0)) + 1
+
+# kleine Kiepe neben der Haustür: hier wohnt ein Nachbarschaftshelfer
+func _helper_mark(h: Dictionary, on: bool) -> void:
+	var n: Node3D = h.node
+	var k: Node3D = n.get_node_or_null("Kiepe")
+	if on and k == null:
+		k = Node3D.new()
+		k.name = "Kiepe"
+		k.position = Vector3(0.9, 0.0, 1.25)
+		var m := StandardMaterial3D.new()
+		m.albedo_color = Color(0.62, 0.46, 0.26)
+		var c := CylinderMesh.new()
+		c.top_radius = 0.16; c.bottom_radius = 0.12; c.height = 0.32; c.radial_segments = 10
+		var mi := MeshInstance3D.new()
+		mi.mesh = c; mi.material_override = m; mi.position.y = 0.16
+		k.add_child(mi)
+		var r := TorusMesh.new()
+		r.inner_radius = 0.14; r.outer_radius = 0.17
+		var ri := MeshInstance3D.new()
+		ri.mesh = r; ri.material_override = m; ri.position.y = 0.32
+		k.add_child(ri)
+		n.add_child(k)
+
 func _carrier_spawn() -> void:
-	var alive := workers.filter(func(x): return x.role == "traeger" and not x.get("dead", false))
+	_helper_spawn()
+	var alive := workers.filter(func(x): return x.role == "traeger" and not x.get("dead", false) and x.get("home") == null)
 	# die ersten 10 lebenden Träger gehören fest zum Haupthaus
 	var hq := alive.filter(func(x): return x.get("hq", false)).size()
 	for x in alive:
@@ -867,7 +920,7 @@ func _carrier_jobs() -> void:
 	for w in workers:
 		if w.role != "traeger" or not w.q.is_empty() or w.get("dead", false):
 			continue
-		if not w.get("cart", false) and _fetch_cart(w):
+		if w.get("home") == null and not w.get("cart", false) and _fetch_cart(w):
 			continue
 		idle.append(w)
 	if idle.is_empty():
@@ -892,11 +945,20 @@ func _carrier_jobs() -> void:
 		var at: Vector3 = door_of(job.from) if job.has("from") else job.lager
 		var best = null
 		var bd := 1e9
+		var goal: Vector3 = job.to.pos if job.to != null else nearest_lager(at)
 		for w in idle:
+			if w.get("home") != null:
+				var hp: Vector3 = w.home.pos
+				if Vector2(at.x - hp.x, at.z - hp.z).length() > HELP_R or Vector2(goal.x - hp.x, goal.z - hp.z).length() > HELP_R:
+					continue   # Helfer bleiben in ihrem Viertel
 			var d: float = Vector2(w.node.position.x - at.x, w.node.position.z - at.z).length()
+			if w.get("home") != null:
+				d -= 8.0   # kurze Wege im Viertel übernehmen bevorzugt die Nachbarn
 			if d < bd:
 				bd = d
 				best = w
+		if best == null:
+			continue
 		var cap: int = int(best.get("cap", 2))   # Träger tragen 2 Stück (Kiepe), mit Karren mehr
 		if job.has("from"):
 			job.n = mini(cap, int(job.from.out[job.item]) - int(job.from.out_res.get(job.item, 0)))
@@ -911,7 +973,7 @@ func _carrier_jobs() -> void:
 	for w in idle:
 		w.idle_t = float(w.get("idle_t", 0.0)) + 0.25
 		var p: Vector3 = w.node.position
-		var l := nearest_lager(p)
+		var l := nearest_lager(p) if w.get("home") == null else door_of(w.home)
 		if float(w.idle_t) > 4.0 and Vector2(l.x - p.x, l.z - p.z).length() > 3.0:
 			w.q = [{"go": l}, {"wait": 1.0}]
 		else:
