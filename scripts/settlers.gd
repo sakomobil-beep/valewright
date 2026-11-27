@@ -1951,6 +1951,8 @@ func _update_piles() -> void:
 		if b.get("removed", false) and b.get("parking") != null and is_instance_valid(b.parking):
 			b.parking.queue_free()
 		var n: int = mini(economy.out_total(b) - int(b.get("out", {}).get("karren", 0)), 8)
+		if b.type in ["saegewerk", "muehle"]:
+			n = 0   # eigene Ablage am Gebäude (Bretterstapel, Säcke) – kein zweiter Haufen vor der Tür
 		var pile: Node3D = b.get("pile")
 		var item := ""
 		for k in b.get("out", {}):
@@ -2066,6 +2068,11 @@ func _seq_next(w: Dictionary) -> void:
 	var ins: Array = economy.inputs(b.type)
 	var first = String(ins[0]).split("|")[0] if ins.size() else null
 	var q: Array = []
+	# Ablage-Schritt: letzter Schritt, in dem das Endprodukt getragen wird – sonst der letzte Schritt
+	var ci: int = steps.size() - 1
+	for k in steps.size():
+		if steps[k].get("hw") != null and (String(steps[k].hw) in outs or String(steps[k].hw) == "OUT"):
+			ci = k
 	for si in steps.size():
 		var st: Dictionary = steps[si]
 		var dur: float = maxf(0.4, economy.WORK_TIME * 0.8 * float(st.get("t", 0.2)) / tot)
@@ -2082,6 +2089,8 @@ func _seq_next(w: Dictionary) -> void:
 		q.append({"walk": _local(b, st.p)})
 		q.append({"face": look})
 		q.append({"fn": func(): _carry(w, h); _show_prop(b, st, out); b.ws_i = si; b.ws_el = 0.0; b.ws_d = dur})
+		if si == ci and economy.sync_out(b.type):
+			q.append({"fn": func(): economy.finish_cycle(b)})   # erst jetzt liegt die Ware wirklich am Abholplatz
 		q.append({"anim": anim, "wait": dur})
 	q.append({"fn": func(): _carry(w, null); _clear_props(b)})
 	w.q = q

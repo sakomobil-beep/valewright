@@ -445,6 +445,19 @@ func plan_rec(b: Dictionary):
 		b.orders -= 1
 	return r
 
+# Werkstätten mit Arbeitsablauf: die Ware zählt erst, wenn der Arbeiter sie ablegt
+func sync_out(t: String) -> bool:
+	return Workshops.has(t)
+
+# vom Arbeiter aufgerufen, sobald er die fertige Ware am Abholplatz ablegt
+func finish_cycle(b: Dictionary) -> void:
+	if not b.get("running", false) or not b.has("cur"):
+		return
+	b.running = false
+	b.t = 0.0
+	var r: Array = b.cur
+	put_out(b, r[1], int(r[2]))
+
 func _produce(b: Dictionary, dt: float) -> void:
 	if b.get("paused", false):
 		b.running = false
@@ -469,6 +482,9 @@ func _produce(b: Dictionary, dt: float) -> void:
 		changed.emit()
 		return
 	b.t += dt
+	# Sägewerk/Mühle: fertig erst, wenn der Arbeiter die Ware am Abholplatz ablegt (finish_cycle) – Rückfall nach 3× Laufzeit
+	if sync_out(b.type) and b.t < float(b.get("dur", WORK_TIME)) * 3.0:
+		return
 	if b.t >= float(b.get("dur", WORK_TIME)):
 		b.running = false
 		b.t = 0.0
