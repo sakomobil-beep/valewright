@@ -28,7 +28,8 @@ var residents := 20   # Start: das Haupthaus ist voll bewohnt
 var _grow_t := 0.0
 var pop_src = null   # Siedler-Verwaltung (zählt, wer schon eine Aufgabe hat)
 var builders_n := 2   # Baumeister zu Beginn (mehr nur über die Handwerkskammer)
-var carriers_n := 4   # Träger zu Beginn (mehr nur über die Handwerkskammer)
+const HQ_CARRIERS := 10   # wohnen fest im Haupthaus, zählen nicht als Einwohner
+var carriers_n := 0   # zusätzliche Träger aus den Einwohnern (über die Handwerkskammer)
 const TRAIN_TIME := 300.0   # 5 Minuten Ausbildung
 var unl := 0     # Freischalt-Stufe (steigt mit zufriedenen Wohnhäusern)
 
@@ -334,7 +335,7 @@ func _train(b: Dictionary, dt: float) -> void:
 			message.emit(tr("MSG_HK_BUILDER") % builders_n)
 		else:
 			carriers_n += 1
-			message.emit(tr("MSG_HK_CARRIER") % carriers_n)
+			message.emit(tr("MSG_HK_CARRIER") % (HQ_CARRIERS + carriers_n))
 		changed.emit()
 
 # Rezepte wie planNext im Browser: [Eingang, Ware, Menge, Sekunden]

@@ -346,7 +346,7 @@ func _man_tower(b: Dictionary) -> void:
 			s = _new_soldier(0, settlers.lager_door(), 0, "schwert")
 			s.militia = true
 		else:
-			b.status = "ST_WAIT_GUARD"
+			b.status = "ST_GUARDED" if int(b.garrison) > 0 else "ST_WAIT_GUARD"
 			get_tree().create_timer(5.0).timeout.connect(func(): _man_tower(b))
 			return
 	s.state = "moving"

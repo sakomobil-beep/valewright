@@ -827,3 +827,5 @@ WS_FLACHSBAUER_PULL	Rauft den Flachs und bündelt ihn	Pulls the flax and bundles
 WS_LEHMGRUBE_DIG	Gräbt Lehm aus der Grube	Digs clay from the pit
 WS_LEHMGRUBE_KNEAD	Tritt den Lehm im Trog	Treads the clay in the trough
 WS_LEHMGRUBE_BRICK	Streicht Ziegelrohlinge	Moulds brick blanks
+MSG_TOOLS_LOW	🔨 Werkzeug wird knapp! Baue einen Schmied – er braucht Eisenbarren (Zeche + Schmelze) und Kohle.	🔨 Tools are running low! Build a smithy – it needs iron bars (mine + smelter) and coal.
+MSG_TOOLS_SMITH	🔨 Werkzeug wird knapp! Dein Schmied braucht Eisenbarren und Kohle.	🔨 Tools are running low! Your smithy needs iron bars and coal.

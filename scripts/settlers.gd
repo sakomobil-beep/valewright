@@ -825,8 +825,8 @@ func _remove(w: Dictionary) -> void:
 func used_people() -> int:
 	var n := 0
 	for w in workers:
-		if w.get("dead", false) or w.role in ["bauarbeiter", "soldat", "kind", "dorf"]:
-			continue
+		if w.get("dead", false) or w.role in ["bauarbeiter", "soldat", "kind", "dorf"] or w.get("hq", false):
+			continue   # Haupthaus-Träger sind ein Geschenk und zählen nicht
 		n += 1
 	n += int(economy.builders_n)
 	if military:
@@ -834,10 +834,19 @@ func used_people() -> int:
 	return n
 
 func carrier_target() -> int:
-	return int(economy.carriers_n)
+	return economy.HQ_CARRIERS + int(economy.carriers_n)
 
 func _carrier_spawn() -> void:
-	var c := workers.filter(func(x): return x.role == "traeger" and not x.get("dead", false)).size()
+	var alive := workers.filter(func(x): return x.role == "traeger" and not x.get("dead", false))
+	# die ersten 10 lebenden Träger gehören fest zum Haupthaus
+	var hq := alive.filter(func(x): return x.get("hq", false)).size()
+	for x in alive:
+		if hq >= economy.HQ_CARRIERS:
+			break
+		if not x.get("hq", false):
+			x.hq = true
+			hq += 1
+	var c := alive.size()
 	if c < carrier_target():
 		var t := spawn("traeger", lager_door())
 		t.role = "traeger"

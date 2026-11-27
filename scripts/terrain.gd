@@ -736,8 +736,9 @@ func _build_rocks() -> void:
 		var z := rng.randf_range(-half, half)
 		if height(x, z) < WATER_Y + 0.5 or Vector2(x, z).length() < 18.0:
 			continue
-		if mountain(x, z) < 1.5 and rng.randf() > 0.25:
-			continue
+		var near_start := Vector2(x, z).length() < 60.0
+		if mountain(x, z) < 1.5 and rng.randf() > (0.4 if near_start else 0.25):
+			continue   # rund ums Startgebiet etwa 50 % mehr Felsen
 		var s := rng.randf_range(0.5, 1.8)
 		list.append(Transform3D(Basis(Vector3(rng.randf(), 1, rng.randf()).normalized(), rng.randf() * TAU).scaled(Vector3(s, s * 0.7, s)), Vector3(x, height(x, z), z)))
 	var mm := MultiMesh.new()
@@ -746,7 +747,8 @@ func _build_rocks() -> void:
 	mm.instance_count = list.size()
 	for i in list.size():
 		mm.set_instance_transform(i, list[i])
-		rocks.append({"pos": list[i].origin, "i": i, "t": list[i], "left": 6})
+		var o: Vector3 = list[i].origin
+		rocks.append({"pos": o, "i": i, "t": list[i], "left": 12 if Vector2(o.x, o.z).length() < 60.0 else 6})   # Startgegend: doppelt so ergiebig
 	rock_mm = mm
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm

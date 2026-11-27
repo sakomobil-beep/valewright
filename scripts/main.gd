@@ -289,6 +289,23 @@ func _setup_stock() -> void:
 	economy.message.connect(_toast)
 	_update_stock()
 
+# Werkzeug wird knapp: einmal warnen (wieder scharf, sobald über 10)
+var _tool_t := 0.0
+var _tool_warned := false
+func _tool_check(dt: float) -> void:
+	_tool_t += dt
+	if _tool_t < 3.0:
+		return
+	_tool_t = 0.0
+	var n := int(economy.stock.get("werkzeug", 0))
+	if n > 10:
+		_tool_warned = false
+	elif n < 5 and not _tool_warned:
+		_tool_warned = true
+		var smith: bool = economy.buildings.any(func(b): return b.get("owner", 0) == 0 and b.type == "schmied" and not b.get("removed", false))
+		economy.message.emit(tr("MSG_TOOLS_SMITH") if smith else tr("MSG_TOOLS_LOW"))
+		get_node("Sfx").play("horn", -8.0)
+
 func _toast(text: String) -> void:
 	var snd := "msg"
 	if text == tr("MSG_VICTORY"): snd = "win"
@@ -339,6 +356,7 @@ func _process(dt: float) -> void:
 		var rig := $Kamera
 		rig.yaw += dt * 0.05
 		return
+	_tool_check(dt)
 	_autosave += dt
 	if _autosave > 300.0:
 		_autosave = 0.0

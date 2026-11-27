@@ -1160,7 +1160,7 @@ func _hk_panel(b: Dictionary) -> void:
 	var c1 := _hpcard(info_chips)
 	_lbl(c1, "👥 " + tr("UI_HK_STAFF"), 14, C_GOLD)
 	var g := GridContainer.new(); g.columns = 2; g.add_theme_constant_override("h_separation", 24); c1.add_child(g)
-	for row in [["👷", tr("HK_BAU"), int(economy.builders_n)], ["🧺", tr("HK_TR"), int(economy.carriers_n)]]:
+	for row in [["👷", tr("HK_BAU"), int(economy.builders_n)], ["🧺", tr("HK_TR"), "%d + %d" % [economy.HQ_CARRIERS, int(economy.carriers_n)]]]:
 		var hb := HBoxContainer.new(); hb.add_theme_constant_override("separation", 8); g.add_child(hb)
 		_lbl(hb, row[0], 20, Color.WHITE)
 		var v := VBoxContainer.new(); v.add_theme_constant_override("separation", -2); hb.add_child(v)
@@ -1458,7 +1458,7 @@ func _orders_text(b: Dictionary) -> String:
 			return "\n" + tr("ORD_WAGNER") % int(b.get("orders", 0))
 		"handwerkskammer":
 			var q: Array = b.get("tq", [])
-			var t := "\n" + tr("ORD_HK_STAFF") % [int(economy.builders_n), int(economy.carriers_n)]
+			var t := "\n" + tr("ORD_HK_STAFF") % [int(economy.builders_n), economy.HQ_CARRIERS + int(economy.carriers_n)]
 			if q.is_empty():
 				return t + "\n" + tr("ORD_HK_HINT")
 			var left := int(ceil((economy.TRAIN_TIME - float(b.get("tq_t", 0.0))) / 60.0))
