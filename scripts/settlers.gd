@@ -988,10 +988,21 @@ func _carrier_jobs() -> void:
 		if best == null:
 			continue
 		var cap: int = int(best.get("cap", 2))   # Träger tragen 2 Stück (Kiepe), mit Karren mehr
-		if job.has("from"):
+		if job.has("relay"):
+			job.n = mini(int(job.n), int(job.from.out[job.item]) - int(job.from.out_res.get(job.item, 0)))
+			if job.n <= 0:
+				continue
+			job.relay.claimed = true
+		elif job.has("from"):
 			job.n = mini(cap, int(job.from.out[job.item]) - int(job.from.out_res.get(job.item, 0)))
 		else:
 			job.n = maxi(1, mini(job.n, mini(cap, int(economy.stock[job.item]))))
+		# langer Weg? dann bis zum Umschlagplatz auf der Strecke (nicht für Helfer und nicht schon Weitergereichtes)
+		if not job.has("relay") and best.get("home") == null:
+			var u = Umschlag.pick(economy.buildings, at, goal)
+			if u != null:
+				job.via = u
+				u.res_in = int(u.get("res_in", 0)) + int(job.n)
 		idle.erase(best)
 		best.idle_t = 0.0
 		taken[key] = true
@@ -1024,7 +1035,7 @@ func _carrier_job_list() -> Array:
 	var cap := 2
 	var jobs: Array = []
 	for b in economy.buildings:
-		if b.get("removed", false):
+		if b.get("removed", false) or b.type == "umschlag":
 			continue
 		economy.bufs(b)
 		for item in b.out:
@@ -1061,6 +1072,38 @@ func _carrier_job_list() -> Array:
 			if b.type == "wohnhaus" and int(b["in"].get(item, 0)) + int(b.get("inc", {}).get(item, 0)) == 0:
 				k -= 700.0
 			jobs.append({"k": k, "lager": l, "to": b, "item": item, "n": maxi(1, mini(int(economy.stock[item]), int(wv[1])))})
+	# Umschlagplätze: abgelegte Waren für das letzte Stück
+	for u in economy.buildings:
+		if u.type != "umschlag":
+			continue
+		if u.get("removed", false):
+			# abgerissen: Waren zurück ins Lager, Ankündigungen beim Ziel zurücknehmen
+			for e in u.get("relay", []):
+				if e.to != null:
+					_inc(e.to, e.item, -int(e.n))
+				economy.add(e.item, int(e.n))
+			u.relay = []
+			continue
+		economy.bufs(u)
+		if not u.has("relay"):
+			u.relay = []
+		# Waren ohne Auftrag (z. B. nach dem Laden eines Spielstands) gehen ins nächste Lager
+		for it in u.out:
+			var listed := 0
+			for e in u.relay:
+				if e.item == it:
+					listed += int(e.n)
+			if int(u.out[it]) - int(u.out_res.get(it, 0)) > listed:
+				u.relay.append({"item": it, "n": int(u.out[it]) - listed, "to": null})
+		for e in u.relay:
+			if e.get("claimed", false):
+				continue
+			var to = e.to
+			if to != null and to.get("removed", false):
+				to = null
+			var goal: Vector3 = to.pos if to != null else nearest_lager(u.pos)
+			var k: float = (economy.prio(to) if to != null else 1.5) * 400.0 - 200.0 + Vector2(goal.x - u.pos.x, goal.z - u.pos.z).length() * 0.5
+			jobs.append({"k": k, "from": u, "to": to, "item": e.item, "n": int(e.n), "relay": e})
 	jobs.sort_custom(func(a, b): return a.k < b.k)
 	return jobs
 
@@ -1069,8 +1112,8 @@ func _start_carry(w: Dictionary, job: Dictionary) -> void:
 	var n: int = job.n
 	var st := {"n": n, "lost": false}
 	var carry_icon := "karre" if w.get("cart", false) else item
-	if job.to != null:
-		_inc(job.to, item, n)
+	if job.to != null and not job.has("relay"):
+		_inc(job.to, item, n)   # beim Weiterreichen ist die Ware schon angekündigt
 	var q: Array = []
 	if job.has("from"):
 		var f: Dictionary = job.from
@@ -1080,8 +1123,18 @@ func _start_carry(w: Dictionary, job: Dictionary) -> void:
 		q.append({"fn": func():
 			f.out_res[item] = int(f.out_res.get(item, 0)) - n
 			var got: int = 0 if f.get("removed", false) else mini(n, int(f.out.get(item, 0)))
+			if job.has("relay"):
+				var rl: Array = f.get("relay", [])
+				var e: Dictionary = job.relay
+				e.n = int(e.n) - got
+				if int(e.n) <= 0 or got <= 0:
+					rl.erase(e)
+				else:
+					e.claimed = false
 			if got > 0:
 				f.out[item] -= got
+				if f.type == "umschlag":
+					Umschlag.show_goods(f)
 				if job.to != null:
 					_inc(job.to, item, got - n)
 				st.n = got
@@ -1104,6 +1157,25 @@ func _start_carry(w: Dictionary, job: Dictionary) -> void:
 		var to = job.to
 		var ok: bool = to != null and not to.get("removed", false)
 		var dest: Vector3 = door_of(to) if ok else nearest_lager(w.node.position)
+		var u = job.get("via")
+		if u != null and not u.get("removed", false):
+			# Zwischenstation: am Umschlagplatz ablegen, das Ziel bleibt angekündigt
+			u.res_in = maxi(0, int(u.get("res_in", 0)) - int(st.n))
+			var ud: Vector3 = door_of(u)
+			var put := func():
+				economy.bufs(u)
+				u.out[item] = int(u.out.get(item, 0)) + int(st.n)
+				if not u.has("relay"):
+					u.relay = []
+				u.relay.append({"item": item, "n": int(st.n), "to": to if ok else null})
+				u.cnt = int(u.get("cnt", 0)) + int(st.n)
+				Umschlag.show_goods(u)
+				_carry(w, null)
+			w.q.insert(0, {"go": ud})
+			w.q.insert(1, {"fn": put})
+			return
+		if u != null:
+			u.res_in = maxi(0, int(u.get("res_in", 0)) - int(st.n))
 		var drop := func():
 			if to != null:
 				_inc(to, item, -int(st.n))

@@ -581,6 +581,17 @@
    "r": 2.8,
    "desc": "Bildet Baumeister und Träger aus – je 1 Werkzeug und 5 Minuten.",
    "mine": null
+  },
+  "umschlag": {
+   "name": "Umschlagplatz",
+   "icon": "🔀",
+   "cost": {
+    "bretter": 4,
+    "stamm": 2
+   },
+   "r": 1.6,
+   "desc": "Teilt lange Trägerwege: Waren werden hier abgelegt und vom nächsten Träger weitergebracht.",
+   "mine": null
   }
  },
  "items": {
@@ -1222,6 +1233,7 @@
     "wohnhaus",
     "handwerkskammer",
     "lager",
+    "umschlag",
     "bruecke",
     "wirtshaus",
     "markt",

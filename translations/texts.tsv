@@ -829,3 +829,5 @@ WS_LEHMGRUBE_KNEAD	Tritt den Lehm im Trog	Treads the clay in the trough
 WS_LEHMGRUBE_BRICK	Streicht Ziegelrohlinge	Moulds brick blanks
 MSG_TOOLS_LOW	🔨 Werkzeug wird knapp! Baue einen Schmied – er braucht Eisenbarren (Zeche + Schmelze) und Kohle.	🔨 Tools are running low! Build a smithy – it needs iron bars (mine + smelter) and coal.
 MSG_TOOLS_SMITH	🔨 Werkzeug wird knapp! Dein Schmied braucht Eisenbarren und Kohle.	🔨 Tools are running low! Your smithy needs iron bars and coal.
+BLD_UMSCHLAG	Umschlagplatz	Transfer point
+DESC_UMSCHLAG	Teilt lange Trägerwege: Zunftträger legen hier ab, ein Träger aus der Nähe – gern ein Nachbarschaftshelfer – bringt das letzte Stück. Hält bis zu 12 Waren. Lohnt sich auf Strecken über 35 m, etwa zu Zechen und Türmen.	Splits long carrier trips: guild carriers drop goods here, a nearby carrier – ideally a neighbourhood helper – takes them the last stretch. Holds up to 12 goods. Worth it on routes over 35 m, e.g. to mines and towers.

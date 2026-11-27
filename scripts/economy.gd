@@ -40,7 +40,7 @@ var WORK_TIME := 10.0
 const TOOL_FREE := ["holzfaeller", "saegewerk", "steinmetz", "foerster", "rutengaenger", "steinmine", "kohlemine", "eisenmine", "koehler", "schmelze", "schmied", "brunnen"]
 const FIELD_WORKERS := ["holzfaeller", "steinmetz", "foerster", "rutengaenger", "bauernhof", "schweinezucht", "brunnen"]
 # Diese Gebäude produzieren (noch) keine Waren
-const NO_PRODUCTION := ["handwerkskammer", "wohnhaus", "denkmal", "kaserne", "wirtshaus", "lager", "markt", "burg", "wachturm", "wachstube", "wehrturm"]
+const NO_PRODUCTION := ["umschlag", "handwerkskammer", "wohnhaus", "denkmal", "kaserne", "wirtshaus", "lager", "markt", "burg", "wachturm", "wachstube", "wehrturm"]
 # Mengen, die von 1 abweichen
 const AMOUNT := {"saegewerk": {"bretter": 2}, "bogenbauer": {"pfeile": 5}, "imker": {"honig": 2}}
 
