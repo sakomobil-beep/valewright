@@ -1978,7 +1978,7 @@ func _a_saegewerk(b: Dictionary, P: Dictionary, s: String, f: float, dt: float, 
 	for i in 10:
 		var n: Node3D = st.get_node_or_null("B%d" % i)
 		if n:
-			n.visible = i < mini(10, int(b.get("out", {}).get("bretter", 0)) * 2)
+			n.visible = i < mini(10, int(b.get("out", {}).get("bretter", 0)))
 	(P["Mehl"] as Node3D).scale = Vector3.ONE * float(P.heap)
 
 # =====================================================================

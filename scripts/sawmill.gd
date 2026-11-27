@@ -209,7 +209,7 @@ static func _yard(r: Node3D) -> void:
 	var st := node(r, "Stapel", Vector3(2.1, 0, 2.55), Vector3(0, 0.3, 0))
 	for i in 10:
 		var lay := i / 2
-		var n := box(st, Vector3(1.4, 0.07, 0.3), Vector3(0, 0.1 + lay * 0.075, -0.16 + (i % 2) * 0.32), mat(PLANK.darkened(0.04 * (i % 3))), Vector3.ZERO, "B%d" % i)
+		var n := box(st, Vector3(0.9, 0.05, 0.18), Vector3(0, 0.03 + lay * 0.055, -0.1 + (i % 2) * 0.2), mat(PLANK.darkened(0.04 * (i % 3))), Vector3.ZERO, "B%d" % i)
 	var heap := node(r, "Mehl", Vector3(-1.0, 0, 1.35))
 	var sm := SphereMesh.new()
 	sm.radius = 0.4
