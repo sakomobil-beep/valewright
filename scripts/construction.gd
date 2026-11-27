@@ -3,7 +3,7 @@ extends Node
 # Stufe 1 Boden einebnen · Stufe 2 Fundament → Holzgerippe → Wände wachsen von unten nach oben → Dach,
 # mit Gerüst, Materialstapel, Bauarbeiter, der um die Baustelle geht, und Trägern, die das Baumaterial bringen.
 
-const PHASES := [[0.30, "SITE_FOUND"], [0.65, "SITE_WALLS"], [0.85, "SITE_TRUSS"], [1.01, "SITE_ROOF"]]
+const PHASES := [[0.30, "SITE_FOUND"], [0.75, "SITE_WALLS"], [1.01, "SITE_ROOF"]]
 var economy
 var settlers
 var terrain
@@ -39,36 +39,24 @@ func start(b: Dictionary, delivered := {}) -> void:
 	b.pos.y = b.flat.y
 	# Modellteile nach Höhe sortieren – sie erscheinen von unten nach oben
 	# Schnittebene: alle Materialien des Modells durch das Baustellen-Material ersetzen
+	# Variante A: das Haus setzt sich Stück für Stück aus seinen echten Bauteilen zusammen
 	var parts: Array = []
 	var clips: Array = []
 	var y0 := 1e9
 	var y1 := -1e9
-	var csh: Shader = load("res://shaders/clip.gdshader")
+	var bits: Array = []
 	for m in n.find_children("*", "MeshInstance3D", true, false):
 		var mi: MeshInstance3D = m
+		if mi.mesh == null or not mi.is_visible_in_tree():
+			continue
 		var bb: AABB = mi.global_transform * mi.get_aabb()
 		y0 = minf(y0, bb.position.y)
 		y1 = maxf(y1, bb.end.y)
-		if mi.mesh == null:
-			continue
-		for si in mi.mesh.get_surface_count():
-			var om = mi.get_active_material(si)
-			parts.append([mi, si, mi.get_surface_override_material(si)])
-			var sm := ShaderMaterial.new()
-			sm.shader = csh
-			if om is BaseMaterial3D:
-				var bm: BaseMaterial3D = om
-				sm.set_shader_parameter("albedo", bm.albedo_color)
-				sm.set_shader_parameter("roughness", bm.roughness)
-				sm.set_shader_parameter("metallic", bm.metallic)
-				sm.set_shader_parameter("use_vcol", bm.vertex_color_use_as_albedo)
-				if bm.albedo_texture:
-					sm.set_shader_parameter("tex", bm.albedo_texture)
-					sm.set_shader_parameter("use_tex", true)
-				if bm.emission_enabled:
-					sm.set_shader_parameter("emission", bm.emission * bm.emission_energy_multiplier)
-			mi.set_surface_override_material(si, sm)
-			clips.append(sm)
+		var leaf: bool = mi.find_children("*", "MeshInstance3D", true, false).is_empty()
+		bits.append({"mi": mi, "mesh": mi.mesh, "y": bb.position.y + bb.size.y * 0.25, "x": bb.get_center().x + bb.get_center().z * 0.3, "sc": mi.scale, "leaf": leaf, "on": false, "t": -1.0})
+		mi.mesh = null
+	bits.sort_custom(func(u, v): return u.y < v.y - 0.05 or (absf(u.y - v.y) <= 0.05 and u.x < v.x))
+	b.site_bits = bits
 	b.site_parts = parts
 	b.site_clips = clips
 	b.site_y0 = y0
@@ -78,10 +66,10 @@ func start(b: Dictionary, delivered := {}) -> void:
 	# Höhen relativ zum Gebäude-Ursprung (bleiben beim Einebnen gültig)
 	var base_y: float = n.global_position.y
 	var eave := 1e9
-	for m in n.find_children("*", "MeshInstance3D", true, false):
-		var mi2: MeshInstance3D = m
-		var ab: AABB = mi2.global_transform * mi2.get_aabb()
-		if mi2.mesh is PrismMesh and ab.size.x * ab.size.z > 1.0:
+	for e2 in bits:
+		var mi2: MeshInstance3D = e2.mi
+		var ab: AABB = mi2.global_transform * e2.mesh.get_aabb()
+		if e2.mesh is PrismMesh and ab.size.x * ab.size.z > 1.0:
 			eave = minf(eave, ab.position.y)
 	if eave > y1 - 0.2 or eave < y0 + 0.4:
 		eave = y0 + (y1 - y0) * 0.6
@@ -358,6 +346,7 @@ func _process(dt: float) -> void:
 			_sites.erase(b)
 			continue
 		_step(b, dt)
+		_pop(b, dt)
 
 func _step(b: Dictionary, dt: float) -> void:
 	var w = b.site_builder
@@ -472,24 +461,25 @@ func _visual(b: Dictionary) -> void:
 	var fp := clampf((p - 0.30) / 0.15, 0.0, 1.0)
 	var n: int = b.site_frame.size()
 	for i in n:
-		b.site_frame[i].visible = p < 0.52 and fp * n > i
-	var hy: float
-	if p < 0.33:
-		hy = float(b.site_hy0) - 0.02
-	elif p < 0.65:
-		hy = lerpf(float(b.site_hy0), float(b.site_hev), (p - 0.33) / 0.32)
-	elif p < 0.85:
-		hy = float(b.site_hev)
-	else:
-		hy = lerpf(float(b.site_hev), float(b.site_hy1) + 0.02, (p - 0.85) / 0.15)
-	var cut: float = b.node.global_position.y + hy + 0.01
-	for sm in b.site_clips:
-		sm.set_shader_parameter("clip_y", cut)
+		b.site_frame[i].visible = false
+	var nb2: int = b.site_bits.size()
+	var show := int(round(nb2 * clampf((p - 0.30) / 0.68, 0.0, 1.0)))
+	for i in nb2:
+		var e: Dictionary = b.site_bits[i]
+		if i < show and not e.on:
+			e.on = true
+			e.t = 0.0
+			if is_instance_valid(e.mi):
+				e.mi.mesh = e.mesh
+				if e.leaf:
+					e.mi.scale = e.sc * 0.4
+				if randf() < 0.35:
+					_puff(b, b.site_dust, b.site.to_local(e.mi.global_position))
 	# Dachstuhl 65–85 %
 	var nr: int = b.site_rafters.size()
 	var rp := clampf((p - 0.65) / 0.2, 0.0, 1.0)
 	for i in nr:
-		b.site_rafters[i].visible = p < 0.97 and (rp * nr > i or (i == nr - 1 and rp > 0.5))
+		b.site_rafters[i].visible = false
 	# Lagerstapel: geliefert minus verbaut
 	var ns: int = int(b.site_need.get("stein", 0))
 	var nb: int = int(b.site_need.get("bretter", 0))
@@ -509,6 +499,10 @@ func _visual(b: Dictionary) -> void:
 		e.n.visible = e.q < int(round(e.of * got)) - int(round(e.of * p))
 
 func _end(b: Dictionary) -> void:
+	for e in b.get("site_bits", []):
+		if is_instance_valid(e.mi):
+			e.mi.mesh = e.mesh
+			e.mi.scale = e.sc
 	for e in b.get("site_parts", []):
 		if is_instance_valid(e[0]):
 			e[0].set_surface_override_material(e[1], e[2])
@@ -539,3 +533,17 @@ func _cloud(b: Dictionary) -> void:
 func _fx_on() -> bool:
 	var ef = get_parent().get_node_or_null("Effekte")
 	return ef == null or bool(ef.enabled)
+
+# kleiner Hüpfer, wenn ein Bauteil erscheint
+func _pop(b: Dictionary, dt: float) -> void:
+	for e in b.get("site_bits", []):
+		if e.t < 0.0 or not is_instance_valid(e.mi):
+			continue
+		e.t += dt
+		var k: float = minf(1.0, e.t / 0.35)
+		if e.leaf:
+			var s: float = 0.4 + 0.6 * k + sin(k * PI) * 0.18
+			e.mi.scale = e.sc * s
+		if k >= 1.0:
+			e.mi.scale = e.sc
+			e.t = -1.0
