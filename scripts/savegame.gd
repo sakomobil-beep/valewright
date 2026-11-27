@@ -42,6 +42,7 @@ func save(slot: String) -> void:
 			dep.append(i)
 	d.deposits = dep
 	d.hq_wall = [m.wall, m.wall_t]
+	d.guild_xp = main.settlers.guild_xp()
 	d.soldiers = m.soldiers.filter(func(s): return s.owner == 0 and s.state != "garrison").map(func(s): return [s.kind, s.rank, s.state == "hq"])
 	d.ais = m.ais.map(func(a): return {"id": a.id, "diff": a.diff, "alive": a.alive, "pos": _v(a.pos),
 		"lager": a.lager.garrison, "peaceful": a.get("peaceful", false), "t_grow": a.t_grow, "t_expand": a.t_expand, "t_attack": a.t_attack,
@@ -90,6 +91,8 @@ func apply(d: Dictionary) -> void:
 		bld.place_bridge({"a": _p(br.a), "b": _p(br.b), "y": float(br.y), "len": float(br.len)}, false)
 	for b in d.buildings:
 		bld.place_loaded(b)
+	if d.has("guild_xp"):
+		main.settlers.pending_xp = Array(d.guild_xp)
 	if d.has("hq_wall"):
 		m.set_wall(int(d.hq_wall[0]), float(d.hq_wall[1]))
 	for st in d.soldiers:

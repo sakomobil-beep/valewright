@@ -913,7 +913,82 @@ func _helper_mark(h: Dictionary, on: bool) -> void:
 		k.add_child(ri)
 		n.add_child(k)
 
+# ---------- Trägerzunft: Lehrling → Geselle → Meister ----------
+# Zunftträger (alle außer Nachbarschaftshelfern) sammeln mit jeder abgelieferten Ware Erfahrung.
+const RANK_XP := [0, 40, 120]          # ab so vielen Waren Geselle / Meister
+const RANK_SPD := [1.0, 1.12, 1.22]     # Laufgeschwindigkeit
+const RANK_COL := [Color(0, 0, 0, 0), Color(0.25, 0.45, 0.85), Color(0.95, 0.75, 0.2)]
+var pending_xp: Array = []              # aus dem Spielstand, wird neuen Zunftträgern zugeteilt
+
+func _gain_xp(w: Dictionary, n: int, quiet := false) -> void:
+	if w.get("home") != null or w.role != "traeger":
+		return
+	w.xp = int(w.get("xp", 0)) + n
+	var r := 0
+	for i in RANK_XP.size():
+		if int(w.xp) >= RANK_XP[i]:
+			r = i
+	if r != int(w.get("rank", 0)):
+		_set_rank(w, r)
+		if r == 2 and not quiet:
+			economy.message.emit(tr("MSG_MASTER_CARRIER"))
+
+func _set_rank(w: Dictionary, r: int) -> void:
+	w.rank = r
+	w.spd = RANK_SPD[r]
+	var n: Node3D = w.node
+	var old: Node3D = n.get_node_or_null("Zunft")
+	if old:
+		old.queue_free()
+	if r == 0:
+		return
+	# Schärpe in der Zunftfarbe (Geselle blau, Meister gold)
+	var m := StandardMaterial3D.new()
+	m.albedo_color = RANK_COL[r]
+	m.metallic = 0.3 if r == 2 else 0.0
+	m.roughness = 0.5
+	var g := Node3D.new()
+	g.name = "Zunft"
+	n.add_child(g)
+	var t := TorusMesh.new()   # Schärpe schräg um den Oberkörper
+	t.inner_radius = 0.16
+	t.outer_radius = 0.2
+	t.rings = 16
+	t.ring_segments = 6
+	var mi := MeshInstance3D.new()
+	mi.mesh = t
+	mi.material_override = m
+	mi.position = Vector3(0, 0.66, 0)
+	mi.rotation = Vector3(0, 0, 0.62)
+	mi.scale = Vector3(1.0, 1.0, 0.8)
+	g.add_child(mi)
+	if r == 2:
+		var h := CylinderMesh.new()   # Meisterhut
+		h.top_radius = 0.1; h.bottom_radius = 0.17; h.height = 0.1
+		var hi := MeshInstance3D.new()
+		hi.mesh = h
+		hi.material_override = m
+		hi.position = Vector3(0, 0.98, 0)
+		g.add_child(hi)
+
+func guild_xp() -> Array:
+	var out: Array = []
+	for w in workers:
+		if w.role == "traeger" and not w.get("dead", false) and w.get("home") == null and int(w.get("xp", 0)) > 0:
+			out.append(int(w.xp))
+	out.sort()
+	out.reverse()
+	return out
+
 func _carrier_spawn() -> void:
+	# Erfahrung aus dem Spielstand an die Zunftträger zurückgeben
+	if not pending_xp.is_empty():
+		for w in workers:
+			if pending_xp.is_empty():
+				break
+			if w.role == "traeger" and not w.get("dead", false) and w.get("home") == null and int(w.get("xp", 0)) == 0:
+				w.xp = 0
+				_gain_xp(w, int(pending_xp.pop_front()), true)
 	_helper_spawn()
 	var alive := workers.filter(func(x): return x.role == "traeger" and not x.get("dead", false) and x.get("home") == null)
 	# die ersten 10 lebenden Träger gehören fest zum Haupthaus
@@ -987,7 +1062,7 @@ func _carrier_jobs() -> void:
 				best = w
 		if best == null:
 			continue
-		var cap: int = int(best.get("cap", 2))   # Träger tragen 2 Stück (Kiepe), mit Karren mehr
+		var cap: int = int(best.get("cap", 3 if int(best.get("rank", 0)) >= 2 else 2))   # Meister tragen 3   # Träger tragen 2 Stück (Kiepe), mit Karren mehr
 		if job.has("relay"):
 			job.n = mini(int(job.n), int(job.from.out[job.item]) - int(job.from.out_res.get(job.item, 0)))
 			if job.n <= 0:
@@ -1171,6 +1246,7 @@ func _start_carry(w: Dictionary, job: Dictionary) -> void:
 				u.cnt = int(u.get("cnt", 0)) + int(st.n)
 				Umschlag.show_goods(u)
 				_carry(w, null)
+				_gain_xp(w, int(st.n))
 			w.q.insert(0, {"go": ud})
 			w.q.insert(1, {"fn": put})
 			return
@@ -1184,6 +1260,7 @@ func _start_carry(w: Dictionary, job: Dictionary) -> void:
 			else:
 				economy.add(item, int(st.n))
 			_carry(w, null)
+			_gain_xp(w, int(st.n))
 		var steps: Array = [{"go": dest}]
 		if ok:
 			steps.append({"fn": drop})
@@ -1254,7 +1331,7 @@ func _step(w: Dictionary, dt: float) -> void:
 			if s.path.is_empty():
 				w.q.pop_front()
 			return
-		var mv := d.normalized() * minf(d.length(), SPEED * dt)
+		var mv := d.normalized() * minf(d.length(), SPEED * float(w.get("spd", 1.0)) * dt)
 		n.position += mv
 		n.position.y = terrain.walk_height(n.position.x, n.position.z)
 		n.rotation.y = lerp_angle(n.rotation.y, atan2(d.x, d.z), minf(1.0, dt * 10.0))

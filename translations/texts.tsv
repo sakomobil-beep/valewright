@@ -831,3 +831,6 @@ MSG_TOOLS_LOW	🔨 Werkzeug wird knapp! Baue einen Schmied – er braucht Eisenb
 MSG_TOOLS_SMITH	🔨 Werkzeug wird knapp! Dein Schmied braucht Eisenbarren und Kohle.	🔨 Tools are running low! Your smithy needs iron bars and coal.
 BLD_UMSCHLAG	Umschlagplatz	Transfer point
 DESC_UMSCHLAG	Teilt lange Trägerwege: Zunftträger legen hier ab, ein Träger aus der Nähe – gern ein Nachbarschaftshelfer – bringt das letzte Stück. Hält bis zu 12 Waren. Lohnt sich auf Strecken über 35 m, etwa zu Zechen und Türmen.	Splits long carrier trips: guild carriers drop goods here, a nearby carrier – ideally a neighbourhood helper – takes them the last stretch. Holds up to 12 goods. Worth it on routes over 35 m, e.g. to mines and towers.
+MSG_MASTER_CARRIER	🎖️ Ein Zunftträger ist jetzt Meister – er läuft schneller und trägt 3 Stück!	🎖️ A guild carrier is now a master – he walks faster and carries 3 items!
+HK_RANKS	Zunft	Guild
+HK_RANKS_V	%d Meister · %d Gesellen · %d Lehrlinge	%d masters · %d journeymen · %d apprentices

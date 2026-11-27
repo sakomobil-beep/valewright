@@ -266,6 +266,13 @@ func setup_ui(layer: CanvasLayer) -> void:
 	no.pressed.connect(cancel)
 	confirm_box.add_child(no)
 
+func _rank_txt() -> String:
+	var c := [0, 0, 0]
+	for w in settlers.workers:
+		if w.role == "traeger" and not w.get("dead", false) and w.get("home") == null:
+			c[int(w.get("rank", 0))] += 1
+	return tr("HK_RANKS_V") % [c[2], c[1], c[0]]
+
 func _key(t: String) -> String:
 	return "BLD_" + t.to_upper()
 
@@ -1154,7 +1161,7 @@ func _military_panel(b: Dictionary) -> void:
 func _hk_panel(b: Dictionary) -> void:
 	var q: Array = b.get("tq", [])
 	var prog := int(100.0 * float(b.get("tq_t", 0.0)) / economy.TRAIN_TIME) if not q.is_empty() else -1
-	var sig := "HK%d|%d|%s|%d|%s|%d|%d" % [int(economy.builders_n), int(economy.carriers_n), str(q), prog, str(b.get("status", "")), int(economy.stock.get("werkzeug", 0)), economy.free_people()]
+	var sig := "HK%d|%d|%s|%d|%s|%d|%d" % [int(economy.builders_n), int(economy.carriers_n), str(q), prog, str(b.get("status", "")), int(economy.stock.get("werkzeug", 0)), economy.free_people()] + _rank_txt()
 	if sig == _chip_sig:
 		return
 	_chip_sig = sig
@@ -1165,7 +1172,7 @@ func _hk_panel(b: Dictionary) -> void:
 	var c1 := _hpcard(info_chips)
 	_lbl(c1, "👥 " + tr("UI_HK_STAFF"), 14, C_GOLD)
 	var g := GridContainer.new(); g.columns = 2; g.add_theme_constant_override("h_separation", 24); c1.add_child(g)
-	for row in [["👷", tr("HK_BAU"), int(economy.builders_n)], ["🧺", tr("HK_TR"), "%d + %d" % [economy.HQ_CARRIERS, int(economy.carriers_n)]]]:
+	for row in [["👷", tr("HK_BAU"), int(economy.builders_n)], ["🧺", tr("HK_TR"), "%d + %d" % [economy.HQ_CARRIERS, int(economy.carriers_n)]], ["🎖️", tr("HK_RANKS"), _rank_txt()]]:
 		var hb := HBoxContainer.new(); hb.add_theme_constant_override("separation", 8); g.add_child(hb)
 		_lbl(hb, row[0], 20, Color.WHITE)
 		var v := VBoxContainer.new(); v.add_theme_constant_override("separation", -2); hb.add_child(v)
