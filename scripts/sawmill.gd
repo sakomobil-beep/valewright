@@ -143,6 +143,15 @@ static func _saw(r: Node3D) -> void:
 	box(pul, Vector3(0.09, 0.3, 0.03), Vector3.ZERO, mat(TIMBER))
 	# Schutzhaube aus Holz über dem Blatt (offen nach vorn)
 	box(t, Vector3(0.14, 0.06, 0.6), Vector3(0, 1.17, 0), mat(WOOD.darkened(0.15)))
+	# Sägewagen auf zwei Schienen: trägt den Stamm durch das Blatt
+	for x in [-0.2, 0.2]:
+		box(t, Vector3(0.03, 0.02, L - 0.1), Vector3(x, 0.77, 0), mat(Color(0.3, 0.3, 0.32), 0.4, 0.6))
+	var wg := node(t, "Wagen", Vector3(0, 0, 1.0))
+	box(wg, Vector3(0.48, 0.05, 0.7), Vector3(0, 0.805, 0), mat(WOOD.darkened(0.3)))
+	for z in [-0.3, 0.3]:
+		box(wg, Vector3(0.05, 0.12, 0.05), Vector3(0.21, 0.88, z), mat(Color(0.3, 0.3, 0.32), 0.4, 0.6))   # Klammern
+		for x in [-0.2, 0.2]:
+			cyl(wg, 0.035, 0.035, 0.03, Vector3(x, 0.79, z), mat(Color(0.2, 0.2, 0.22)), Vector3(0, 0, PI / 2), 10)
 	# Werkstück: Stamm vorn und Bretter hinter dem Blatt
 	var lg := node(t, "Stamm", Vector3(0, 0.88, 1.0))
 	cyl(lg, 0.15, 0.15, 1.0, Vector3.ZERO, mat(BARK), Vector3(PI / 2, 0, 0))

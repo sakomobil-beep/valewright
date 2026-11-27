@@ -2089,9 +2089,21 @@ func _seq_next(w: Dictionary) -> void:
 		q.append({"walk": _local(b, st.p)})
 		q.append({"face": look})
 		q.append({"fn": func(): _carry(w, h); _show_prop(b, st, out); b.ws_i = si; b.ws_el = 0.0; b.ws_d = dur})
-		if si == ci and economy.sync_out(b.type):
+		var own_pile: bool = b.type in ["saegewerk", "muehle"]
+		if si == ci and economy.sync_out(b.type) and own_pile:
 			q.append({"fn": func(): economy.finish_cycle(b)})   # erst jetzt liegt die Ware wirklich am Abholplatz
 		q.append({"anim": anim, "wait": dur})
+		if si == ci and economy.sync_out(b.type) and not own_pile and out != null:
+			# fertige Ware selbst zum Abholplatz vor dem Haus tragen und dort ablegen – erst dann zählt sie
+			var side: Vector3 = Vector3(2.2, 0, 0).rotated(Vector3.UP, b.node.rotation.y)
+			var fwd: Vector3 = Vector3(0, 0, 0.7).rotated(Vector3.UP, b.node.rotation.y)
+			var pp: Vector3 = door_of(b) + side
+			var o = out
+			q.append({"fn": func(): _carry(w, o)})
+			q.append({"walk": pp + fwd - side.normalized() * 0.5})
+			q.append({"face": pp})
+			q.append({"fn": func(): _carry(w, null); economy.finish_cycle(b)})
+			q.append({"anim": "push", "wait": 0.5})
 	q.append({"fn": func(): _carry(w, null); _clear_props(b)})
 	w.q = q
 

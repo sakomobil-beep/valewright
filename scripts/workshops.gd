@@ -1895,7 +1895,7 @@ func _a_lehmgrube(b: Dictionary, P: Dictionary, s: String, f: float, dt: float, 
 # =====================================================================
 func _b_saegewerk(r: Node3D, P: Dictionary) -> void:
 	var m: Node3D = r.get_parent()
-	for k in ["Saege/Blatt", "Saege/Scheibe2", "Saege/Stamm", "Saege/Bretter", "Windrad/Rotor", "Windrad/Scheibe", "Riemen", "Gestell/Staemme", "Stapel", "Mehl"]:
+	for k in ["Saege/Blatt", "Saege/Scheibe2", "Saege/Stamm", "Saege/Bretter", "Saege/Wagen", "Windrad/Rotor", "Windrad/Scheibe", "Riemen", "Gestell/Staemme", "Stapel", "Mehl"]:
 		P[k] = m.get_node_or_null(k)
 	P.ok = P["Saege/Blatt"] != null
 	if not P.ok:
@@ -1965,6 +1965,11 @@ func _a_saegewerk(b: Dictionary, P: Dictionary, s: String, f: float, dt: float, 
 	log.visible = on_table > 0.02 and lf > 0.02
 	log.scale = Vector3(1, 1, maxf(0.02, lf))
 	log.position = Vector3(0, 0.88, lf / 2.0 + maxf(0.0, zc - 0.5) * 1.0 + (1.0 - on_table) * 0.6)
+	var wg = P.get("Saege/Wagen")
+	if wg:
+		# Wagen fährt mit dem Stamm zum Blatt und danach langsam wieder zurück
+		var wz: float = log.position.z if log.visible else lerpf((wg as Node3D).position.z, 1.0, minf(1.0, dt * 1.2))
+		(wg as Node3D).position.z = clampf(wz, -0.6, 1.0)
 	var lp := 1.0 - lf
 	pl.visible = lp > 0.02 and (s == "saw" or (s == "unload" and on_table > 0.02))
 	pl.scale = Vector3(1, 1, maxf(0.02, lp))
