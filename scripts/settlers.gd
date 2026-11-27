@@ -1743,6 +1743,9 @@ func _seq_next(w: Dictionary) -> void:
 		elif h == "OUT": h = out
 		var look := _local(b, st.l)
 		var anim: String = {"hammer": "build", "dig": "plant", "saw": "saw", "carve": "carve", "push": "push", "stoke": "stoke", "chop": "chop", "shoot": "shoot", "shovel": "shovel", "sow": "sow", "reap": "reap"}.get(String(st.get("a")) if st.get("a") != null else "", "push")
+		if st.has("hw"):
+			var hw = st.hw
+			q.append({"fn": func(): _carry(w, hw)})   # Ware auf dem Weg zur nächsten Station in der Hand
 		if st.has("via"):
 			q.append({"walk": _local(b, st.via)})   # Umweg, z. B. um die Sägebank herum
 		q.append({"walk": _local(b, st.p)})

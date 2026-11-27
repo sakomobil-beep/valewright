@@ -19,19 +19,19 @@ const OUT := {"id": "out", "p": [0.4, 1.5], "l": [0.4, 0.5], "a": "push", "t": 0
 const STEPS := {
 	"schmied": [
 		{"id": "heat", "p": [2.0, 0.55], "l": [2.3, -0.2], "a": "stoke", "t": 0.24},
-		{"id": "forge", "p": [1.8, 1.55], "l": [1.8, 0.8], "a": "hammer", "t": 0.34},
-		{"id": "quench", "p": [2.55, 1.55], "l": [2.5, 1.0], "a": "push", "t": 0.12},
+		{"id": "forge", "hw": "eisenbarren", "p": [1.8, 1.55], "l": [1.8, 0.8], "a": "hammer", "t": 0.34},
+		{"id": "quench", "hw": "eisenbarren", "p": [2.55, 1.55], "l": [2.5, 1.0], "a": "push", "t": 0.12},
 		{"id": "finish", "p": [1.8, 1.55], "l": [1.8, 0.8], "a": "carve", "t": 0.12}],
 	"goldschmied": [
 		{"id": "melt", "p": [2.0, 0.6], "l": [2.35, -0.15], "a": "stoke", "t": 0.24},
 		{"id": "pour", "p": [2.0, 0.6], "l": [2.0, 0.45], "a": "push", "t": 0.14},
-		{"id": "craft", "p": [1.8, 1.55], "l": [1.8, 0.85], "a": "carve", "t": 0.34},
+		{"id": "craft", "hw": "golderz", "p": [1.8, 1.55], "l": [1.8, 0.85], "a": "carve", "t": 0.34},
 		{"id": "polish", "p": [1.8, 1.55], "l": [1.8, 0.85], "a": "push", "t": 0.12}],
 	"muenzpraege": [
 		{"id": "melt", "p": [2.0, 0.6], "l": [2.4, -0.2], "a": "stoke", "t": 0.22},
 		{"id": "cast", "p": [2.0, 0.6], "l": [2.0, 0.45], "a": "push", "t": 0.12},
-		{"id": "press", "p": [1.75, 1.6], "l": [1.75, 0.85], "a": "push", "t": 0.4},
-		{"id": "count", "p": [2.45, 1.6], "l": [2.5, 1.05], "a": "carve", "t": 0.1}],
+		{"id": "press", "hw": "golderz", "p": [1.75, 1.6], "l": [1.75, 0.85], "a": "push", "t": 0.4},
+		{"id": "count", "hw": "muenzen", "p": [2.45, 1.6], "l": [2.5, 1.05], "a": "carve", "t": 0.1}],
 	"schmelze": [
 		{"id": "charge", "p": [0.0, 1.7], "l": [0.0, 0.85], "a": "stoke", "t": 0.26},
 		{"id": "tap", "p": [1.2, 2.25], "l": [1.7, 1.65], "a": "push", "t": 0.2},
@@ -44,10 +44,10 @@ const STEPS := {
 	"metzger": [
 		{"id": "cut", "p": [1.8, 1.55], "l": [1.8, 0.8], "a": "hammer", "t": 0.36},
 		{"id": "salt", "p": [1.8, 1.55], "l": [1.8, 0.8], "a": "carve", "t": 0.16},
-		{"id": "hang", "p": [2.55, 1.3], "l": [2.45, 0.3], "a": "push", "t": 0.2}],
+		{"id": "hang", "hw": "schinken", "p": [2.55, 1.3], "l": [2.45, 0.3], "a": "push", "t": 0.2}],
 	"raeucherei": [
 		{"id": "gut", "p": [2.6, 1.75], "l": [2.6, 1.2], "a": "carve", "t": 0.2},
-		{"id": "load", "p": [1.95, 1.45], "l": [1.95, 0.3], "a": "push", "t": 0.14},
+		{"id": "load", "hw": "fisch", "p": [1.95, 1.45], "l": [1.95, 0.3], "a": "push", "t": 0.14},
 		{"id": "smoke", "p": [1.6, 1.35], "l": [1.95, 0.3], "a": "stoke", "t": 0.32},
 		{"id": "unload", "p": [1.95, 1.45], "l": [1.95, 0.3], "a": "push", "t": 0.14}],
 	"brauerei": [
@@ -61,33 +61,33 @@ const STEPS := {
 	"kaeserei": [
 		{"id": "heat", "p": [1.85, 1.45], "l": [1.85, 0.55], "a": "stoke", "t": 0.3},
 		{"id": "mould", "p": [2.55, 1.6], "l": [2.55, 1.0], "a": "push", "t": 0.24},
-		{"id": "shelf", "p": [2.1, 0.35], "l": [2.6, -0.3], "a": "push", "t": 0.14}],
+		{"id": "shelf", "hw": "kaese", "p": [2.1, 0.35], "l": [2.6, -0.3], "a": "push", "t": 0.14}],
 	"konditorei": [
 		{"id": "mix", "p": [1.8, 1.55], "l": [1.8, 0.85], "a": "carve", "t": 0.2},
 		{"id": "knead", "p": [1.8, 1.55], "l": [1.8, 0.85], "a": "push", "t": 0.14},
-		{"id": "bake", "p": [2.2, 0.6], "l": [2.45, -0.15], "a": "stoke", "t": 0.26},
+		{"id": "bake", "hw": "kuchen", "p": [2.2, 0.6], "l": [2.45, -0.15], "a": "stoke", "t": 0.26},
 		{"id": "decor", "p": [1.8, 1.55], "l": [1.8, 0.85], "a": "carve", "t": 0.14}],
 	"baeckerei": [
 		{"id": "knead", "p": [2.6, 1.75], "l": [2.6, 1.15], "a": "push", "t": 0.18},
 		{"id": "shape", "p": [2.6, 1.75], "l": [2.6, 1.15], "a": "carve", "t": 0.14},
-		{"id": "bake", "p": [1.85, 1.45], "l": [1.85, 0.3], "a": "stoke", "t": 0.3},
+		{"id": "bake", "hw": "brot", "p": [1.85, 1.45], "l": [1.85, 0.3], "a": "stoke", "t": 0.3},
 		{"id": "take", "p": [1.85, 1.45], "l": [1.85, 0.3], "a": "push", "t": 0.12}],
 	"toepfer": [
 		{"id": "wedge", "p": [2.6, 1.7], "l": [2.6, 1.15], "a": "push", "t": 0.12},
 		{"id": "throw", "p": [1.8, 1.4], "l": [1.8, 0.75], "a": "carve", "t": 0.34},
-		{"id": "fire", "p": [2.15, 0.55], "l": [2.45, -0.15], "a": "stoke", "t": 0.24}],
+		{"id": "fire", "hw": "kruege", "p": [2.15, 0.55], "l": [2.45, -0.15], "a": "stoke", "t": 0.24}],
 	"weberei": [
 		{"id": "spin", "p": [2.65, 1.75], "l": [2.6, 1.15], "a": "carve", "t": 0.24},
-		{"id": "weave", "p": [1.85, 1.35], "l": [1.85, 0.4], "a": "push", "t": 0.42},
+		{"id": "weave", "hw": "wolle", "p": [1.85, 1.35], "l": [1.85, 0.4], "a": "push", "t": 0.42},
 		{"id": "roll", "p": [1.85, 1.35], "l": [1.85, 0.4], "a": "carve", "t": 0.1}],
 	"schneider": [
 		{"id": "measure", "p": [1.8, 1.55], "l": [1.8, 0.8], "a": "push", "t": 0.12},
 		{"id": "cut", "p": [1.8, 1.55], "l": [1.8, 0.8], "a": "carve", "t": 0.2},
 		{"id": "sew", "p": [1.8, 1.55], "l": [1.8, 0.8], "a": "carve", "t": 0.26},
-		{"id": "dress", "p": [2.55, 1.45], "l": [2.55, 0.6], "a": "push", "t": 0.16}],
+		{"id": "dress", "hw": "kleidung", "p": [2.55, 1.45], "l": [2.55, 0.6], "a": "push", "t": 0.16}],
 	"seilerei": [
 		{"id": "comb", "p": [2.6, 1.75], "l": [2.6, 1.15], "a": "carve", "t": 0.2},
-		{"id": "twist", "p": [1.55, 1.2], "l": [1.75, 0.6], "a": "push", "t": 0.38},
+		{"id": "twist", "hw": "flachs", "p": [1.55, 1.2], "l": [1.75, 0.6], "a": "push", "t": 0.38},
 		{"id": "coil", "p": [2.6, 1.75], "l": [2.6, 1.15], "a": "carve", "t": 0.14}],
 	"bogenbauer": [
 		{"id": "plane", "p": [1.85, 1.55], "l": [1.85, 0.8], "a": "saw", "t": 0.26},
@@ -95,16 +95,16 @@ const STEPS := {
 		{"id": "tip", "p": [2.55, 1.55], "l": [2.5, 0.95], "a": "hammer", "t": 0.14}],
 	"waffenschnitzer": [
 		{"id": "split", "p": [2.6, 1.75], "l": [2.6, 1.15], "a": "chop", "t": 0.2},
-		{"id": "shave", "p": [1.85, 1.55], "l": [1.85, 0.8], "a": "saw", "t": 0.3},
+		{"id": "shave", "hw": "bretter", "p": [1.85, 1.55], "l": [1.85, 0.8], "a": "saw", "t": 0.3},
 		{"id": "sand", "p": [1.85, 1.55], "l": [1.85, 0.8], "a": "carve", "t": 0.14}],
 	"wagner": [
 		{"id": "saw", "p": [2.65, 1.65], "l": [2.6, 1.05], "a": "saw", "t": 0.16},
-		{"id": "spokes", "p": [1.8, 1.5], "l": [1.8, 0.75], "a": "hammer", "t": 0.26},
+		{"id": "spokes", "hw": "bretter", "p": [1.8, 1.5], "l": [1.8, 0.75], "a": "hammer", "t": 0.26},
 		{"id": "rim", "p": [1.8, 1.5], "l": [1.8, 0.75], "a": "hammer", "t": 0.16},
 		{"id": "mount", "p": [2.1, 0.5], "l": [2.3, -0.2], "a": "push", "t": 0.16}],
 	"imker": [
 		{"id": "open", "p": [0.9, 2.6], "l": [1.5, 2.6], "a": "carve", "t": 0.2},
-		{"id": "extract", "p": [2.4, 1.6], "l": [2.4, 1.0], "a": "push", "t": 0.26},
+		{"id": "extract", "hw": "honig", "p": [2.4, 1.6], "l": [2.4, 1.0], "a": "push", "t": 0.26},
 		{"id": "jar", "p": [2.4, 1.6], "l": [2.4, 1.0], "a": "carve", "t": 0.14},
 		{"id": "dip", "p": [2.9, 0.4], "l": [2.9, -0.15], "a": "push", "t": 0.16}],
 	"winzer": [
@@ -119,7 +119,7 @@ const STEPS := {
 		{"id": "pull", "p": [3.2, 2.3], "l": [2.4, 2.3], "a": "reap", "t": 0.26}],
 	"lehmgrube": [
 		{"id": "dig", "p": [1.3, 1.85], "l": [1.3, 3.0], "a": "shovel", "t": 0.4},
-		{"id": "knead", "p": [2.75, 1.55], "l": [2.9, 1.05], "a": "push", "t": 0.2},
+		{"id": "knead", "hw": "lehm", "p": [2.75, 1.55], "l": [2.9, 1.05], "a": "push", "t": 0.2},
 		{"id": "brick", "p": [2.75, 1.55], "l": [2.9, 1.05], "a": "carve", "t": 0.18}],
 }
 const SAME := {"waffenschmied": "schmied"}
@@ -311,7 +311,7 @@ func _setup(b: Dictionary) -> void:
 		_hide_yard(b.node, root)
 	var P := {"root": root}
 	call("_b_" + k, root, P)
-	b.ws = {"root": root, "P": P, "k": k}
+	b.ws = {"root": root, "P": P, "k": k, "fx": root.find_children("*", "CPUParticles3D", true, false)}
 
 # alte, starre Hof-Ausstattung rechts neben dem Haus ausblenden (die neue Werkstatt ersetzt sie)
 func _hide_yard(n: Node3D, keep: Node3D) -> void:
@@ -353,6 +353,16 @@ func _process(dt: float) -> void:
 		var ws: Dictionary = b.ws
 		ws.t = float(ws.get("t", 0.0)) + dt
 		call("_a_" + String(ws.k), b, ws.P, sid, f, dt, float(ws.t), working)
+		if not _fx_on():
+			for p in ws.fx:
+				p.emitting = false
+
+var _fx_t := 0.0
+var _fx_cache := true
+func _fx_on() -> bool:
+	# Partikel nur, wenn „Effekte“ in den Einstellungen an sind
+	var e = get_parent().get_node_or_null("Effekte") if get_parent() else null
+	return e == null or bool(e.enabled)
 
 func _out_item(b: Dictionary) -> String:
 	var c = b.get("cur")

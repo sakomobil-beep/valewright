@@ -79,6 +79,10 @@ func _process(dt: float) -> void:
 					_spins.append([bl, "blade", b])
 		var f: Dictionary = FX.get(b.type, {}).duplicate()
 		f.merge(FX_EXTRA.get(b.type, {}))
+		if Workshops.has(b.type) and b.get("owner", 0) == 0:
+			# die neue Werkstatt hat eigene Funken/Späne/Dampf an der richtigen Stelle – nur Schornsteinrauch bleibt
+			for kk in ["sparkAt", "workSmoke", "flourAt", "chipsAt", "stoneDustAt"]:
+				f.erase(kk)
 		if f.is_empty():
 			continue
 		if b.has("fx_nodes") and b.fx_nodes.any(func(e): return not is_instance_valid(e[1])):

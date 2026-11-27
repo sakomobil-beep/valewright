@@ -722,7 +722,7 @@ ACHD_GEBAEUDE_25	Besitze 25 fertige Gebäude.	Own 25 finished buildings.
 ACH_GEBAEUDE_50	Baumeister des Odenwalds	Master builder of the Odenwald
 ACHD_GEBAEUDE_50	Besitze 50 fertige Gebäude.	Own 50 finished buildings.
 ACH_HAUS_STUFE	Gut eingerichtet	Nicely furnished
-ACHD_HAUS_STUFE	Ein Wohnhaus steigt auf Stufe 3 auf.	A house reaches level 3.
+ACHD_HAUS_STUFE	Ein Wohnhaus wird zum Fachwerkhaus.	A house becomes a timber house.
 ACH_BROT	Unser täglich Brot	Our daily bread
 ACHD_BROT	Backe das erste Brot.	Bake the first bread.
 ACH_WERKZEUG	Handwerk hat goldenen Boden	Craft pays off
@@ -745,3 +745,85 @@ ACH_SPIELZEIT	Siedler aus Leidenschaft	Settler at heart
 ACHD_SPIELZEIT	Spiele insgesamt 2 Stunden.	Play for 2 hours in total.
 ACH_ALLE_KETTEN	Meister der Ketten	Master of chains
 ACHD_ALLE_KETTEN	Besitze Mühle, Bäckerei, Schmelze, Schmied, Brauerei, Goldschmied, Münzpräge, Weberei und Schneider.	Own a mill, bakery, smelter, smithy, brewery, goldsmith, mint, weaving mill and tailor.
+WS_FETCH	Holt die Rohware aus dem Vorrat	Fetches the raw material
+WS_OUT	Bringt die fertige Ware vors Haus	Brings the finished goods outside
+WS_SCHMIED_HEAT	Bringt das Eisen in der Esse zum Glühen	Heats the iron in the forge until it glows
+WS_SCHMIED_FORGE	Schmiedet das glühende Eisen auf dem Amboss	Hammers the glowing iron on the anvil
+WS_SCHMIED_QUENCH	Härtet das Werkstück im Löschtrog	Quenches the piece in the water trough
+WS_SCHMIED_FINISH	Schleift und prüft das fertige Stück	Grinds and checks the finished piece
+WS_GOLDSCHMIED_MELT	Schmilzt das Gold im Tiegel	Melts the gold in the crucible
+WS_GOLDSCHMIED_POUR	Gießt das flüssige Gold in die Form	Pours the molten gold into the mould
+WS_GOLDSCHMIED_CRAFT	Treibt und formt den Ring	Shapes and chases the ring
+WS_GOLDSCHMIED_POLISH	Setzt den Stein und poliert	Sets the stone and polishes
+WS_MUENZPRAEGE_MELT	Schmilzt das Gold	Melts the gold
+WS_MUENZPRAEGE_CAST	Gießt einen Goldstreifen	Casts a strip of gold
+WS_MUENZPRAEGE_PRESS	Prägt Münzen an der Spindelpresse	Strikes coins on the screw press
+WS_MUENZPRAEGE_COUNT	Zählt und stapelt die Münzen	Counts and stacks the coins
+WS_SCHMELZE_CHARGE	Beschickt den Ofen mit Erz und Kohle	Charges the furnace with ore and coal
+WS_SCHMELZE_TAP	Sticht ab – flüssiges Eisen fließt in die Rinne	Taps the furnace – molten iron runs down the channel
+WS_SCHMELZE_COOL	Lässt die Barren abkühlen	Lets the bars cool down
+WS_KOEHLER_STACK	Schichtet den Meiler auf	Stacks the charcoal pile
+WS_KOEHLER_COVER	Deckt den Meiler mit Erde ab	Covers the pile with earth
+WS_KOEHLER_BURN	Lässt den Meiler schwelen	Lets the pile smoulder
+WS_KOEHLER_RAKE	Zieht die fertige Holzkohle heraus	Rakes out the finished charcoal
+WS_METZGER_CUT	Zerlegt das Fleisch auf dem Hackklotz	Butchers the meat on the block
+WS_METZGER_SALT	Reibt das Fleisch mit Salz ein	Rubs the meat with salt
+WS_METZGER_HANG	Hängt den Schinken auf	Hangs up the ham
+WS_RAEUCHEREI_GUT	Nimmt die Fische aus	Guts the fish
+WS_RAEUCHEREI_LOAD	Hängt die Fische in den Räucherschrank	Hangs the fish in the smokehouse
+WS_RAEUCHEREI_SMOKE	Räuchert über Buchenholz	Smokes them over beech wood
+WS_RAEUCHEREI_UNLOAD	Nimmt die goldbraunen Fische heraus	Takes out the golden-brown fish
+WS_BRAUEREI_MASH	Maischt das Malz im Kessel ein	Mashes the malt in the kettle
+WS_BRAUEREI_BOIL	Kocht und rührt den Sud	Boils and stirs the wort
+WS_BRAUEREI_FILL	Füllt das Bier ins Fass	Fills the beer into the barrel
+WS_KELTEREI_LOAD	Füllt Trauben in die Presse	Loads grapes into the press
+WS_KELTEREI_PRESS	Dreht die Spindel – der Saft läuft	Turns the screw – the juice flows
+WS_KELTEREI_FILL	Füllt den Most ins Fass	Fills the must into the barrel
+WS_KAESEREI_HEAT	Wärmt die Milch und rührt den Bruch	Warms the milk and stirs the curd
+WS_KAESEREI_MOULD	Presst den Bruch in die Form	Presses the curd into the mould
+WS_KAESEREI_SHELF	Legt den Laib ins Reiferegal	Puts the wheel on the ripening shelf
+WS_KONDITOREI_MIX	Rührt den Teig an	Mixes the batter
+WS_KONDITOREI_KNEAD	Knetet den Teig	Kneads the dough
+WS_KONDITOREI_BAKE	Backt im kleinen Ofen	Bakes in the little oven
+WS_KONDITOREI_DECOR	Verziert den Kuchen mit Kirschen	Decorates the cake with cherries
+WS_BAECKEREI_KNEAD	Knetet den Brotteig	Kneads the bread dough
+WS_BAECKEREI_SHAPE	Formt die Laibe	Shapes the loaves
+WS_BAECKEREI_BAKE	Schiebt die Laibe in den Holzofen	Slides the loaves into the wood oven
+WS_BAECKEREI_TAKE	Holt das fertige Brot heraus	Takes out the finished bread
+WS_TOEPFER_WEDGE	Schlägt den Ton durch	Wedges the clay
+WS_TOEPFER_THROW	Dreht den Krug auf der Scheibe	Throws the jug on the wheel
+WS_TOEPFER_FIRE	Brennt die Krüge im Ofen	Fires the jugs in the kiln
+WS_WEBEREI_SPIN	Spinnt Garn am Spinnrad	Spins yarn on the wheel
+WS_WEBEREI_WEAVE	Webt Stoff am Webstuhl	Weaves cloth on the loom
+WS_WEBEREI_ROLL	Rollt den Stoff auf	Rolls up the cloth
+WS_SCHNEIDER_MEASURE	Misst den Stoff ab	Measures the cloth
+WS_SCHNEIDER_CUT	Schneidet zu	Cuts the pieces
+WS_SCHNEIDER_SEW	Näht das Gewand	Sews the garment
+WS_SCHNEIDER_DRESS	Probiert es an der Puppe an	Fits it on the dummy
+WS_SEILEREI_COMB	Hechelt den Flachs	Combs the flax
+WS_SEILEREI_TWIST	Verdreht die Litzen am Seilerrad	Twists the strands on the rope wheel
+WS_SEILEREI_COIL	Schießt das Seil auf	Coils the rope
+WS_BOGENBAUER_PLANE	Hobelt die Pfeilschäfte	Planes the arrow shafts
+WS_BOGENBAUER_FLETCH	Befiedert die Pfeile	Fletches the arrows
+WS_BOGENBAUER_TIP	Setzt die Eisenspitzen auf	Fits the iron tips
+WS_WAFFENSCHNITZER_SPLIT	Spaltet das Holz	Splits the wood
+WS_WAFFENSCHNITZER_SHAVE	Schnitzt den Kampfstock	Carves the fighting staff
+WS_WAFFENSCHNITZER_SAND	Glättet den Stock	Smooths the staff
+WS_WAGNER_SAW	Sägt die Bretter zu	Saws the boards
+WS_WAGNER_SPOKES	Setzt die Speichen ein	Fits the spokes
+WS_WAGNER_RIM	Zieht Felge und Eisenreif auf	Fits rim and iron tyre
+WS_WAGNER_MOUNT	Montiert das Rad am Wagen	Mounts the wheel on the cart
+WS_IMKER_OPEN	Öffnet den Bienenstock und holt eine Wabe	Opens the hive and takes a comb
+WS_IMKER_EXTRACT	Schleudert den Honig	Spins out the honey
+WS_IMKER_JAR	Füllt den Honig ins Glas	Fills the honey into a jar
+WS_IMKER_DIP	Zieht Kerzen aus dem Wachs	Dips candles in the wax
+WS_WINZER_TEND	Pflegt die Reben	Tends the vines
+WS_WINZER_HARVEST	Liest die reifen Trauben	Picks the ripe grapes
+WS_HOPFENBAUER_TEND	Leitet die Ranken an den Stangen hoch	Trains the bines up the poles
+WS_HOPFENBAUER_HARVEST	Erntet die Hopfendolden	Harvests the hop cones
+WS_FLACHSBAUER_SOW	Sät Leinsamen aus	Sows linseed
+WS_FLACHSBAUER_TEND	Jätet das blühende Flachsbeet	Weeds the flowering flax bed
+WS_FLACHSBAUER_PULL	Rauft den Flachs und bündelt ihn	Pulls the flax and bundles it
+WS_LEHMGRUBE_DIG	Gräbt Lehm aus der Grube	Digs clay from the pit
+WS_LEHMGRUBE_KNEAD	Tritt den Lehm im Trog	Treads the clay in the trough
+WS_LEHMGRUBE_BRICK	Streicht Ziegelrohlinge	Moulds brick blanks

@@ -829,7 +829,7 @@ func _set_chips(sections: Array, bld = null) -> void:
 	var prog := -1
 	if bld != null and bld.build >= 1.0 and bld.get("running", false):
 		prog = int(100.0 * float(bld.get("t", 0.0)) / maxf(0.1, float(bld.get("dur", economy.WORK_TIME))))
-	var sig := str(sections) + "|" + str(prog / 5) + "|" + (str(bld.get("status", "")) if bld != null else "")
+	var sig := str(sections) + "|" + str(prog / 5) + "|" + (str(bld.get("status", "")) + str(bld.get("ws_i", -1)) if bld != null else "")
 	if sig == _chip_sig:
 		return
 	_chip_sig = sig
@@ -850,6 +850,14 @@ func _set_chips(sections: Array, bld = null) -> void:
 			_lbl(hb, "⚙ " + tr("UI_PROGRESS"), 13, C_DIM, 110)
 			_bar(hb, prog, 100, C_GOLD, 170)
 			_lbl(hb, "%d %%" % prog, 13, C_DIM)
+		# was gerade in der Werkstatt passiert (Schritt des Arbeitsablaufs)
+		if Workshops.has(bld.type) and bld.has("ws_i") and (bld.get("running", false) or float(bld.get("ws_el", 0.0)) < float(bld.get("ws_d", 1.0)) + 1.5):
+			var stp: Array = Workshops.steps(bld.type)
+			var sid := String(stp[clampi(int(bld.ws_i), 0, stp.size() - 1)].id)
+			var key := "WS_" + Workshops.kind(bld.type).to_upper() + "_" + sid.to_upper()
+			if sid in ["fetch", "out"]:
+				key = "WS_" + sid.to_upper()
+			_lbl(cw, "🔨 " + tr(key), 13, Color(0.96, 0.88, 0.62)).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	for sec in sections:
 		var card := _hpcard(info_chips)
 		_lbl(card, sec[0], 14, C_GOLD)
