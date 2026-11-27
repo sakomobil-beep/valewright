@@ -206,7 +206,7 @@ static func _yard(r: Node3D) -> void:
 			cyl(lg, 0.075, 0.075, 1.6, Vector3.ZERO, mat(BARK), Vector3(PI / 2, 0, 0))
 			cyl(lg, 0.06, 0.06, 1.61, Vector3.ZERO, mat(CUT), Vector3(PI / 2, 0, 0))
 			k += 1
-	var st := node(r, "Stapel", Vector3(2.55, 0, 1.15), Vector3(0, -0.25, 0))
+	var st := node(r, "Stapel", Vector3(2.1, 0, 2.55), Vector3(0, 0.3, 0))
 	box(st, Vector3(1.1, 0.06, 0.55), Vector3(0, 0.03, 0), mat(WOOD.darkened(0.25)))
 	for i in 10:
 		var lay := i / 2
