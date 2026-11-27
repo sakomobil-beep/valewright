@@ -385,6 +385,7 @@ SITE_FOUND	Fundament wird gelegt	Laying the foundation
 SITE_FRAME	Holzgerüst wird aufgestellt	Raising the timber frame
 SITE_WALLS	Wände werden hochgezogen	Building the walls
 SITE_ROOF	Dach wird gedeckt	Roofing
+SITE_TRUSS	Dachstuhl wird aufgerichtet	Raising the roof truss
 SITE_LEVEL	Stufe 1: Boden wird eingeebnet (%d %%)	Stage 1: levelling the ground (%d %%)
 SITE_STAGE2	Stufe 2: %s (%d %%)	Stage 2: %s (%d %%)
 SITE_WAIT_MAT	Wartet auf Baumaterial:	Waiting for materials:

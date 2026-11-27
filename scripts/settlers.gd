@@ -1348,6 +1348,23 @@ func _step(w: Dictionary, dt: float) -> void:
 		n.position.y = terrain.walk_height(n.position.x, n.position.z)
 		n.rotation.y = lerp_angle(n.rotation.y, atan2(d.x, d.z), minf(1.0, dt * 10.0))
 		w.anim = "walk"
+	elif s.has("climb"):
+		var cn: Node3D = w.node
+		var gy: float = terrain.walk_height(cn.position.x, cn.position.z) + float(s.climb)
+		cn.position.y = move_toward(cn.position.y, gy, 1.3 * dt)
+		w.anim = "walk"
+		if absf(cn.position.y - gy) < 0.01:
+			w.q.pop_front()
+	elif s.has("walk_up"):
+		var un: Node3D = w.node
+		var ud := Vector3(s.walk_up.x - un.position.x, 0, s.walk_up.z - un.position.z)
+		if ud.length() < 0.08:
+			w.q.pop_front()
+			return
+		un.position += ud.normalized() * minf(ud.length(), SPEED * 0.6 * dt)
+		un.position.y = terrain.walk_height(un.position.x, un.position.z) + float(s.h)
+		un.rotation.y = lerp_angle(un.rotation.y, atan2(ud.x, ud.z), minf(1.0, dt * 10.0))
+		w.anim = "walk"
 	elif s.has("face"):
 		var d: Vector3 = s.face - w.node.position
 		w.node.rotation.y = atan2(d.x, d.z)
