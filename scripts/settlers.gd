@@ -853,11 +853,69 @@ func _carrier_spawn() -> void:
 
 # ---------- Träger (wie planCarrier im Browser) ----------
 # Ausgang eines Gebäudes → direkt zum Verbraucher (sonst ins Lager); Lager → Gebäude/Baustellen, die etwas brauchen
+# Planung für alle freien Träger gemeinsam (alle 0,25 s):
+#  1. Aufträge nach Dringlichkeit sortieren, jeder geht an den NÄCHSTEN freien Träger
+#  2. Wer abgeliefert hat, bleibt erst einmal stehen und nimmt den nächsten Auftrag von dort (kein Leerweg zum Lager)
+#  3. Jede Ware / jedes Ziel nur einmal pro Runde vergeben (keine Doppelwege)
+var _cj_t := 0.0
 func _carrier_jobs() -> void:
+	_cj_t -= get_process_delta_time()
+	if _cj_t > 0.0:
+		return
+	_cj_t = 0.4
+	var idle: Array = []
 	for w in workers:
 		if w.role != "traeger" or not w.q.is_empty() or w.get("dead", false):
 			continue
-		_plan_carrier(w)
+		if not w.get("cart", false) and _fetch_cart(w):
+			continue
+		idle.append(w)
+	if idle.is_empty():
+		return
+	var jobs := _carrier_job_list()
+	var taken := {}
+	for job in jobs:
+		if idle.is_empty():
+			break
+		var key := "%d|%s" % [(job.to.node.get_instance_id() if job.to != null and is_instance_valid(job.to.get("node")) else -1), job.item]
+		var src := "%d|%s" % [job.from.node.get_instance_id() if job.has("from") and is_instance_valid(job.from.get("node")) else -2, job.item]
+		if job.to != null and taken.has(key):
+			continue
+		if job.has("from") and taken.has(src):
+			continue
+		# Ware noch da? (ein Auftrag weiter oben kann sie schon genommen haben)
+		if job.has("from"):
+			if int(job.from.out.get(job.item, 0)) - int(job.from.out_res.get(job.item, 0)) <= 0:
+				continue
+		elif int(economy.stock.get(job.item, 0)) < 1:
+			continue
+		var at: Vector3 = door_of(job.from) if job.has("from") else job.lager
+		var best = null
+		var bd := 1e9
+		for w in idle:
+			var d: float = Vector2(w.node.position.x - at.x, w.node.position.z - at.z).length()
+			if d < bd:
+				bd = d
+				best = w
+		var cap: int = int(best.get("cap", 2))   # Träger tragen 2 Stück (Kiepe), mit Karren mehr
+		if job.has("from"):
+			job.n = mini(cap, int(job.from.out[job.item]) - int(job.from.out_res.get(job.item, 0)))
+		else:
+			job.n = maxi(1, mini(job.n, mini(cap, int(economy.stock[job.item]))))
+		idle.erase(best)
+		best.idle_t = 0.0
+		taken[key] = true
+		taken[src] = true
+		_start_carry(best, job)
+	# wer leer ausgeht: kurz stehen bleiben, erst nach einer Weile zum nächsten Lager zurück
+	for w in idle:
+		w.idle_t = float(w.get("idle_t", 0.0)) + 0.25
+		var p: Vector3 = w.node.position
+		var l := nearest_lager(p)
+		if float(w.idle_t) > 4.0 and Vector2(l.x - p.x, l.z - p.z).length() > 3.0:
+			w.q = [{"go": l}, {"wait": 1.0}]
+		else:
+			w.q = [{"wait": 0.5}]
 
 func _inc(b: Dictionary, item: String, n: int) -> void:
 	var key := "site_inc" if b.build < 1.0 else "inc"
@@ -871,14 +929,10 @@ func _receive(b: Dictionary, item: String, n: int) -> void:
 		b["in"][item] = int(b["in"].get(item, 0)) + n
 	economy.changed.emit()
 
-func _plan_carrier(w: Dictionary) -> void:
-	var p: Vector3 = w.node.position
-	# Karren abholen: vom Parkplatz vor dem Wagner (oder aus dem Lager, falls dort noch einer steht)
-	if not w.get("cart", false) and _fetch_cart(w):
-		return
-	var cap: int = int(w.get("cap", 1))
-	var job = null
-	var jk := 1e9
+# alle sinnvollen Aufträge mit Dringlichkeit (kleiner = wichtiger); ohne Laufweg des Trägers
+func _carrier_job_list() -> Array:
+	var cap := 2
+	var jobs: Array = []
 	for b in economy.buildings:
 		if b.get("removed", false):
 			continue
@@ -891,10 +945,12 @@ func _plan_carrier(w: Dictionary) -> void:
 				continue
 			var c = economy.best_consumer(item, b.pos, b)
 			var dest: Vector3 = c.pos if c != null else nearest_lager(b.pos)
-			var k: float = (economy.prio(c) if c != null else 1.5) * 400.0 + Vector2(b.pos.x - p.x, b.pos.z - p.z).length() + Vector2(dest.x - b.pos.x, dest.z - b.pos.z).length() * 0.5 - mini(avail, cap) * 15.0
-			if k < jk:
-				jk = k
-				job = {"from": b, "to": c, "item": item, "n": mini(avail, cap)}
+			var k: float = (economy.prio(c) if c != null else 1.5) * 400.0 + Vector2(dest.x - b.pos.x, dest.z - b.pos.z).length() * 0.5 - mini(avail, cap) * 15.0
+			if c != null and c.type != "wohnhaus" and int(c["in"].values().reduce(func(a, x): return a + int(x), 0)) == 0:
+				k -= 150.0   # Werkstatt steht still: zuerst beliefern
+			if int(b.out[item]) >= 6:
+				k -= 120.0   # Ausgang läuft voll: abholen, bevor die Arbeit stockt
+			jobs.append({"k": k, "from": b, "to": c, "item": item, "n": mini(avail, cap)})
 	for b in economy.buildings:
 		for wv in economy.wants_of(b):
 			var wi: String = wv[0]
@@ -910,17 +966,15 @@ func _plan_carrier(w: Dictionary) -> void:
 			if item == "":
 				continue
 			var l := nearest_lager(b.pos)
-			var k: float = economy.prio(b) * 400.0 + Vector2(l.x - p.x, l.z - p.z).length() + Vector2(b.pos.x - l.x, b.pos.z - l.z).length() * 0.5 + 30.0
+			var k: float = economy.prio(b) * 400.0 + Vector2(b.pos.x - l.x, b.pos.z - l.z).length() * 0.5 + 30.0
 			# Wohnhäuser zuerst: fehlt dem Haus die Ware gerade ganz, geht die Lieferung vor jedes Abholen
 			if b.type == "wohnhaus" and int(b["in"].get(item, 0)) + int(b.get("inc", {}).get(item, 0)) == 0:
 				k -= 700.0
-			if k < jk:
-				jk = k
-				job = {"lager": l, "to": b, "item": item, "n": maxi(1, mini(mini(cap, int(economy.stock[item])), int(wv[1])))}
-	if job == null:
-		var l := nearest_lager(p)
-		w.q = [{"go": l}, {"wait": 1.5}] if Vector2(l.x - p.x, l.z - p.z).length() > 3.0 else [{"wait": 1.5}]
-		return
+			jobs.append({"k": k, "lager": l, "to": b, "item": item, "n": maxi(1, mini(int(economy.stock[item]), int(wv[1])))})
+	jobs.sort_custom(func(a, b): return a.k < b.k)
+	return jobs
+
+func _start_carry(w: Dictionary, job: Dictionary) -> void:
 	var item: String = job.item
 	var n: int = job.n
 	var st := {"n": n, "lost": false}
