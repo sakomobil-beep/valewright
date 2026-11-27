@@ -76,14 +76,36 @@ func start(b: Dictionary, delivered := {}) -> void:
 	b.site_hy0 = y0 - base_y
 	b.site_hy1 = y1 - base_y
 	b.site_hev = eave - base_y
-	var site := Node3D.new()
-	site.position = b.pos
-	site.rotation.y = n.rotation.y
-	settlers.get_parent().add_child(site)
-	b.site = site
+	# Grundfläche des eigentlichen Hauses (nur Wandteile am Boden) – Fundament nicht größer als das Haus
+	var inv: Transform3D = n.global_transform.affine_inverse()
+	var foot := AABB()
+	var fy0 := 1e9
+	var lbs: Array = []
+	for e3 in bits:
+		var mi3: MeshInstance3D = e3.mi
+		var lb: AABB = inv * (mi3.global_transform * e3.mesh.get_aabb())
+		lb = AABB(lb.position * n.scale, lb.size * n.scale)
+		lbs.append(lb)
+		fy0 = minf(fy0, lb.position.y)
+	var got_foot := false
+	for lb2 in lbs:
+		var l: AABB = lb2
+		if l.position.y - fy0 < 0.4 and l.size.y > 0.8 and maxf(l.size.x, l.size.z) > 0.8:
+			foot = l if not got_foot else foot.merge(l)
+			got_foot = true
 	var S: float = float(b.s)
 	var FW := r * 2.0 * 0.9 * S
 	var FD := r * 2.0 * 0.9 * S
+	var cen := Vector3.ZERO
+	if got_foot:
+		FW = minf(FW, foot.size.x + 0.3)
+		FD = minf(FD, foot.size.z + 0.3)
+		cen = Vector3(foot.get_center().x, 0, foot.get_center().z)
+	var site := Node3D.new()
+	site.position = b.pos + cen.rotated(Vector3.UP, n.rotation.y)
+	site.rotation.y = n.rotation.y
+	settlers.get_parent().add_child(site)
+	b.site = site
 	b.site_fw = FW
 	b.site_fd = FD
 	var wood := _mat(Color("a5784a"))
@@ -181,7 +203,8 @@ func start(b: Dictionary, delivered := {}) -> void:
 	b.site_rafters = rafters
 	# Gerüst mit Leiter an der rechten Seite
 	var H: float = maxf(2.6, float(b.site_hev) + 1.1)
-	var R := r * S + 0.3
+	var RX := FW / 2 + 0.35
+	var R := FD / 2 + 0.35
 	var scaf := Node3D.new()
 	site.add_child(scaf)
 	for sx in [-1, 1]:
@@ -194,7 +217,7 @@ func start(b: Dictionary, delivered := {}) -> void:
 			cm.radial_segments = 5
 			p.mesh = cm
 			p.material_override = wood
-			p.position = Vector3(sx * R, H / 2, sz * R)
+			p.position = Vector3(sx * RX, H / 2, sz * R)
 			scaf.add_child(p)
 	var levels: Array = []
 	for k in range(1, 4):
@@ -202,21 +225,21 @@ func start(b: Dictionary, delivered := {}) -> void:
 		lv.position.y = minf(H - 0.3, ey * k / 3.0 + 0.1)
 		scaf.add_child(lv)
 		for s2 in [-1, 1]:
-			_box(lv, Vector3(2 * R + 0.4, 0.06, 0.08), Vector3(0, 0, s2 * R), wood)
-			_box(lv, Vector3(0.08, 0.06, 2 * R + 0.4), Vector3(s2 * R, 0, 0), wood)
-		_box(lv, Vector3(2 * R + 0.4, 0.05, 0.45), Vector3(0, 0.04, R), wood)
+			_box(lv, Vector3(2 * RX + 0.4, 0.06, 0.08), Vector3(0, 0, s2 * R), wood)
+			_box(lv, Vector3(0.08, 0.06, 2 * R + 0.4), Vector3(s2 * RX, 0, 0), wood)
+		_box(lv, Vector3(2 * RX + 0.4, 0.05, 0.45), Vector3(0, 0.04, R), wood)
 		levels.append(lv)
 	var plat_y: float = levels[-1].position.y + 0.07
 	b.site_plat = plat_y
 	var lad := Node3D.new()
-	lad.position = Vector3(R + 0.35, 0, R - 0.3)
+	lad.position = Vector3(RX + 0.35, 0, R - 0.3)
 	scaf.add_child(lad)
 	lad.rotation.z = -0.12
 	for k in [-0.2, 0.2]:
 		_box(lad, Vector3(0.05, plat_y + 0.5, 0.05), Vector3(0, (plat_y + 0.5) / 2, k), wood)
 	for k in int((plat_y + 0.4) / 0.3):
 		_box(lad, Vector3(0.04, 0.04, 0.4), Vector3(0, 0.25 + k * 0.3, 0), wood)
-	b.site_ladder = Vector3(R + 0.75, 0, R - 0.3)
+	b.site_ladder = Vector3(RX + 0.75, 0, R - 0.3)
 	scaf.visible = false
 	b.site_scaf = scaf
 	b.site_levels = levels
