@@ -518,6 +518,16 @@ func model(t: String, lvl := 0) -> Node3D:
 		ps = load("res://models/lagerhaus.tscn")
 	elif t == "handwerkskammer":
 		ps = load("res://models/handwerkskammer.tscn")
+	elif t == "muehle":
+		var ml: Node3D = Mill.build()   # Mühle mit Windflügeln, Zahnrad, Mühlsteinen und Rutsche (scripts/mill.gd)
+		ml.scale = Vector3.ONE * SCALE
+		_shadows(ml)
+		return ml
+	elif t == "saegewerk":
+		var sw: Node3D = Sawmill.build()   # Sägewerk mit Windrad und Kreissäge (scripts/sawmill.gd)
+		sw.scale = Vector3.ONE * SCALE
+		_shadows(sw)
+		return sw
 	elif t == "umschlag":
 		var um: Node3D = Umschlag.build()   # Umschlagplatz (scripts/umschlag.gd)
 		um.scale = Vector3.ONE * SCALE

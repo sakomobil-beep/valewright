@@ -17,6 +17,19 @@ const FETCH := {"id": "fetch", "p": [-0.5, 1.5], "l": [-0.5, 0.5], "a": "push", 
 const OUT := {"id": "out", "p": [0.4, 1.5], "l": [0.4, 0.5], "a": "push", "t": 0.08, "h": "OUT"}
 
 const STEPS := {
+	"muehle": [
+		{"id": "take", "p": [-2.85, 1.3], "l": [-2.85, 0.45], "a": "push", "t": 0.1},
+		{"id": "pour", "hw": "getreide", "p": [-1.75, 1.15], "l": [-1.75, 0.35], "a": "push", "t": 0.14},
+		{"id": "grind", "p": [0.6, 1.75], "l": [0.6, 0.75], "a": "carve", "t": 0.34},
+		{"id": "chute", "p": [2.45, 2.35], "l": [2.75, 1.75], "a": "push", "t": 0.2},
+		{"id": "stack", "hw": "mehl", "p": [3.0, 1.85], "l": [3.2, 1.0], "a": "push", "t": 0.14}],
+	"saegewerk": [
+		{"id": "take", "p": [-2.95, 1.6], "l": [-2.95, 0.55], "a": "push", "t": 0.1},
+		{"id": "load", "hw": "stamm", "p": [-1.75, 2.05], "l": [-1.75, 1.0], "a": "push", "t": 0.1},
+		{"id": "saw", "p": [-1.75, 1.9], "l": [-1.75, 0.5], "a": "push", "t": 0.4},
+		{"id": "unload", "via": [-2.5, 1.9], "p": [-2.5, -0.85], "l": [-1.75, -0.85], "a": "carve", "t": 0.1},
+		{"id": "stack", "hw": "bretter", "via": [-2.5, 2.1], "p": [2.25, 1.95], "l": [2.55, 1.15], "a": "push", "t": 0.14},
+		{"id": "sweep", "p": [-1.0, 2.1], "l": [-1.0, 1.35], "a": "shovel", "t": 0.08}],
 	"schmied": [
 		{"id": "heat", "p": [2.0, 0.55], "l": [2.3, -0.2], "a": "stoke", "t": 0.24},
 		{"id": "forge", "hw": "eisenbarren", "p": [1.8, 1.55], "l": [1.8, 0.8], "a": "hammer", "t": 0.34},
@@ -124,9 +137,9 @@ const STEPS := {
 }
 const SAME := {"waffenschmied": "schmied"}
 # Gebäude, deren Hof-Ausstattung bleibt (Werkstatt kommt dazu statt an ihre Stelle)
-const KEEP := ["schmelze", "koehler", "imker", "winzer", "hopfenbauer", "flachsbauer", "lehmgrube"]
+const KEEP := ["muehle", "saegewerk", "schmelze", "koehler", "imker", "winzer", "hopfenbauer", "flachsbauer", "lehmgrube"]
 # ohne Eingangsware (holen nichts aus dem Lager)
-const NO_FETCH := ["imker", "winzer", "hopfenbauer", "flachsbauer", "lehmgrube"]
+const NO_FETCH := ["muehle", "saegewerk", "imker", "winzer", "hopfenbauer", "flachsbauer", "lehmgrube"]
 
 static func kind(t: String) -> String:
 	return String(SAME.get(t, t))
@@ -1874,3 +1887,166 @@ func _a_lehmgrube(b: Dictionary, P: Dictionary, s: String, f: float, dt: float, 
 	P.heap.scale = Vector3.ONE * heap
 	for i in 6:
 		P.bricks[i].visible = i < int(P.n_bricks)
+
+# =====================================================================
+# SÄGEWERK (Kingmans Vorlage): Windrad treibt über den Riemen die Kreissäge,
+# Stamm vom Gestell → auf den Tisch → durchs Blatt → zwei Bretter → auf den Stapel
+# Das Modell selbst baut scripts/sawmill.gd, hier werden nur die Teile bewegt.
+# =====================================================================
+func _b_saegewerk(r: Node3D, P: Dictionary) -> void:
+	var m: Node3D = r.get_parent()
+	for k in ["Saege/Blatt", "Saege/Scheibe2", "Saege/Stamm", "Saege/Bretter", "Windrad/Rotor", "Windrad/Scheibe", "Riemen", "Gestell/Staemme", "Stapel", "Mehl"]:
+		P[k] = m.get_node_or_null(k)
+	P.ok = P["Saege/Blatt"] != null
+	if not P.ok:
+		return
+	P.chips = fx(r, "chips", Vector3(-1.75, 0.85, 0.25))
+	P.chips.amount = 26
+	P.dust = fx(r, "flour", Vector3(-1.75, 0.65, 0.5))
+	P.dust.amount = 10
+	P.spd = 0.0
+	P.stack_n = 4
+	P.heap = 0.6
+
+func _a_saegewerk(b: Dictionary, P: Dictionary, s: String, f: float, dt: float, t: float, working: bool) -> void:
+	if not P.get("ok", false):
+		return
+	# Windrad und Antrieb: beim Arbeiten schnell, sonst langsam austrudelnd
+	var want := 1.0 if working else 0.15
+	P.spd = lerpf(float(P.spd), want, minf(1.0, dt * 0.8))
+	var w: float = float(P.spd) * (1.0 + 0.15 * sin(t * 0.7))
+	P["Windrad/Rotor"].rotation.z -= dt * w * 3.2
+	P["Windrad/Scheibe"].rotation.z -= dt * w * 6.0
+	P["Saege/Scheibe2"].rotation.x -= dt * w * 6.0
+	P["Saege/Blatt"].rotation.x -= dt * w * 22.0
+	# Riemen-Markierungen wandern umlaufend
+	var belt: Node3D = P["Riemen"]
+	var a := Vector3(-1.05, 0.62, -1.23)
+	var bb := Vector3(-1.17, 0.62, 0.1)
+	var ph: float = fmod(t * w * 0.9, 1.0)
+	for i in 6:
+		var mk: Node3D = belt.get_node_or_null("Mark%d" % i)
+		if mk == null:
+			continue
+		var u := fmod(ph + i / 6.0, 1.0)
+		if u < 0.5:
+			mk.position = a.lerp(bb, u * 2.0) + Vector3(0, 0.16, 0)
+		else:
+			mk.position = bb.lerp(a, (u - 0.5) * 2.0) + Vector3(0, -0.16, 0)
+	var log: Node3D = P["Saege/Stamm"]
+	var pl: Node3D = P["Saege/Bretter"]
+	P.chips.emitting = false
+	P.dust.emitting = false
+	var on_table := 0.0   # 0 = kein Stamm, 1 = ganzer Stamm vorn
+	var cut := 0.0        # wie weit der Stamm durchs Blatt ist
+	match s:
+		"load":
+			on_table = ss(seg(f, 0.4, 1.0))
+		"saw":
+			on_table = 1.0
+			cut = ss(f)
+			P.chips.emitting = cut > 0.05 and cut < 0.97
+			P.dust.emitting = P.chips.emitting
+			P.heap = minf(1.15, float(P.heap) + dt * 0.012)
+		"unload":
+			cut = 1.0
+			on_table = 1.0 - ss(seg(f, 0.5, 1.0))
+		"stack":
+			if f > 0.85 and not P.get("stacked", false):
+				P.stacked = true
+				P.stack_n = 4 if int(P.stack_n) >= 10 else int(P.stack_n) + 2
+		"sweep":
+			P.heap = lerpf(float(P.heap), 0.55, minf(1.0, dt * 1.5))
+		"take", "", "out":
+			P.stacked = false
+	# Stamm vorn wird kürzer, hinter dem Blatt entstehen die Bretter
+	var zc := lerpf(1.05, -0.5, cut)
+	var lf := clampf(zc + 0.5, 0.0, 1.0)
+	log.visible = on_table > 0.02 and lf > 0.02
+	log.scale = Vector3(1, 1, maxf(0.02, lf))
+	log.position = Vector3(0, 0.88, lf / 2.0 + maxf(0.0, zc - 0.5) * 1.0 + (1.0 - on_table) * 0.6)
+	var lp := 1.0 - lf
+	pl.visible = lp > 0.02 and (s == "saw" or (s == "unload" and on_table > 0.02))
+	pl.scale = Vector3(1, 1, maxf(0.02, lp))
+	pl.position = Vector3(0, 0.79 + (1.0 - on_table) * 0.3, -lp / 2.0)
+	# Stammgestell zeigt den Vorrat (Eingang des Sägewerks)
+	var have: int = int(b["in"].get("stamm", 0)) + (1 if s == "take" and f < 0.5 else 0)
+	var logs: Node3D = P["Gestell/Staemme"]
+	for i in logs.get_child_count():
+		logs.get_child(i).visible = i < have
+	var st: Node3D = P["Stapel"]
+	for i in 10:
+		var n: Node3D = st.get_node_or_null("B%d" % i)
+		if n:
+			n.visible = i < int(P.stack_n)
+	(P["Mehl"] as Node3D).scale = Vector3.ONE * float(P.heap)
+
+# =====================================================================
+# MÜHLE (Kingmans Vorlage): Garben → Trichter → Mühlsteine (Zahnrad, Flügel) → Rutsche → Säcke-Stapel
+# Modell: scripts/mill.gd
+# =====================================================================
+func _b_muehle(r: Node3D, P: Dictionary) -> void:
+	var m: Node3D = r.get_parent()
+	for k in ["Fluegel", "Zahnrad", "Ritzel", "Mahlwerk/Laeufer", "Mahlwerk/Laeufer2", "Mahlwerk/MehlFleck", "Trichter/Korn", "Garben", "Sack", "Saecke"]:
+		P[k] = m.get_node_or_null(k)
+	P.ok = P["Fluegel"] != null
+	if not P.ok:
+		return
+	P.dust = fx(r, "flour", Vector3(0.6, 0.95, 0.75))
+	P.dust.amount = 24
+	P.dust2 = fx(r, "flour", Vector3(2.75, 0.4, 1.75))
+	P.dust2.amount = 8
+	P.spd = 0.0
+	P.n = 3
+	P.grain = 0.2
+
+func _a_muehle(b: Dictionary, P: Dictionary, s: String, f: float, dt: float, t: float, working: bool) -> void:
+	if not P.get("ok", false):
+		return
+	var want := 1.0 if working else 0.12
+	P.spd = lerpf(float(P.spd), want, minf(1.0, dt * 0.7))
+	var w: float = float(P.spd)
+	P["Fluegel"].rotation.x -= dt * w * 1.7
+	P["Zahnrad"].rotation.z -= dt * w * 1.1
+	P["Ritzel"].rotation.z += dt * w * 2.0
+	var grind := 1.0 if s == "grind" else 0.35
+	P["Mahlwerk/Laeufer"].rotation.y += dt * w * 3.0 * grind
+	P["Mahlwerk/Laeufer2"].rotation.y -= dt * w * 4.0 * grind
+	P.dust.emitting = s == "grind" and f > 0.1
+	P.dust2.emitting = false
+	var sack: Node3D = P["Sack"]
+	var a := Vector3(1.45, 1.13, 0.45)
+	var bb := Vector3(2.75, 0.4, 1.75)
+	sack.visible = false
+	match s:
+		"pour":
+			P.grain = lerpf(0.2, 1.0, ss(seg(f, 0.3, 0.9)))
+		"grind":
+			P.grain = lerpf(1.0, 0.2, ss(f))
+			(P["Mahlwerk/MehlFleck"] as Node3D).scale = Vector3.ONE * lerpf(0.7, 1.0, f)
+		"chute":
+			# fertiger Sack rutscht die Rutsche herunter (erst langsam, dann schneller)
+			sack.visible = f < 0.92
+			var u := f * f
+			sack.position = a.lerp(bb, clampf(u * 1.05, 0.0, 1.0))
+			sack.rotation = Vector3(0.5, -0.78, 0)
+			P.dust2.emitting = f > 0.75 and f < 0.92
+		"stack":
+			if f > 0.8 and not P.get("stacked", false):
+				P.stacked = true
+				P.n = 3 if int(P.n) >= 9 else int(P.n) + 1
+		"take", "", "out":
+			P.stacked = false
+	var korn: Node3D = P["Trichter/Korn"]
+	korn.scale = Vector3(1, maxf(0.05, float(P.grain)), 1)
+	korn.position.y = 0.88 + float(P.grain) * 0.12
+	# Garben zeigen den Vorrat (Getreide im Eingang)
+	var have: int = int(b["in"].get("getreide", 0)) + (1 if s == "take" and f < 0.5 else 0)
+	var gb: Node3D = P["Garben"]
+	for i in gb.get_child_count():
+		gb.get_child(i).visible = i < maxi(2, have)   # ein paar Garben liegen immer da
+	var st: Node3D = P["Saecke"]
+	for i in 9:
+		var n: Node3D = st.get_node_or_null("S%d" % i)
+		if n:
+			n.visible = i < int(P.n)
