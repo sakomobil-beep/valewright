@@ -656,6 +656,14 @@ func _carry(w: Dictionary, item) -> void:
 		w.carry = null
 	if item == null:
 		return
+	if item == "bretter2":
+		# zwei Bretter übereinander auf der Schulter (Sägewerk: 1 Stamm = 2 Bretter)
+		_carry(w, "bretter")
+		if w.carry:
+			var c2: Node3D = w.carry.duplicate()
+			c2.position = Vector3(0, 0.07, 0)
+			w.carry.add_child(c2)
+		return
 	if item == "angel":
 		var rod := MeshInstance3D.new()
 		var rb := BoxMesh.new()
@@ -2071,7 +2079,7 @@ func _seq_next(w: Dictionary) -> void:
 	# Ablage-Schritt: letzter Schritt, in dem das Endprodukt getragen wird – sonst der letzte Schritt
 	var ci: int = steps.size() - 1
 	for k in steps.size():
-		if steps[k].get("hw") != null and (String(steps[k].hw) in outs or String(steps[k].hw) == "OUT"):
+		if steps[k].get("hw") != null and (String(steps[k].hw).trim_suffix("2") in outs or String(steps[k].hw) == "OUT"):
 			ci = k
 	for si in steps.size():
 		var st: Dictionary = steps[si]

@@ -27,8 +27,8 @@ const STEPS := {
 		{"id": "take", "p": [-2.95, 1.6], "l": [-2.95, 0.55], "a": "push", "t": 0.1},
 		{"id": "load", "hw": "stamm", "p": [-1.75, 2.05], "l": [-1.75, 1.0], "a": "push", "t": 0.1},
 		{"id": "saw", "p": [-1.75, 1.9], "l": [-1.75, 0.5], "a": "push", "t": 0.4},
-		{"id": "unload", "via": [-2.5, 1.9], "p": [-2.5, -0.85], "l": [-1.75, -0.85], "a": "carve", "t": 0.1},
-		{"id": "stack", "hw": "bretter", "via": [-2.5, 2.1], "p": [1.3, 2.9], "l": [2.1, 2.55], "a": "push", "t": 0.14},
+		{"id": "unload", "via": [-2.5, 1.9], "p": [-2.5, -0.85], "l": [-1.75, -0.85], "a": "push", "h": "bretter2", "t": 0.1},
+		{"id": "stack", "hw": "bretter2", "via": [-2.5, 2.1], "p": [1.3, 2.9], "l": [2.1, 2.55], "a": "push", "t": 0.14},
 		{"id": "sweep", "p": [-1.0, 2.1], "l": [-1.0, 1.35], "a": "shovel", "t": 0.08}],
 	"schmied": [
 		{"id": "heat", "p": [2.0, 0.55], "l": [2.3, -0.2], "a": "stoke", "t": 0.24},
@@ -1971,7 +1971,7 @@ func _a_saegewerk(b: Dictionary, P: Dictionary, s: String, f: float, dt: float, 
 		var wz: float = log.position.z if log.visible else lerpf((wg as Node3D).position.z, 1.0, minf(1.0, dt * 1.2))
 		(wg as Node3D).position.z = clampf(wz, -0.6, 1.0)
 	var lp := 1.0 - lf
-	pl.visible = lp > 0.02 and (s == "saw" or (s == "unload" and on_table > 0.02))
+	pl.visible = lp > 0.02 and s == "saw"   # beim Abladen nimmt der Säger beide Bretter auf die Schulter
 	pl.scale = Vector3(1, 1, maxf(0.02, lp))
 	pl.position = Vector3(0, 0.79 + (1.0 - on_table) * 0.3, -lp / 2.0)
 	# Stammgestell zeigt den Vorrat (Eingang des Sägewerks)
