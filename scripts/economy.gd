@@ -12,8 +12,8 @@ const HOUSE_LV := [
 	{"needs": ["wasser"], "tax": 0.0},                                                     # Hütte
 	{"needs": ["*food", "wasser"], "tax": 0.0},                                            # Bauernhaus
 	{"needs": ["*food", "wasser", "bier"], "tax": 0.1},                                    # Fachwerkhaus
-	{"needs": ["*food", "wasser", "bier", "kaese", "kleidung"], "tax": 0.2},               # Bürgerhaus
-	{"needs": ["*food", "wasser", "bier", "kaese", "kleidung", "kuchen", "met", "kruege", "kerzen", "wein", "schmuck"], "tax": 0.4},   # Herrenhaus
+	{"needs": ["*food", "wasser", "bier", "kleidung"], "tax": 0.2},                        # Bürgerhaus (+ 2 Ziegel)
+	{"needs": ["*food", "wasser", "bier", "kleidung", "wein", "kuchen", "schmuck"], "tax": 0.4},   # Herrenhaus (+ 4 Ziegel, 2 Bretter)
 ]
 const UPCOST := {3: {"ziegel": 2}, 4: {"ziegel": 4, "bretter": 2}}
 const FOODS := ["brot", "fisch", "schinken"]
@@ -381,10 +381,9 @@ func plan_rec(b: Dictionary):
 		"metzger":
 			r[1] = "wurst" if _sv("wurst") < _sv("schinken") else "schinken"
 		"toepfer":
-			r[1] = "ziegel" if _sv("ziegel") < _sv("kruege") else "kruege"
+			r[1] = "ziegel"   # Krüge vorerst aus dem Spiel (später evtl. wieder)
 		"brauerei":
-			if int(b["in"].get("honig", 0)) >= 1 and int(b["in"].get("wasser", 0)) >= 1 and (_sv("met") <= _sv("bier") or not has_in(b, r[0])):
-				r = [{"honig": 1, "wasser": 1}, "met", 1, 6]
+			pass   # Met vorerst aus dem Spiel – die Brauerei braut nur Bier
 		"bogenbauer":
 			var needB := _sv("bogen") < 6
 			var needP := _sv("pfeile") < 30
@@ -492,8 +491,6 @@ func _produce(b: Dictionary, dt: float) -> void:
 		if b.type == "goldmine" and b.get("gold_dep") != null:
 			b.gold_dep.left = maxi(0, int(b.gold_dep.left) - int(r[2]))
 		put_out(b, r[1], int(r[2]))
-		if b.type == "imker":
-			put_out(b, "kerzen", 1)   # Wachs → Kerzen (wie im Browser)
 
 # ---------- Wohnhäuser (Waren werden ins Haus geliefert, Bier im Wirtshaus) ----------
 func near_pub(b: Dictionary):

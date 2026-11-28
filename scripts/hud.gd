@@ -6,7 +6,7 @@ const DAY_SECONDS := 720.0      # ein ganzer Tag dauert 12 Minuten
 const CHAINS := [
 	["CHAIN_MATERIALS", ["foerster", "holzfaeller", "saegewerk", "steinmetz", "steinmine"]],
 	["CHAIN_FOOD", ["bauernhof", "brunnen", "muehle", "baeckerei", "fischer", "schweinezucht", "metzger"]],
-	["CHAIN_FINE", ["raeucherei", "kuhstall", "kaeserei", "konditorei"]],
+	["CHAIN_FINE", ["raeucherei", "kuhstall", "konditorei"]],
 	["CHAIN_METAL", ["rutengaenger", "kohlemine", "eisenmine", "schmelze", "schmied", "wagner"]],
 	["CHAIN_GOLD", ["goldmine", "muenzpraege"]],
 	["CHAIN_BEER", ["hopfenbauer", "imker", "brauerei", "wirtshaus"]],

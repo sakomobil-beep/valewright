@@ -5,11 +5,11 @@ extends PanelContainer
 const PIN := ["bretter", "stein", "werkzeug"]
 const GROUPS := [
 	["GRP_BAU", ["stamm", "bretter", "stein", "lehm", "ziegel"]],
-	["GRP_ESSEN", ["brot", "fisch", "schinken", "raeucherfisch", "wurst", "kaese", "kuchen"]],
+	["GRP_ESSEN", ["brot", "fisch", "schinken", "raeucherfisch", "wurst", "kuchen"]],
 	["GRP_LAND", ["getreide", "mehl", "wasser", "schwein", "milch"]],
 	["GRP_ERZE", ["eisenerz", "kohle", "golderz"]],
 	["GRP_METALL", ["eisenbarren", "werkzeug", "karren"]],
-	["GRP_HANDWERK", ["schmuck", "wein", "trauben", "hopfen", "bier", "honig", "met", "kerzen", "wolle", "stoff", "kleidung", "kruege"]],
+	["GRP_HANDWERK", ["schmuck", "wein", "trauben", "hopfen", "bier", "honig", "wolle", "stoff", "kleidung"]],
 	["GRP_WAFFEN", ["flachs", "sehne", "kampfstock", "schwert", "schild", "bogen", "pfeile"]],
 ]
 const TEXT := Color(1, 0.95, 0.85)

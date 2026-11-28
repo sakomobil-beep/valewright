@@ -1355,11 +1355,11 @@ func _stock_sections() -> Array:
 # Lagerbestand für Haupthaus und Lagerhäuser (gemeinsamer Vorrat), nach Gruppen
 const STOCK_GROUPS := [
 	["GRP_BAU", ["stamm", "bretter", "stein", "lehm", "ziegel"]],
-	["GRP_ESSEN", ["brot", "fisch", "schinken", "raeucherfisch", "wurst", "kaese", "kuchen"]],
+	["GRP_ESSEN", ["brot", "fisch", "schinken", "raeucherfisch", "wurst", "kuchen"]],
 	["GRP_LAND", ["getreide", "mehl", "wasser", "schwein", "milch", "hopfen", "trauben", "wolle", "flachs", "honig"]],
 	["GRP_ERZE", ["eisenerz", "kohle", "golderz"]],
 	["GRP_METALL", ["eisenbarren", "werkzeug", "karren", "muenzen"]],
-	["GRP_HANDWERK", ["bier", "met", "wein", "kerzen", "stoff", "kleidung", "kruege", "schmuck", "sehne"]],
+	["GRP_HANDWERK", ["bier", "wein", "stoff", "kleidung", "schmuck", "sehne"]],
 	["GRP_WAFFEN", ["kampfstock", "schwert", "schild", "bogen", "pfeile"]],
 ]
 func _stock_text() -> String:
