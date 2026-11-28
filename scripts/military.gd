@@ -1427,16 +1427,20 @@ func load_ai(a: Dictionary) -> void:
 		var b := _ai_building(ai, "wachturm", Vector3(tw.pos[0], tw.pos[1], tw.pos[2]), int(tw.g))
 		claims.append({"pos": b.pos, "r": CLAIM.wachturm, "owner": id, "b": b})
 
+var _land_mask := PackedByteArray()   # bebaubares Land je Zelle – einmal berechnet (vorher alle 20 s komplett neu = Ruckler)
 func land_share(owner: int) -> float:
+	if _land_mask.size() != n * n:
+		_land_mask.resize(n * n)
+		for j in n:
+			for i in n:
+				var x := -_half + (i + 0.5) * CELL
+				var z := -_half + (j + 0.5) * CELL
+				_land_mask[j * n + i] = 0 if (terrain.height(x, z) <= terrain.WATER_Y or terrain.mountain(x, z) > 6.0) else 1
 	var land := 0
 	var mine := 0
-	for j in n:
-		for i in n:
-			var x := -_half + (i + 0.5) * CELL
-			var z := -_half + (j + 0.5) * CELL
-			if terrain.height(x, z) <= terrain.WATER_Y or terrain.mountain(x, z) > 6.0:
-				continue
+	for k in n * n:
+		if _land_mask[k] == 1:
 			land += 1
-			if owner_grid[j * n + i] == owner:
+			if owner_grid[k] == owner:
 				mine += 1
 	return float(mine) / maxf(1.0, land)
