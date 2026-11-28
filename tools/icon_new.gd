@@ -6,7 +6,7 @@ var f := 0
 var i := 0
 var holder: Node3D
 var B
-const T := ["schweinezucht", "kuhstall", "schaefer", "steinmine", "eisenmine", "kohlemine", "goldmine", "saegewerk"]
+const T := ["saegewerk", "muehle"]
 func _initialize():
 	B = load("res://scripts/builder.gd").new()
 	vp = SubViewport.new()

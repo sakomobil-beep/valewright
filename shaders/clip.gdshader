@@ -23,8 +23,17 @@ void fragment() {
 	vec4 c = albedo;
 	if (use_tex) { c *= texture(tex, UV); }
 	if (use_vcol) { c.rgb *= COLOR.rgb; }
-	ALBEDO = FRONT_FACING ? c.rgb : c.rgb * 0.45;   // Innenseiten der hohlen Mauern dunkler
-	ROUGHNESS = roughness;
-	METALLIC = metallic;
-	EMISSION = emission;
+	if (FRONT_FACING) {
+		ALBEDO = c.rgb;
+		ROUGHNESS = roughness;
+		METALLIC = metallic;
+		EMISSION = emission;
+	} else {
+		// Innenseite der hohlen Mauern: schlichtes, mattes Dunkelbraun ohne Textur und ohne Glanz
+		// (vorher wirkte die gespiegelte Außenseite wie ein Spiegel)
+		ALBEDO = vec3(0.16, 0.11, 0.07);
+		ROUGHNESS = 1.0;
+		METALLIC = 0.0;
+		SPECULAR = 0.0;
+	}
 }
