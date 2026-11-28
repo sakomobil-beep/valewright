@@ -503,7 +503,9 @@ func _next_job(w: Dictionary) -> void:
 				w.q = [{"wait": 2.0}, {"fn": func(): _next_job(w)}]
 		"foerster":
 			var tr_ = _free(terrain.nearest_tree(b.pos, 14.0, false), terrain.trees, true)
-			if tr_ == null:   # nichts in der Nähe: weiter weg nach gefällten Bäumen suchen
+			if tr_ == null:   # keine gefällte Stelle in der Nähe: auf freier Fläche einen neuen Baum pflanzen
+				tr_ = _new_tree_spot(b)
+			if tr_ == null:   # sonst weiter weg nach gefällten Bäumen suchen
 				tr_ = _free(terrain.nearest_tree(b.pos, 45.0, false), terrain.trees, true)
 			if tr_ == null:
 				b.status = "ST_IDLE"
@@ -2247,3 +2249,41 @@ func _fisher_job(w: Dictionary, b: Dictionary) -> void:
 		{"wait": 2.0},
 		{"fn": func(): _next_job(w)},
 	]
+
+
+# Förster: freie Stelle im Umkreis für einen neuen Baum suchen (nicht auf Gebäude, Felder, Wasser, Türen)
+func _new_tree_spot(b: Dictionary):
+	var near_b: Array = []
+	for o in economy.buildings:
+		if Vector2(o.pos.x - b.pos.x, o.pos.z - b.pos.z).length() < 40.0:
+			near_b.append(o)
+	for k in 24:
+		var a := randf() * TAU
+		var r := randf_range(5.0, 25.0)
+		var x: float = b.pos.x + cos(a) * r
+		var z: float = b.pos.z + sin(a) * r
+		var ok := true
+		for o in near_b:
+			var lim := 5.5 if o != b else 4.5
+			if Vector2(o.pos.x - x, o.pos.z - z).length() < lim:
+				ok = false
+				break
+			var dr: Vector3 = door_of(o)
+			if Vector2(dr.x - x, dr.z - z).length() < 3.0:
+				ok = false
+				break
+			for q in o.get("plots", []):
+				if Vector2(q.pos.x - x, q.pos.z - z).length() < 3.0:
+					ok = false
+					break
+			if not ok:
+				break
+		if not ok or reserved.has(Vector3(snappedf(x, 0.5), 0, snappedf(z, 0.5))):
+			continue
+		var mil = get_parent().get_node_or_null("Militaer")
+		if mil and mil.has_method("owner_at") and mil.owner_at(Vector3(x, 0, z)) != int(b.get("owner", 0)):
+			continue
+		if not terrain.free_for_tree(x, z):
+			continue
+		return terrain.new_tree(x, z)
+	return null

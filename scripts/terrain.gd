@@ -413,6 +413,77 @@ func _build_trees() -> void:
 	for o in order:
 		var t: Transform3D = groups[o[0]][o[1]]
 		trees.append({"pos": t.origin, "mm": mms[o[0]], "mm2": mms2[o[0]], "i": o[1], "t": t, "alive": true})
+	_tree_mms = mms
+	_tree_mms2 = mms2
+	base_tree_n = trees.size()
+
+# ---------- Neuer Wald: der Förster pflanzt auch auf freier Fläche ----------
+const NEW_POOL := 400            # Plätze je Baumart für neu gepflanzte Bäume
+const NEW_KEYS := ["buche0", "eiche0", "ahorn0", "fichte0", "buche1", "eiche1"]
+const GROW_NEW := 150.0          # Sekunden vom Setzling zum fällbaren Baum
+var _tree_mms := {}
+var _tree_mms2 := {}
+var _pools := {}                 # key -> {mm, mm2, used}
+var base_tree_n := 0
+var new_trees: Array = []        # für den Spielstand: [key, x, z, yaw, sc]
+
+func _pool(key: String):
+	if _pools.has(key):
+		return _pools[key]
+	if not _tree_mms.has(key):
+		return null
+	var pl := {"used": 0}
+	for pair in [[_tree_mms, "mm", 0.0, LOD_DIST], [_tree_mms2, "mm2", LOD_DIST, 0.0]]:
+		var src: MultiMesh = pair[0][key]
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_colors = true
+		mm.mesh = src.mesh
+		mm.instance_count = NEW_POOL
+		for i in NEW_POOL:
+			mm.set_instance_transform(i, Transform3D(Basis().scaled(Vector3.ONE * 0.001), Vector3(0, -50, 0)))
+			mm.set_instance_color(i, Color(1, 1, 1))
+		var mmi := MultiMeshInstance3D.new()
+		mmi.multimesh = mm
+		mmi.name = "Neuwald_" + key + "_" + pair[1]
+		mmi.visibility_range_begin = pair[2]
+		mmi.visibility_range_end = pair[3]
+		mmi.visibility_range_begin_margin = 6.0
+		mmi.visibility_range_end_margin = 6.0
+		add_child(mmi)
+		pl[pair[1]] = mm
+	_pools[key] = pl
+	return pl
+
+# legt einen neuen Baum an (unsichtbar, noch nicht gepflanzt); null wenn kein Platz mehr frei
+func new_tree(x: float, z: float, key := "", yaw := -1.0, sc := -1.0):
+	if key == "":
+		key = NEW_KEYS[randi() % NEW_KEYS.size()]
+		if mountain(x, z) > 1.5:
+			key = "fichte0"
+	var pl = _pool(key)
+	if pl == null or int(pl.used) >= NEW_POOL:
+		return null
+	if yaw < 0.0:
+		yaw = randf() * TAU
+	if sc < 0.0:
+		sc = randf_range(0.8, 1.2)
+	var bas := Basis(Vector3.UP, yaw).scaled(Vector3(sc, sc, sc))
+	var xf := Transform3D(bas, Vector3(x, height(x, z) - 0.05, z))
+	var t := {"pos": xf.origin, "mm": pl.mm, "mm2": pl.mm2, "i": int(pl.used), "t": xf, "alive": false, "new": true}
+	pl.used = int(pl.used) + 1
+	trees.append(t)
+	new_trees.append([key, snappedf(x, 0.01), snappedf(z, 0.01), snappedf(yaw, 0.001), snappedf(sc, 0.001)])
+	return t
+
+# freie Stelle für einen neuen Baum: kein Wasser, nicht zu steil, Abstand zu Bäumen; Gebäude prüft der Aufrufer
+func free_for_tree(x: float, z: float) -> bool:
+	if not _free_spot(x, z):
+		return false
+	for t in trees:
+		if (t.alive or t.has("stump")) and absf(t.pos.x - x) < 2.4 and absf(t.pos.z - z) < 2.4:
+			return false
+	return true
 
 const LOD_DIST := 75.0
 
@@ -760,7 +831,7 @@ func nearest_tree(p: Vector3, r: float, alive := true):
 	var best = null
 	var bd := r
 	for t in trees:
-		if t.alive != alive or t.get("blocked", false):
+		if t.alive != alive or t.get("blocked", false) or (alive and t.get("young", false)):
 			continue
 		var d := Vector2(t.pos.x - p.x, t.pos.z - p.z).length()
 		if d < bd:
@@ -796,11 +867,17 @@ func fell_tree(t: Dictionary, from = null, instant := false) -> void:
 	tw.tween_method(func(k: float):
 		_tree_set(t, Transform3D((Basis(axis, 1.5) * base).scaled(Vector3.ONE * maxf(1.0 - k, 0.001)), t.pos)), 0.0, 1.0, 0.5)
 
-func plant_tree(t: Dictionary) -> void:
+func plant_tree(t: Dictionary, grow := -1.0) -> void:
 	t.alive = true
 	_show_stump(t, false)
+	var dur: float = grow if grow >= 0.0 else (GROW_NEW if t.get("new", false) else 20.0)
+	if dur <= 0.0:
+		_tree_set(t, t.t)
+		return
+	t.young = true   # Setzling – Holzfäller warten, bis er ausgewachsen ist
 	var tw := create_tween()
-	tw.tween_method(func(k): _tree_set(t, Transform3D(t.t.basis.scaled(Vector3.ONE * maxf(k, 0.001)), t.pos)), 0.05, 1.0, 20.0)
+	tw.tween_method(func(k): _tree_set(t, Transform3D(t.t.basis.scaled(Vector3.ONE * maxf(k, 0.001)), t.pos)), 0.05, 1.0, dur)
+	tw.tween_callback(func(): t.erase("young"))
 
 # ---------- Baumstümpfe ----------
 var stump_mm: MultiMesh

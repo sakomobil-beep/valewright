@@ -31,6 +31,7 @@ func save(slot: String) -> void:
 		if not t.trees[i].alive:
 			dead.append(i)
 	d.trees_dead = dead
+	d.new_trees = t.new_trees.duplicate()
 	var rocks: Array = []
 	for i in t.rocks.size():
 		if t.rocks[i].left < 6:
@@ -78,8 +79,13 @@ func apply(d: Dictionary) -> void:
 	e.residents = int(d.get("residents", 99))
 	e.carriers_n = maxi(0, int(d.get("carriers_n", 4)) - (4 if not d.has("hq_carriers") else 0))   # alte Stände: die 4 Start-Träger stecken jetzt im Haupthaus
 	m.time = float(d.time)
+	for nt in d.get("new_trees", []):
+		var tt = t.new_tree(float(nt[1]), float(nt[2]), String(nt[0]), float(nt[3]), float(nt[4]))
+		if tt:
+			t.plant_tree(tt, 0.0)
 	for i in d.trees_dead:
-		t.fell_tree(t.trees[int(i)], null, true)
+		if int(i) < t.trees.size():
+			t.fell_tree(t.trees[int(i)], null, true)
 	for r in d.rocks:
 		var k: Dictionary = t.rocks[int(r[0])]
 		k.left = int(r[1]) + 1
