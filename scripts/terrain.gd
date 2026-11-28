@@ -1044,7 +1044,7 @@ func _make_deposits() -> void:
 	rng.seed = 314
 	_starter_deposits(rng)
 	for rg in ranges:
-		var n: int = deposits_per_mountain
+		var n: int = int(round(deposits_per_mountain * maxf(1.0, SIZE / 480.0)))   # große Karten: mehr Vorkommen je Gebirgszug
 		var fi := 0   # Zähler für den vorderen Ausläufer, damit dort Stein, Kohle UND Eisen liegen
 		for k in n:
 			var gi: int = rg[k % rg.size()]
@@ -1088,20 +1088,36 @@ func _starter_deposits(rng: RandomNumberGenerator) -> void:
 			bd = mm.p.length(); best = i
 	var m: Dictionary = mountains[ranges[best][0]]
 	var toward: float = (-m.p).angle()
-	for kind in ["stein", "kohle", "eisenerz"]:
-		for tries in 60:
+	var lim: float = 56.0 * maxf(1.0, SIZE / 360.0)   # Suchradius wächst mit der Kartengröße
+	for kind in ["stein", "kohle", "eisenerz", "eisenerz", "kohle"]:   # je 2× Eisen und Kohle sicher in Startnähe
+		var ok := false
+		for tries in 80:
 			var ang := toward + rng.randf_range(-1.0, 1.0)
 			var r: float = rng.randf_range(0.25, 0.85) * m.r
 			var x: float = m.p.x + cos(ang) * r
 			var z: float = m.p.y + sin(ang) * r
-			if Vector2(x, z).length() > 56.0 or mountain(x, z) < 1.2:
+			if Vector2(x, z).length() > lim or mountain(x, z) < 1.2:
 				continue
 			if terraces and tries < 40 and not _flat_spot(x, z, "stein"):
 				continue
 			if deposits.any(func(d): return Vector2(d.pos.x - x, d.pos.z - z).length() < 6.0):
 				continue
-			deposits.append({"pos": Vector3(x, height(x, z), z), "kind": kind, "found": false, "node": null})
+			deposits.append({"pos": Vector3(x, height(x, z), z), "kind": kind, "found": false, "node": null, "starter": true})
+			ok = true
 			break
+		if not ok:
+			# Rückfall: nächstgelegene Bergstelle zum Start suchen (spiralförmig nach außen)
+			for i in 3000:
+				var a := i * 2.39996
+				var rr := 20.0 + sqrt(float(i)) * 3.0
+				var x2 := cos(a) * rr
+				var z2 := sin(a) * rr
+				if mountain(x2, z2) < 1.2 or height(x2, z2) < WATER_Y + 1.0:
+					continue
+				if deposits.any(func(d): return Vector2(d.pos.x - x2, d.pos.z - z2).length() < 6.0):
+					continue
+				deposits.append({"pos": Vector3(x2, height(x2, z2), z2), "kind": kind, "found": false, "node": null, "starter": true})
+				break
 
 # ebene Terrassenstelle, passend zur Höhe: Stein/Kohle unten, Eisen Mitte, Gold oben
 func _flat_spot(x: float, z: float, kind: String) -> bool:
