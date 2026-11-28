@@ -28,8 +28,7 @@ const STEPS := {
 		{"id": "load", "hw": "stamm", "p": [-1.75, 2.05], "l": [-1.75, 1.0], "a": "push", "t": 0.1},
 		{"id": "saw", "p": [-1.75, 1.9], "l": [-1.75, 0.5], "a": "push", "t": 0.4},
 		{"id": "unload", "via": [-2.5, 1.9], "p": [-2.5, -0.85], "l": [-1.75, -0.85], "a": "push", "h": "bretter2", "t": 0.1},
-		{"id": "stack", "hw": "bretter2", "via": [-2.5, 2.1], "p": [1.3, 2.9], "l": [2.1, 2.55], "a": "push", "t": 0.14},
-		{"id": "sweep", "p": [-1.0, 2.1], "l": [-1.0, 1.35], "a": "shovel", "t": 0.08}],
+		{"id": "stack", "hw": "bretter2", "via": [-2.5, 2.1], "p": [1.3, 2.9], "l": [2.1, 2.55], "a": "push", "t": 0.14}],
 	"schmied": [
 		{"id": "heat", "p": [2.0, 0.55], "l": [2.3, -0.2], "a": "stoke", "t": 0.24},
 		{"id": "forge", "hw": "eisenbarren", "p": [1.8, 1.55], "l": [1.8, 0.8], "a": "hammer", "t": 0.34},
@@ -153,7 +152,8 @@ static func steps(t: String) -> Array:
 	if not k in NO_FETCH:
 		out.append(FETCH)
 	out.append_array(STEPS[k])
-	out.append(OUT)
+	# kein eigener „Ware raus“-Schritt mehr: der Arbeiter trägt das fertige Produkt nach dem letzten Schritt
+	# selbst zum Abholplatz (settlers._seq_next), sonst hätte er danach noch einmal Ware in der Hand
 	return out
 
 # ---------- Bausteine ----------
