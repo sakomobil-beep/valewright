@@ -9,12 +9,17 @@ uniform float roughness = 0.9;
 uniform float metallic = 0.0;
 uniform vec3 emission : source_color = vec3(0.0);
 uniform float clip_y = 10000.0;
+uniform float base_y = -10000.0;
 varying float wy;
+varying float wny;
 void vertex() {
 	wy = (MODEL_MATRIX * vec4(VERTEX, 1.0)).y;
+	wny = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz).y;
 }
 void fragment() {
 	if (wy > clip_y) { discard; }
+	// waagerechte Deckel oben auf den Mauern weglassen, damit das Haus beim Hochbauen innen hohl bleibt
+	if (wny > 0.95 && wy > base_y) { discard; }
 	vec4 c = albedo;
 	if (use_tex) { c *= texture(tex, UV); }
 	if (use_vcol) { c.rgb *= COLOR.rgb; }

@@ -503,9 +503,11 @@ func _visual(b: Dictionary) -> void:
 	var n: int = b.site_frame.size()
 	for i in n:
 		b.site_frame[i].visible = false
+	var by: float = b.node.global_position.y + float(b.site_hy0) + 0.4
 	var cut: float = b.node.global_position.y + lerpf(float(b.site_hy0) - 0.02, float(b.site_hy1) + 0.05, clampf(p, 0.0, 1.0))
 	for sm in b.site_clips:
 		sm.set_shader_parameter("clip_y", cut)
+		sm.set_shader_parameter("base_y", by)
 	# Dachstuhl 65–85 %
 	var nr: int = b.site_rafters.size()
 	var rp := clampf((p - 0.65) / 0.2, 0.0, 1.0)
