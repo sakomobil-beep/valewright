@@ -748,7 +748,7 @@ func _build_rocks() -> void:
 	for i in list.size():
 		mm.set_instance_transform(i, list[i])
 		var o: Vector3 = list[i].origin
-		rocks.append({"pos": o, "i": i, "t": list[i], "left": 12 if Vector2(o.x, o.z).length() < 60.0 else 6})   # Startgegend: doppelt so ergiebig
+		rocks.append({"pos": o, "i": i, "t": list[i], "left": 20 if Vector2(o.x, o.z).length() < 60.0 * maxf(1.0, SIZE / 360.0) else 10})   # ergiebiger, Startgegend doppelt
 	rock_mm = mm
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm

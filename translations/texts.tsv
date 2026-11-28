@@ -27,9 +27,9 @@ ITEM_STEIN	Stein	Stone
 ST_BUILDING	Im Bau	Under construction
 ST_WORKING	Arbeitet	Working
 ST_IDLE	Wartet	Idle
-ST_NO_TREES	Keine Bäume in der Nähe	No trees nearby
+ST_NO_TREES	Keine Bäume in der Nähe – baue einen Förster daneben	No trees nearby – build a forester next to it
 ST_NO_LOGS	Keine Stämme im Lager	No logs in storage
-ST_NO_ROCKS	Keine Felsen in der Nähe	No rocks nearby
+ST_NO_ROCKS	Keine Felsen in der Nähe – Steinbruch umsetzen oder Steinmine im Gebirge bauen	No rocks nearby – move the quarry or build a stone mine in the mountains
 UI_STAGE3	Etappe 3: Siedler bei der Arbeit	Stage 3: Settlers at work
 BLD_BAUERNHOF	Bauernhof	Farm
 BLD_MUEHLE	Mühle	Mill

@@ -504,7 +504,7 @@ func _next_job(w: Dictionary) -> void:
 		"foerster":
 			var tr_ = _free(terrain.nearest_tree(b.pos, 14.0, false), terrain.trees, true)
 			if tr_ == null:   # nichts in der Nähe: weiter weg nach gefällten Bäumen suchen
-				tr_ = _free(terrain.nearest_tree(b.pos, 30.0, false), terrain.trees, true)
+				tr_ = _free(terrain.nearest_tree(b.pos, 45.0, false), terrain.trees, true)
 			if tr_ == null:
 				b.status = "ST_IDLE"
 				w.q = [{"wait": 6.0}, {"fn": func(): _next_job(w)}]
@@ -513,10 +513,10 @@ func _next_job(w: Dictionary) -> void:
 			reserved[tr_.pos] = true
 			w.q = [
 				{"go": _beside(tr_.pos, b.pos)},
-				{"anim": "plant", "wait": 2.5},
+				{"anim": "plant", "wait": 1.8},
 				{"fn": func(): terrain.plant_tree(tr_); reserved.erase(tr_.pos)},
 				{"go": door_of(b)},
-				{"wait": 3.0},
+				{"wait": 1.2},
 				{"fn": func(): _next_job(w)},
 			]
 		"rutengaenger":
